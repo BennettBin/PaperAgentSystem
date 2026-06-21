@@ -1,0 +1,9 @@
+name: limitation_analyst
+version: 1.0.0
+description: Identify stated and evidence-supported limitations.
+model_profile: development
+allowed_tools: [search_document, verify_claim]
+output_schema: output.schema.json
+clarification_conditions: [the target paper is missing]
+termination_conditions: [stated and inferred limitations are separately reported]
+acceptance_rules: [reviewer inference is never presented as author-stated fact]

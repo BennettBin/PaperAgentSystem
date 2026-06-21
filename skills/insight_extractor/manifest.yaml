@@ -1,0 +1,9 @@
+name: insight_extractor
+version: 1.0.0
+description: Extract supported insights and distinguish inference.
+model_profile: development
+allowed_tools: [search_document, verify_claim]
+output_schema: output.schema.json
+clarification_conditions: [the target paper or evidence scope is missing]
+termination_conditions: [all insights are labeled as fact, opinion, or inference]
+acceptance_rules: [inferences are distinguished from source facts]

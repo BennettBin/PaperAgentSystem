@@ -1,0 +1,9 @@
+name: paper_reader
+version: 1.0.0
+description: Extract a structured Paper Card from one paper.
+model_profile: paper_reader_v1
+allowed_tools: [parse_document, get_document_section, verify_claim]
+output_schema: output.schema.json
+clarification_conditions: [exactly one injected file ID is not available]
+termination_conditions: [Paper Card fields, evidence, and missing fields are returned]
+acceptance_rules: [read only the assigned file, bind factual fields to evidence]

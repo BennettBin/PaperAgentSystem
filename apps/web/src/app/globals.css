@@ -1,0 +1,17 @@
+:root { color: #172033; background: #f4f6fb; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+.app-layout > header { display: flex; justify-content: space-between; padding: 1rem 1.5rem; background: #172033; color: white; }
+.main-content { display: grid; grid-template-columns: 250px minmax(0, 1fr) 300px; min-height: calc(100vh - 72px); }
+.sidebar, .right-sidebar { padding: 1rem; background: white; border-right: 1px solid #dfe4ee; }
+.right-sidebar { border-left: 1px solid #dfe4ee; border-right: 0; }
+.content { padding: 1rem; }
+.message, .task-progress, .artifact-card, .citation-card, .memory-source, .clarification-card, .workspace-panel { margin-bottom: .75rem; padding: .85rem; border: 1px solid #dfe4ee; border-radius: .75rem; background: white; }
+.message-user { margin-left: 15%; background: #e9f2ff; }
+.message-composer { display: flex; gap: .5rem; }
+.message-composer textarea { flex: 1; min-height: 80px; }
+.progress-bar { height: 8px; background: #e8ebf1; border-radius: 999px; overflow: hidden; }
+.progress-fill { height: 100%; background: #356ae6; }
+@media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } .sidebar, .right-sidebar { border: 0; } }

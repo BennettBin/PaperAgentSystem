@@ -1,0 +1,9 @@
+name: claim_extractor
+version: 1.0.0
+description: Extract factual claims from paper sections.
+model_profile: development
+allowed_tools: [get_document_section]
+output_schema: output.schema.json
+clarification_conditions: [the target section is not identified]
+termination_conditions: [all atomic factual claims have source anchors]
+acceptance_rules: [claims remain atomic, every claim preserves its source]

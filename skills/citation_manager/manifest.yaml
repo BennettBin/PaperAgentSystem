@@ -1,0 +1,9 @@
+name: citation_manager
+version: 1.0.0
+description: Validate and organize program-assigned citations.
+model_profile: development
+allowed_tools: [verify_citations]
+output_schema: output.schema.json
+clarification_conditions: [citation IDs or source list are missing]
+termination_conditions: [all supplied citation IDs are classified]
+acceptance_rules: [never invent a citation ID, report invalid citations]

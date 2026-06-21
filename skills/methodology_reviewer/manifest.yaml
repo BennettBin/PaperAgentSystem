@@ -1,0 +1,9 @@
+name: methodology_reviewer
+version: 1.0.0
+description: Review reported methodology without inventing details.
+model_profile: development
+allowed_tools: [get_document_section, verify_claim]
+output_schema: output.schema.json
+clarification_conditions: [the methodology section or target paper is missing]
+termination_conditions: [reported methods and missing details are separately listed]
+acceptance_rules: [never invent unreported methodology]

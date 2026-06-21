@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "title",
+    "research_question",
+    "methodology",
+    "datasets",
+    "metrics",
+    "results",
+    "contributions",
+    "limitations",
+    "evidence",
+    "missing_fields"
+  ],
+  "properties": {
+    "title": { "type": "string" },
+    "research_question": { "type": "string" },
+    "methodology": { "type": "string" },
+    "datasets": { "type": "array", "items": { "type": "string" } },
+    "metrics": { "type": "array", "items": { "type": "string" } },
+    "results": { "type": "array", "items": { "type": "string" } },
+    "contributions": { "type": "array", "items": { "type": "string" } },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["evidence_id", "field", "quote", "page"],
+        "properties": {
+          "evidence_id": { "type": "string" },
+          "field": { "type": "string" },
+          "quote": { "type": "string" },
+          "page": { "type": "integer" }
+        }
+      }
+    },
+    "missing_fields": { "type": "array", "items": { "type": "string" } }
+  }
+}

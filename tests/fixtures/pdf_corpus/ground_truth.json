@@ -1,0 +1,12 @@
+[
+  {"id":"paper-01","layout":"single","heading":"1 Introduction","body":["alpha reproducibility baseline","beta evaluation protocol"]},
+  {"id":"paper-02","layout":"single","heading":"2 Methods","body":["gamma sampling method","delta optimization method"]},
+  {"id":"paper-03","layout":"single","heading":"3 Results","body":["epsilon accuracy result","zeta calibration result"]},
+  {"id":"paper-04","layout":"single","heading":"4 Discussion","body":["eta interpretation","theta limitation"]},
+  {"id":"paper-05","layout":"single","heading":"5 Conclusion","body":["iota conclusion","kappa future work"]},
+  {"id":"paper-06","layout":"double","heading":"1 Introduction","left":["left lambda context","left mu objective"],"right":["right nu evidence","right xi finding"]},
+  {"id":"paper-07","layout":"double","heading":"2 Methods","left":["left omicron data","left pi training"],"right":["right rho metric","right sigma validation"]},
+  {"id":"paper-08","layout":"double","heading":"3 Results","left":["left tau accuracy","left upsilon recall"],"right":["right phi precision","right chi robustness"]},
+  {"id":"paper-09","layout":"double","heading":"4 Discussion","left":["left psi interpretation","left omega caveat"],"right":["right alpha implication","right beta threat"]},
+  {"id":"paper-10","layout":"double","heading":"5 Conclusion","left":["left gamma summary","left delta contribution"],"right":["right epsilon future","right zeta release"]}
+]

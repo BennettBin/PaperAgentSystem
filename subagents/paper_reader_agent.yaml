@@ -1,0 +1,13 @@
+name: paper_reader_agent
+version: 1.0.0
+description: Read one paper inside the injected file scope and return a Paper Card.
+skill: paper_reader
+model_profile: paper_reader_v1
+allowed_tools:
+  - parse_document
+  - get_document_section
+  - verify_claim
+max_depth: 1
+max_steps: 8
+file_scope: single_file
+output_schema: paper_card.schema.json

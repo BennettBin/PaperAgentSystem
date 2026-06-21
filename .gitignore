@@ -1,0 +1,137 @@
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv
+.env.local
+.env.*.local
+
+# Node.js
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+dist/
+build/
+.next/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-workspace
+*.sublime-project
+
+# Model Weights & Large Files
+models/**/*.bin
+models/**/*.pt
+models/**/*.safetensors
+models/**/*.gguf
+models/**/*.onnx
+!models/**/manifest.json
+!models/**/profile.yaml
+
+# Datasets & Private Data
+data/datasets/**/*.csv
+data/datasets/**/*.json
+data/datasets/**/*.jsonl
+data/papers/**/*.pdf
+data/papers/**/*.docx
+!data/datasets/.gitkeep
+!data/papers/.gitkeep
+
+# Uploaded Files & Workspace
+uploads/
+workspace/
+tasks/
+artifacts/
+
+# Database & Cache
+*.db
+*.sqlite
+*.sqlite3
+.cache/
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Observability
+traces/
+*.trace.json
+
+# Secrets & Keys
+.env
+.env.local
+.env.production
+secrets/
+*.key
+*.pem
+*.crt
+
+# Generated Files
+openapi.json
+openapi.yaml
+generated/
+
+# OS
+.DS_Store
+Thumbs.db
+.directory
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# Testing
+.pytest_cache/
+.hypothesis/
+coverage.xml
+
+# MinIO
+minio-data/
+
+# Redis dump
+dump.rdb
+
+# Temporary
+tmp/
+temp/
+*.tmp

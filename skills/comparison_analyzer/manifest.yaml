@@ -1,0 +1,9 @@
+name: comparison_analyzer
+version: 1.0.0
+description: Compare normalized fields across papers.
+model_profile: development
+allowed_tools: [search_document, build_comparison_table, verify_claim]
+output_schema: output.schema.json
+clarification_conditions: [fewer than two papers or no comparison dimension is supplied]
+termination_conditions: [requested dimensions are compared for every available paper]
+acceptance_rules: [each comparison cell retains per-paper evidence]

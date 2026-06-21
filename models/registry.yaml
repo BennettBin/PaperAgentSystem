@@ -1,0 +1,39 @@
+default_profile: development
+
+versions:
+  - version_id: base-1.7b-v1
+    serving_model: paperagent-1.7b
+    base_model: base-1.7b
+    profile_version: "1"
+  - version_id: base-4b-v1
+    serving_model: paperagent-4b
+    base_model: base-4b
+    profile_version: "1"
+
+profiles:
+  - name: development
+    status: development
+    context_length: 8192
+    max_tokens: 2048
+    model_version_id: base-1.7b-v1
+    generation_config:
+      temperature: 0.2
+      top_p: 0.95
+  - name: evaluation
+    status: evaluation
+    context_length: 16384
+    max_tokens: 4096
+    model_version_id: base-4b-v1
+    fallback_profile: development
+  - name: production
+    status: production
+    context_length: 16384
+    max_tokens: 4096
+    model_version_id: base-4b-v1
+    fallback_profile: development
+  - name: paper_reader_v1
+    status: production
+    context_length: 16384
+    max_tokens: 4096
+    model_version_id: base-4b-v1
+    fallback_profile: development

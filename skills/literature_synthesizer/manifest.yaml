@@ -1,0 +1,9 @@
+name: literature_synthesizer
+version: 1.0.0
+description: Synthesize literature from an evidence matrix.
+model_profile: development
+allowed_tools: [search_document, verify_claim, save_artifact]
+output_schema: output.schema.json
+clarification_conditions: [the evidence matrix or synthesis goal is missing]
+termination_conditions: [the synthesis artifact and evidence gaps are recorded]
+acceptance_rules: [draft from evidence first, mark the artifact for user review]

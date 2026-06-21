@@ -1,0 +1,9 @@
+name: claim_verifier
+version: 1.0.0
+description: Verify claims against supplied evidence.
+model_profile: development
+allowed_tools: [verify_claim]
+output_schema: output.schema.json
+clarification_conditions: [the claim or candidate evidence is missing]
+termination_conditions: [every claim is supported, contradicted, or marked insufficient]
+acceptance_rules: [unsupported claims are never accepted, evidence IDs are preserved]

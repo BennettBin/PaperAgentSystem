@@ -1,0 +1,9 @@
+name: summary_generator
+version: 1.0.0
+description: Summarize paper content with evidence coverage.
+model_profile: development
+allowed_tools: [search_document, verify_claim]
+output_schema: output.schema.json
+clarification_conditions: [the source paper or summary target is missing]
+termination_conditions: [the requested summary and evidence gaps are returned]
+acceptance_rules: [summarize only supported content, preserve important numbers]

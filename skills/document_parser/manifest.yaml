@@ -1,0 +1,9 @@
+name: document_parser
+version: 1.0.0
+description: Convert an injected document into structured sections.
+model_profile: development
+allowed_tools: [parse_document]
+output_schema: output.schema.json
+clarification_conditions: [no injected file ID is available]
+termination_conditions: [the document has structured sections or an explicit parse failure]
+acceptance_rules: [never accept a filesystem path, preserve page and section provenance]
