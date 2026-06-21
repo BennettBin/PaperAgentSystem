@@ -1,17 +1,66 @@
-:root { color: #172033; background: #f4f6fb; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+:root {
+  color: #181818;
+  background: #fff;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+  font-synthesis: none;
+}
 * { box-sizing: border-box; }
+html, body { min-height: 100%; }
 body { margin: 0; }
-button, input, textarea, select { font: inherit; }
+button, input, textarea { color: inherit; font: inherit; }
 button { cursor: pointer; }
-.app-layout > header { display: flex; justify-content: space-between; padding: 1rem 1.5rem; background: #172033; color: white; }
-.main-content { display: grid; grid-template-columns: 250px minmax(0, 1fr) 300px; min-height: calc(100vh - 72px); }
-.sidebar, .right-sidebar { padding: 1rem; background: white; border-right: 1px solid #dfe4ee; }
-.right-sidebar { border-left: 1px solid #dfe4ee; border-right: 0; }
-.content { padding: 1rem; }
-.message, .task-progress, .artifact-card, .citation-card, .memory-source, .clarification-card, .workspace-panel { margin-bottom: .75rem; padding: .85rem; border: 1px solid #dfe4ee; border-radius: .75rem; background: white; }
-.message-user { margin-left: 15%; background: #e9f2ff; }
-.message-composer { display: flex; gap: .5rem; }
-.message-composer textarea { flex: 1; min-height: 80px; }
-.progress-bar { height: 8px; background: #e8ebf1; border-radius: 999px; overflow: hidden; }
-.progress-fill { height: 100%; background: #356ae6; }
-@media (max-width: 900px) { .main-content { grid-template-columns: 1fr; } .sidebar, .right-sidebar { border: 0; } }
+.app-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); height: 100vh; overflow: hidden; background: #fff; }
+.app-sidebar { display: flex; flex-direction: column; min-width: 0; padding: 12px 10px 10px; border-right: 1px solid #e8e8e8; background: #f7f7f8; }
+.brand-row { display: flex; align-items: center; min-height: 42px; padding: 0 8px 10px; gap: 10px; font-size: 17px; font-weight: 650; }
+.brand-mark, .welcome-symbol { display: grid; place-items: center; color: #fff; background: #111; font-weight: 700; }
+.brand-mark { width: 27px; height: 27px; border-radius: 8px; font-size: 14px; }
+.icon { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.icon-button { display: grid; width: 34px; height: 34px; place-items: center; padding: 0; border: 0; border-radius: 9px; background: transparent; }
+.icon-button:hover { background: #e9e9ea; }
+.sidebar-collapse { margin-left: auto; color: #616161; }
+.primary-nav { display: grid; gap: 3px; }
+.nav-item { display: flex; align-items: center; width: 100%; min-height: 40px; padding: 8px 10px; gap: 11px; border: 0; border-radius: 10px; background: transparent; text-align: left; }
+.nav-item:hover, .nav-item-active { background: #e9e9ea; }
+.sidebar-section { min-height: 0; margin-top: 22px; overflow-y: auto; }
+.sidebar-label { margin: 0 10px 7px; color: #777; font-size: 12px; }
+.conversation-list ul { margin: 0; padding: 0; list-style: none; }
+.conversation-list li { margin: 1px 0; }
+.conversation-list button { width: 100%; padding: 9px 10px; overflow: hidden; border: 0; border-radius: 9px; background: transparent; text-align: left; }
+.conversation-list button:hover, .conversation-list button.selected { background: #e9e9ea; }
+.conversation-list span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.sidebar-account { display: flex; align-items: center; margin-top: auto; padding: 9px 7px 2px; gap: 10px; border-top: 1px solid #e5e5e5; }
+.avatar { display: grid; width: 31px; height: 31px; place-items: center; border-radius: 50%; color: #fff; background: #8c7358; font-size: 12px; }
+.account-copy { display: grid; min-width: 0; flex: 1; }
+.account-copy strong { font-size: 13px; font-weight: 550; }
+.account-copy small { color: #858585; font-size: 11px; }
+.chat-surface { position: relative; display: flex; min-width: 0; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 46%, rgba(247, 247, 247, .9), transparent 34%), #fff; }
+.welcome-panel { margin-top: -155px; text-align: center; }
+.welcome-symbol { width: 42px; height: 42px; margin: 0 auto 18px; border-radius: 13px; font-size: 20px; }
+.welcome-panel h1 { margin: 0; font-size: clamp(24px, 2vw, 30px); font-weight: 560; letter-spacing: -.02em; }
+.welcome-panel p { margin: 12px 0 0; color: #777; font-size: 14px; }
+.conversation-surface { position: absolute; inset: 0 0 190px; width: min(760px, calc(100% - 40px)); margin: auto; padding: 60px 0 20px; overflow-y: auto; }
+.chat-message-user { width: fit-content; max-width: 75%; margin: 0 0 18px auto; padding: 12px 16px; border-radius: 18px 18px 4px 18px; background: #f1f1f1; line-height: 1.55; }
+.composer-dock { position: absolute; bottom: 24px; left: 50%; width: min(770px, calc(100% - 40px)); transform: translateX(-50%); }
+.message-composer { display: flex; min-height: 58px; align-items: center; padding: 7px 8px 7px 10px; gap: 7px; border: 1px solid #dedede; border-radius: 24px; background: #fff; box-shadow: 0 8px 30px rgba(0, 0, 0, .07); }
+.message-composer textarea { min-width: 0; min-height: 26px; max-height: 140px; flex: 1; padding: 5px 2px; resize: none; overflow-y: auto; border: 0; outline: 0; background: transparent; line-height: 1.45; }
+.message-composer textarea::placeholder { color: #999; }
+.composer-icon-button, .send-button { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; padding: 0; border: 0; border-radius: 50%; }
+.composer-icon-button { color: #474747; background: transparent; }
+.composer-icon-button:hover { background: #f0f0f0; }
+.composer-icon-button svg, .send-button svg { fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.send-button { color: #fff; background: #111; }
+.send-button:disabled { color: #aaa; background: #ececec; cursor: default; }
+.quick-actions { display: flex; justify-content: center; margin-top: 16px; gap: 9px; }
+.quick-actions button { display: flex; align-items: center; padding: 8px 14px; gap: 7px; border: 1px solid #e2e2e2; border-radius: 999px; color: #666; background: #fff; font-size: 13px; }
+.quick-actions button:hover { color: #222; background: #f8f8f8; }
+.composer-note { margin: 12px 0 0; color: #999; text-align: center; font-size: 11px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
+@media (max-width: 760px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .app-sidebar { display: none; }
+  .welcome-panel { margin-top: -120px; padding: 0 20px; }
+  .welcome-panel p { max-width: 290px; }
+  .quick-actions { flex-wrap: wrap; }
+  .composer-dock { bottom: 14px; width: calc(100% - 20px); }
+  .composer-note { display: none; }
+}

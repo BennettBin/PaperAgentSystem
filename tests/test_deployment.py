@@ -44,3 +44,10 @@ def test_readme_contains_fresh_environment_startup_command() -> None:
 
     assert "docker compose up --build" in readme
     assert "docker compose ps" in readme
+
+
+def test_docker_build_context_never_contains_local_environment_files() -> None:
+    dockerignore = (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
+
+    assert ".env" in dockerignore
+    assert ".env.*" in dockerignore

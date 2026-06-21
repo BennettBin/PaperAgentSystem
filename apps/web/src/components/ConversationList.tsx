@@ -8,35 +8,27 @@ export interface ConversationListProps {
     message_count: number;
   }>;
   onSelect: (id: string) => void;
+  selectedId?: string | null;
 }
 
 export const ConversationList: React.FC<ConversationListProps> = ({
   conversations,
   onSelect,
-}) => {
-  const [query, setQuery] = React.useState("");
-  const filtered = conversations.filter((conversation) =>
-    conversation.title.toLowerCase().includes(query.toLowerCase()),
-  );
-  return (
-    <div className="conversation-list">
-      <h2>Conversations</h2>
-      <input
-        type="text"
-        placeholder="Search conversations..."
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
-      <ul>
-        {filtered.map((conv) => (
-          <li key={conv.id}>
-            <button type="button" onClick={() => onSelect(conv.id)}>
-              <h3>{conv.title}</h3>
-              <p>{conv.message_count} messages</p>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
+  selectedId,
+}) => (
+  <div className="conversation-list">
+    <ul>
+      {conversations.map((conversation) => (
+        <li key={conversation.id}>
+          <button
+            className={selectedId === conversation.id ? "selected" : undefined}
+            onClick={() => onSelect(conversation.id)}
+            type="button"
+          >
+            <span>{conversation.title}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  </div>
+);

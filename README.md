@@ -7,6 +7,7 @@
 ## 📋 核心特性
 
 - **单一对话入口**: 类似 ChatGPT 的简洁交互体验
+- **纯净用户界面**: 首页仅展示会话、文件入口和消息输入，不暴露测试场景或开发调试面板
 - **论文智能分析**: 理解、总结、提取关键信息和证据
 - **多文件对比**: 自动识别论文维度，生成对比表
 - **学术写作辅助**: 章节撰写、段落改写、引用核验
@@ -88,6 +89,25 @@ API、Web、MinIO Console 分别位于
 
 ```bash
 docker compose down
+```
+
+Windows 用户也可以直接双击仓库根目录的 `start-paperagent.cmd`。脚本会自动启动
+Docker Desktop（如果尚未运行）、构建并启动服务、等待健康检查，然后打开：
+
+- Web：`http://localhost:3000`
+- API 文档：`http://localhost:8000/docs`
+
+双击 `stop-paperagent.cmd` 可停止系统并保留数据库与对象存储数据。PowerShell 高级用法：
+
+```powershell
+# 跳过镜像重建
+.\scripts\start-paperagent.ps1 -NoBuild
+
+# 同时启动可选模型占位服务
+.\scripts\start-paperagent.ps1 -WithModels
+
+# 启动但不打开浏览器
+.\scripts\start-paperagent.ps1 -NoBrowser
 ```
 
 ### 项目结构

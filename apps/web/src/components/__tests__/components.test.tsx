@@ -14,6 +14,7 @@ import { FilePreview } from "../FilePreview";
 import { MemorySource } from "../MemorySource";
 import { SettingsPage } from "../SettingsPage";
 import { ModelProfileManager } from "../ModelProfileManager";
+import { AppLayout } from "../AppLayout";
 
 describe("Frontend Components", () => {
   it("renders ConversationList", () => {
@@ -21,10 +22,10 @@ describe("Frontend Components", () => {
       { id: "1", title: "Test", created_at: "2026-06-19T00:00:00Z", message_count: 5 },
     ];
     render(<ConversationList conversations={conversations} onSelect={() => {}} />);
-    expect(screen.getByText("Conversations")).toBeDefined();
+    expect(screen.getByText("Test")).toBeDefined();
   });
 
-  it("switches conversations and filters the list", () => {
+  it("switches conversations", () => {
     const onSelect = vi.fn();
     render(
       <ConversationList
@@ -35,12 +36,30 @@ describe("Frontend Components", () => {
         onSelect={onSelect}
       />,
     );
-    fireEvent.change(screen.getByPlaceholderText("Search conversations..."), {
-      target: { value: "Beta" },
-    });
-    expect(screen.queryByText("Alpha paper")).toBeNull();
     fireEvent.click(screen.getByText("Beta paper"));
     expect(onSelect).toHaveBeenCalledWith("2");
+  });
+
+  it("renders a clean user home without development panels", () => {
+    render(<AppLayout />);
+
+    expect(screen.getByText("准备好了，随时开始")).toBeDefined();
+    expect(screen.getByText("新对话")).toBeDefined();
+    expect(screen.queryByText("Model Profiles (Dev Only)")).toBeNull();
+    expect(screen.queryByText("Workspace Files")).toBeNull();
+    expect(screen.queryByText("Clarification Questions")).toBeNull();
+    expect(screen.queryByText("Analyzing paper content")).toBeNull();
+  });
+
+  it("submits a message from the clean composer", () => {
+    render(<AppLayout />);
+    fireEvent.change(screen.getByTestId("message-input"), {
+      target: { value: "帮我总结这篇论文" },
+    });
+    fireEvent.click(screen.getByLabelText("发送消息"));
+
+    expect(screen.getByText("帮我总结这篇论文")).toBeDefined();
+    expect(screen.queryByText("准备好了，随时开始")).toBeNull();
   });
 
   it("renders MessageList with messages", () => {

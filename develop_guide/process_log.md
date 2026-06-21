@@ -182,3 +182,23 @@
   - Completed Work: Added typed per-task training profiles for router, skill_selector, query_rewriter and tool_caller; added a fail-closed preflight checking dataset validity/minimum size, base model manifest, training modules and GPU VRAM; generated four machine-readable J02 preflight reports.
   - Verification: J02 profile/preflight suite 3 passed; training Ruff and Mypy passed. Hardware check detected 8.0 GiB VRAM. Every real task preflight exited with blocked status as designed.
   - Open Issues: No reviewed 2K–5K+ starting datasets exist at the required paths; `models/base/qwen3-1.7b/config.json` is absent; torch, transformers, datasets, peft, trl and accelerate are not installed. J02 is blocked, so J03 and J04 remain pending by work-package order. No Adapter or effectiveness claim was produced.
+- Time: `2026-06-21 00:50 -04:00`
+  - Step: Re-audit every Stage J work package and retry J02 prerequisites.
+  - Completed Work: Re-read Stage J and repository policy, re-scanned training data/base/adapter directories, training modules and GPU capacity, refreshed all four 1.7B preflight reports, and confirmed J01 remains complete while J02 remains fail-closed.
+  - Verification: Stage J focused tests 9 passed; Ruff and Mypy passed. Router, skill_selector, query_rewriter and tool_caller preflights each returned blocked exit code 2. GPU detection still passes at 8.0 GiB.
+  - Open Issues: The required licensed/reviewed datasets, Qwen3-1.7B base model and training environment are still absent. J03 cannot start before J02 produces evaluated adapters; J04 cannot promote or roll back versions that do not exist.
+- Time: `2026-06-21 01:00 -04:00`
+  - Step: Add Windows one-click startup and browser shortcuts.
+  - Completed Work: Added double-clickable start/stop CMD launchers and PowerShell orchestration scripts that start Docker Desktop when needed, create `.env`, run Docker Compose, wait for API/Web health, open the frontend and API documentation, and preserve named-volume data on shutdown.
+  - Verification: PowerShell scripts pass parser validation and Compose configuration validation. The start script was run end to end, created `.env`, brought API/Web and dependencies to healthy status, and the stop script removed containers/network while preserving named volumes.
+  - Open Issues: The first startup still needs network access to pull/build container images and may take several minutes.
+- Time: `2026-06-21 12:05 -04:00`
+  - Step: Fix one-click Compose startup after local `.env` creation.
+  - Completed Work: Diagnosed the API restart loop as a local `.env` leaking into the Python image and being parsed by strict `ApiSettings`; excluded `.env` and environment variants from Docker build contexts while retaining `.env.example`, and added a deployment regression test.
+  - Verification: API logs identified 31 forbidden extra settings; deployment regression and rebuilt Compose startup were run after the fix.
+  - Open Issues: None.
+- Time: `2026-06-21 12:20 -04:00`
+  - Step: Replace the developer mock dashboard with a clean end-user chat home.
+  - Completed Work: Removed all test fixtures, task diagnostics, clarification demos, Workspace/debug widgets and model-profile controls from the rendered home; added a restrained two-column PaperAgent shell with conversation navigation, central welcome state, integrated upload/message composer, user-facing quick actions and responsive mobile layout.
+  - Verification: Frontend component tests cover absence of development panels and message submission; TypeScript and production build pass; local browser visual verification completed.
+  - Open Issues: Navigation items and assistant responses remain UI-level placeholders until the corresponding production API routes are wired to the web client.
