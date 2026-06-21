@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PaperAgent TrainingSample",
+  "type": "object",
+  "required": [
+    "sample_id",
+    "task_type",
+    "source",
+    "base_model_family",
+    "input",
+    "tools",
+    "context",
+    "human_review_status",
+    "dataset_split",
+    "paper_ids",
+    "conversation_ids",
+    "license",
+    "privacy"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "sample_id": {"type": "string", "minLength": 1},
+    "task_type": {"type": "string", "minLength": 1},
+    "source": {"type": "string", "minLength": 1},
+    "base_model_family": {"type": "string", "minLength": 1},
+    "input": {"type": "object"},
+    "tools": {"type": "array", "items": {"type": "object"}},
+    "context": {"type": "object"},
+    "sft_target": {},
+    "chosen": {},
+    "rejected": {},
+    "automatic_validation": {"type": "object"},
+    "human_review_status": {"enum": ["pending", "approved", "rejected"]},
+    "dataset_split": {"enum": ["train", "validation", "test"]},
+    "paper_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "conversation_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "license": {"type": "string", "minLength": 1},
+    "privacy": {"enum": ["synthetic", "public", "private_authorized"]},
+    "consent_id": {"type": ["string", "null"]},
+    "anonymized": {"type": "boolean"}
+  }
+}

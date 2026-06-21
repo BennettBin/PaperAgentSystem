@@ -66,6 +66,14 @@ models/**/*.gguf
 models/**/*.onnx
 !models/**/manifest.json
 !models/**/profile.yaml
+training/outputs/
+training/cache/
+training/data/
+training/**/*.safetensors
+training/**/*.bin
+training/**/*.pt
+training/**/*.gguf
+training/**/*.arrow
 
 # Datasets & Private Data
 data/datasets/**/*.csv

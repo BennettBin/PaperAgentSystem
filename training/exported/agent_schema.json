@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "states": [
+    "received",
+    "understanding",
+    "requirement_check",
+    "clarifying",
+    "waiting_user",
+    "skill_selected",
+    "planned",
+    "executing",
+    "verifying",
+    "replanning",
+    "completed",
+    "failed",
+    "cancelled"
+  ],
+  "outputs": {
+    "requirement_check": {"required": ["status", "sufficient_info", "missing_fields", "constraints"]},
+    "skill_selection": {"required": ["skill_name", "confidence", "alternatives"]},
+    "plan": {"required": ["steps"], "max_steps": 8},
+    "tool_call": {"required": ["tool_name", "parameters"]},
+    "verification": {"required": ["status", "is_valid", "issues"]}
+  }
+}

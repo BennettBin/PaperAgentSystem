@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "protected_fields": [
+    "workspace_id",
+    "user_id",
+    "conversation_id",
+    "task_id",
+    "trace_id",
+    "permissions",
+    "allowed_tools",
+    "confirmed_tools"
+  ],
+  "tools": [
+    {"name": "list_workspace_files", "side_effect": "read"},
+    {"name": "search_workspace_files", "side_effect": "read"},
+    {"name": "read_workspace_entry", "side_effect": "read"},
+    {"name": "write_workspace_entry", "side_effect": "write"},
+    {"name": "promote_workspace_entry", "side_effect": "write", "confirmation_required": true},
+    {"name": "save_artifact", "side_effect": "write"},
+    {"name": "parse_document", "side_effect": "write"},
+    {"name": "search_document", "side_effect": "read"},
+    {"name": "get_document_section", "side_effect": "read"},
+    {"name": "extract_paper_card", "side_effect": "read"},
+    {"name": "compare_papers", "side_effect": "read"},
+    {"name": "build_writing_brief", "side_effect": "read"},
+    {"name": "draft_academic_section", "side_effect": "write"},
+    {"name": "rewrite_academic_text", "side_effect": "write"},
+    {"name": "build_literature_review", "side_effect": "write"},
+    {"name": "verify_claim", "side_effect": "read"},
+    {"name": "verify_numbers", "side_effect": "read"},
+    {"name": "verify_citations", "side_effect": "read"}
+  ]
+}

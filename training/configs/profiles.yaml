@@ -1,0 +1,62 @@
+schema_version: "1.0"
+profiles:
+  router:
+    family: 1.7b
+    methods: [qlora_sft, dpo]
+    start_samples: [3000, 5000]
+    target_samples: [10000, 30000]
+    gates: {skill_top1: 0.90, skill_top3_recall: 0.98, json_validity: 0.99, hard_set_gain_pp: 5}
+  skill_selector:
+    family: 1.7b
+    methods: [qlora_sft, dpo]
+    start_samples: [3000, 5000]
+    target_samples: [10000, 30000]
+    gates: {skill_top1: 0.90, skill_top3_recall: 0.98, json_validity: 0.99, hard_set_gain_pp: 5}
+  query_rewriter:
+    family: 1.7b
+    methods: [qlora_sft, optional_dpo]
+    start_samples: [2000, 5000]
+    target_samples: [10000, 20000]
+    gates: {recall10_relative_gain: 0.05, query_drift_not_worse: true}
+  tool_caller:
+    family: 1.7b
+    methods: [qlora_sft, dpo_or_grpo]
+    start_samples: [5000, 5000]
+    target_samples: [20000, 50000]
+    gates: {schema_validity: 0.99, tool_accuracy: 0.95, e2e_gain: 0.05}
+  requirement_clarifier:
+    family: 4b
+    methods: [qlora_sft, dpo]
+    start_samples: [3000, 5000]
+    target_samples: [10000, 20000]
+    gates: {macro_f1: 0.90, missing_recall: 0.95, unnecessary_question_rate_max: 0.10, average_questions_max: 4}
+  planner:
+    family: 4b
+    methods: [qlora_sft, dpo]
+    start_samples: [3000, 5000]
+    target_samples: [15000, 30000]
+    gates: {executable_rate: 0.90, dependency_accuracy: 0.95, e2e_gain: 0.05}
+  paper_reader:
+    family: 4b
+    methods: [qlora_sft, dpo_or_grpo]
+    start_samples: [5000, 10000]
+    target_samples: [30000, 80000]
+    gates: {qa_accuracy: 0.80, citation_support: 0.90, severe_hallucination_max: 0.03, composite_gain: 0.05}
+  academic_drafting:
+    family: 4b
+    methods: [qlora_sft, dpo]
+    start_samples: [8000, 15000]
+    target_samples: [30000, 80000]
+    gates: {citation_support: 0.90, point_coverage: 0.90, unsupported_fact_max: 0.03, invariant_preservation: 0.99, dpo_win_rate: 0.55}
+  academic_writer:
+    family: 4b
+    methods: [qlora_sft, dpo]
+    start_samples: [8000, 15000]
+    target_samples: [30000, 80000]
+    gates: {citation_support: 0.90, point_coverage: 0.90, unsupported_fact_max: 0.03, invariant_preservation: 0.99, dpo_win_rate: 0.55}
+  verifier:
+    family: 4b
+    methods: [qlora_sft, optional_dpo]
+    start_samples: [5000, 5000]
+    target_samples: [20000, 50000]
+    gates: {requires_human_agreement_report: true, rules_remain_mandatory: true}

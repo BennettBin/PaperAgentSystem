@@ -1576,20 +1576,20 @@ Codex 每完成一个工作包，在此更新状态：
 | G03 | completed | 2026-06-20 | 父子 Chunk、Section/page/bbox/邻接、Embedding、pgvector HNSW、FTS、幂等与删除失效 |
 | G04 | completed | 2026-06-20 | 规则查询改写、Vector/Keyword Top-30、RRF、Reranker Top-8、Workspace/File 过滤与指标评测 |
 | G05 | completed | 2026-06-20 | Claim-Citation、程序 Citation ID、PDF 页面/bbox 定位、不可回答、Claim-Evidence 检查与指标评测 |
-| H01 | pending |  |  |
-| H02 | pending |  |  |
-| H03 | pending |  |  |
-| H04 | pending |  |  |
-| H05 | pending |  |  |
-| H06 | pending |  |  |
-| I01 | pending |  |  |
-| I02 | pending |  |  |
-| I03 | pending |  |  |
-| I04 | pending |  |  |
-| I05 | pending |  |  |
-| I06 | pending |  |  |
-| J01 | pending |  |  |
-| J02 | pending |  |  |
+| H01 | completed | 2026-06-20 | Paper Card 八类字段、Evidence 绑定、缺失字段、防补造与 100 样例字段 F1 评测 |
+| H02 | completed | 2026-06-20 | Paper Card 字段标准化、比较矩阵、数字核验、证据支持结论与指标评测 |
+| H03 | completed | 2026-06-20 | Writing Brief、Evidence Map、章节约束、用户要点、来源事实、不可变项、缺失信息与分类 |
+| H04 | completed | 2026-06-20 | 七类章节/段落计划、Evidence Map 约束草稿、来源/缺失项、待审阅与 100/200 任务评测 |
+| H05 | completed | 2026-06-20 | 命题/数字/公式/术语/引用不可变项、四类改写、修改说明、语义/事实回归与 200 样例评测 |
+| H06 | completed | 2026-06-20 | Evidence Matrix 优先综述、Claim 引用核验、事实 100% 追溯、推断标记与 Tool Runtime 集成 |
+| I01 | completed | 2026-06-20 | 数据库 Trace Span、task_id 全链重建、OpenTelemetry 属性语义、模型/正文/密钥脱敏与迁移 |
+| I02 | completed | 2026-06-20 | Workspace/路径/符号链接、Prompt Injection 100% 阻断、恶意文件、Tool 注入与脚本不执行 |
+| I03 | completed | 2026-06-20 | 产品禁用代码/LaTeX 执行的正式 SandboxExecutor、统一不可执行错误和无普通 Worker 回退 |
+| I04 | completed | 2026-06-20 | Contract/Component/Trajectory/Domain/E2E/Security/Performance 七层评测、单命令选择与版本化报告 |
+| I05 | completed | 2026-06-20 | Docker Compose 十服务、全健康检查、全新环境启动说明、Fake 默认链与模型不可用结构化降级 |
+| I06 | completed | 2026-06-21 | 十场景最终 E2E 100%、死循环 0、引用支持 100%、删除失效、无 Adapter 运行与全量交付文档 |
+| J01 | completed | 2026-06-21 | 独立 training 包、版本化 JSONL/Manifest、Tool/Schema 哈希快照、隐私授权与论文/会话 split 隔离 |
+| J02 | blocked | 2026-06-21 | 分任务配方与预检已完成；缺少 2K–5K+ 审核数据、Qwen3-1.7B 基座和 Torch/Transformers/PEFT/TRL 环境，禁止伪训练 |
 | J03 | pending |  |  |
 | J04 | pending |  |  |
 

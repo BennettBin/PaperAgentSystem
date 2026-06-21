@@ -2,7 +2,7 @@
 
 一个全方位的学术论文 Agent 助手，能够处理与论文相关的所有任务——包括论文阅读、理解、分析、对比、撰写、改写和语言润色。
 
-**项目状态**: 🚧 Alpha Development（阶段 B：完整代码骨架已完成）
+**项目状态**: ✅ 阶段 I 已完成（安全、观测、评测与本地交付基线）
 
 ## 📋 核心特性
 
@@ -67,6 +67,27 @@ python -m pytest -q
 npm test
 npm run type-check
 npm run build
+```
+
+### Docker Compose 一键启动
+
+全新环境只需要 Docker Desktop（或 Docker Engine + Compose）：
+
+```bash
+git clone <repository-url>
+cd PaperAgentSystem
+docker compose up --build -d
+docker compose ps
+```
+
+API、Web、MinIO Console 分别位于
+`http://localhost:8000`、`http://localhost:3000`、`http://localhost:9001`。
+默认 development 配置使用 Fake 模型能力，不依赖 SFT/RL Adapter。`model-router`
+在没有挂载真实模型权重时保持健康，但模型调用返回结构化 `model_not_available`；
+可选模型服务可用 `docker compose --profile models up --build -d` 启动。
+
+```bash
+docker compose down
 ```
 
 ### 项目结构
@@ -175,9 +196,27 @@ make/check               # 本地完整检查
   - PostgreSQL pgvector HNSW、FTS GIN、Top-30 双路召回、RRF 和 Top-8 Reranker
   - 程序分配 Citation ID、PDF 页面定位、Claim-Evidence 检查和证据不足拒答
   - `parse_document`、`search_document`、`get_document_section` Tool Runtime 集成
-- **H: 论文领域功能** (待启动)
-- **I: 安全、观测和交付** (待启动)
-- **J: 模型训练** (待启动)
+- **H: 论文领域功能** ✅ 完成
+  - 单论文 Paper Card 八类字段、Evidence 绑定、缺失字段和字段 F1 评测
+  - 并行 Paper Card 比较、字段标准化、比较矩阵、数字核验和证据支持结论
+  - Writing Brief、Evidence Map、事实/观点/推测分类和不可变项
+  - 七类章节及段落计划、证据约束草稿、来源/缺失项和待用户审阅标记
+  - 压缩、扩写、润色、重组及数字/公式/术语/引用回归检查
+  - Evidence Matrix 优先综述、事实追溯、推断标记和 Claim 引用核验
+  - 六项论文领域服务接入安全 Tool Runtime
+- **I: 安全、观测和交付** ✅ 完成
+  - 持久 Trace Span、task_id 全链重建、OpenTelemetry 语义和敏感内容脱敏
+  - Workspace/路径/符号链接、Prompt Injection、恶意文件和 Tool 参数安全测试
+  - 禁用型 SandboxExecutor，未配置真实沙箱时明确拒绝代码和 LaTeX 执行
+  - Contract、Component、Trajectory、Domain、E2E、Security、Performance 七层评测
+  - Docker Compose 十服务、健康检查和模型不可用结构化降级
+  - 十个最终场景 100% 完成、死循环率 0、引用支持率 100%、删除失效和无 Adapter 运行
+- **J: 模型训练** 🚧 J01 完成，J02 等待真实训练资产
+  - J01 独立训练工程与数据契约 ✅ 完成
+  - 训练只读取导出的 Schema、Tool 定义和版本化 JSONL，不依赖在线服务
+  - 私有数据必须显式授权并匿名化；按论文和会话隔离 train/validation/test
+  - J02 已提供 1.7B 分任务规模、算法、指标和 fail-closed 前置审计；当前缺少经审核数据、
+    Hugging Face 基座权重及独立训练依赖，未生成或发布任何虚假 Adapter
 
 详见 [DEVELOPMENT_PLAN.md](./develop_guide/DEVELOPMENT_PLAN.md)
 
@@ -214,5 +253,5 @@ MIT
 
 ---
 
-**最后更新**: 2026-06-20
+**最后更新**: 2026-06-21
 **当前维护者**: PaperAgent Team

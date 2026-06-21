@@ -275,6 +275,26 @@ class TaskEventModel(Base):
     )
 
 
+class TraceSpanModel(Base):
+    __tablename__ = "trace_spans"
+    span_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    trace_id: Mapped[str] = mapped_column(String(64), index=True)
+    task_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    parent_span_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    span_name: Mapped[str] = mapped_column(String(200), index=True)
+    sequence: Mapped[int] = mapped_column(Integer)
+    data: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    __table_args__ = (
+        UniqueConstraint("trace_id", "sequence", name="uq_trace_span_sequence"),
+        Index("ix_trace_spans_task_sequence", "task_id", "sequence"),
+    )
+
+
 class WorkspaceEntryModel(Base, LifecycleMixin, VersionedMixin):
     __tablename__ = "workspace_entries"
     id: Mapped[str] = mapped_column(String(64), primary_key=True)

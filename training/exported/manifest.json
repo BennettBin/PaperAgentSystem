@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "bundle_version": "stage-j-v1",
+  "agent_schema": "agent_schema.json",
+  "tool_definitions": "tool_definitions.json",
+  "training_sample_schema": "training_sample.schema.json",
+  "checksums": {
+    "agent_schema.json": "c330b792bdfb675a37326b4bb7a29549c9a430b9dea9a85faa076e22f4a2bc83",
+    "tool_definitions.json": "c8433c5e4419b974ab4c9f92e83216eee4bd3899889f6226cd4da03608e7feb3",
+    "training_sample.schema.json": "e092aa610778ebd9b9722ecaac553dfde5ca2b26f5ca1e43054cef95871cf427"
+  }
+}

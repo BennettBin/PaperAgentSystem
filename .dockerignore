@@ -1,0 +1,13 @@
+.git
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+node_modules
+apps/web/.next
+__pycache__
+*.pyc
+scratch
+models/base
+models/adapters
+evaluation/reports/*.json

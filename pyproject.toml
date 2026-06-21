@@ -14,6 +14,9 @@ authors = [
 ]
 keywords = ["agent", "nlp", "paper", "writing", "academic"]
 
+[project.scripts]
+paperagent-eval = "evaluation.cli:main"
+
 dependencies = [
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",

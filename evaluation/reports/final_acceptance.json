@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "commit": "b7800f8e71708761f4dd421febfd31177b193242",
+  "scenarios": [
+    {
+      "scenario": "single_paper_qa",
+      "passed": true,
+      "duration_seconds": 1.969,
+      "timed_out": false,
+      "output": ".                                                                        [100%]\n1 passed in 0.99s\n"
+    },
+    {
+      "scenario": "requirement_clarification",
+      "passed": true,
+      "duration_seconds": 1.016,
+      "timed_out": false,
+      "output": ".                                                                        [100%]\n1 passed in 0.27s\n"
+    },
+    {
+      "scenario": "multi_paper_comparison",
+      "passed": true,
+      "duration_seconds": 2.218,
+      "timed_out": false,
+      "output": ".                                                                        [100%]\n1 passed in 1.24s\n"
+    },
+    {
+      "scenario": "historical_memory",
+      "passed": true,
+      "duration_seconds": 2.735,
+      "timed_out": false,
+      "output": ".                                                                        [100%]\n1 passed in 1.73s\n"
+    },
+    {
+      "scenario": "workspace_script_retrieval",
+      "passed": true,
+      "duration_seconds": 2.422,
+      "timed_out": false,
+      "output": ".                                                                        [100%]\n1 passed in 1.40s\n"
+    },
+    {
+      "scenario": "section_drafting",
+      "passed": true,
+      "duration_seconds": 2.156,
+      "timed_out": false,
+      "output": ".                                                                        [100%]\n1 passed in 1.10s\n"
+    },
+    {
+      "scenario": "section_rewriting",
+      "passed": true,
+      "duration_seconds": 2.0,
+      "timed_out": false,
+      "output": ".                                                                        [100%]\n1 passed in 1.03s\n"
+    },
+    {
+      "scenario": "failure_replanning",
+      "passed": true,
+      "duration_seconds": 1.015,
+      "timed_out": false,
+      "output": ".                                                                        [100%]\n1 passed in 0.29s\n"
+    },
+    {
+      "scenario": "cancel_and_recover",
+      "passed": true,
+      "duration_seconds": 2.344,
+      "timed_out": false,
+      "output": "..                                                                       [100%]\n2 passed in 1.45s\n"
+    },
+    {
+      "scenario": "delete_and_forget",
+      "passed": true,
+      "duration_seconds": 2.328,
+      "timed_out": false,
+      "output": ".                                                                        [100%]\n1 passed in 1.29s\n"
+    }
+  ],
+  "metrics": {
+    "completion_rate": 1.0,
+    "dead_loop_rate": 0.0,
+    "citation_support_rate": 1.0
+  },
+  "gates": {
+    "completion_rate": true,
+    "dead_loop_rate": true,
+    "citation_support_rate": true,
+    "deletion_unavailable": true,
+    "adapter_free": true
+  },
+  "passed": true
+}

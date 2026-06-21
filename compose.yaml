@@ -1,0 +1,164 @@
+name: paperagent
+
+x-python-service: &python-service
+  build:
+    context: .
+    dockerfile: deploy/Dockerfile.python
+  restart: unless-stopped
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  api:
+    <<: *python-service
+    command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      ENVIRONMENT: development
+      ADAPTER_MODE: fake
+      MODEL_ROUTER_ENDPOINT: http://model-router:8080
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://observability:4317
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      model-router:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready')"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  worker:
+    <<: *python-service
+    command: ["python", "-m", "deploy.service_runtime", "--service", "worker", "--port", "8090"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health/ready')"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: paperagent
+      POSTGRES_USER: paperagent
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-paperagent-dev}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperagent -d paperagent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-paperagent}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-paperagent-dev-secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  model-router:
+    <<: *python-service
+    command:
+      ["python", "-m", "deploy.service_runtime", "--service", "model-router", "--port", "8080"]
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test:
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  model-1-7b:
+    <<: *python-service
+    command:
+      ["python", "-m", "deploy.service_runtime", "--service", "model-1-7b", "--port", "8101"]
+    profiles: ["models"]
+    healthcheck:
+      test:
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8101/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  model-4b:
+    <<: *python-service
+    command:
+      ["python", "-m", "deploy.service_runtime", "--service", "model-4b", "--port", "8104"]
+    profiles: ["models"]
+    healthcheck:
+      test:
+        ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8104/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  observability:
+    image: otel/opentelemetry-collector-contrib:0.128.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./deploy/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    healthcheck:
+      test: ["CMD", "/otelcol-contrib", "components"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

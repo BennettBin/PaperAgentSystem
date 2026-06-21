@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-06-21T04:20:58.118750Z",
+  "metadata": {
+    "commit": "b7800f8e71708761f4dd421febfd31177b193242",
+    "config": {
+      "registry": "models/registry.yaml",
+      "default_profile": "development",
+      "report_schema": "1.0"
+    },
+    "profiles": {
+      "development": "base-1.7b-v1",
+      "evaluation": "base-4b-v1",
+      "production": "base-4b-v1",
+      "paper_reader_v1": "base-4b-v1"
+    },
+    "skills": {
+      "citation_manager": "1.0.0",
+      "claim_extractor": "1.0.0",
+      "claim_verifier": "1.0.0",
+      "comparison_analyzer": "1.0.0",
+      "document_parser": "1.0.0",
+      "insight_extractor": "1.0.0",
+      "limitation_analyst": "1.0.0",
+      "literature_synthesizer": "1.0.0",
+      "methodology_reviewer": "1.0.0",
+      "paper_reader": "1.0.0",
+      "summary_generator": "1.0.0"
+    },
+    "datasets": {
+      "pdf_structure": "pdf-corpus-v1",
+      "requirement_clarification": "clarification-fixtures-v1",
+      "skill_selection": "skill-routing-fixtures-v1",
+      "planner": "planner-fixtures-v1",
+      "security": "security-attack-fixtures-v1",
+      "domain_quality": "academic-task-fixtures-v1",
+      "final_e2e": "stage-i-scenarios-v1"
+    },
+    "prompts": {
+      "citation_manager": "sha256:d852992eb0130d4f8716abc54dc0347398f4f1a91db013c32f04b549659d8fe7",
+      "claim_extractor": "sha256:98ad2413d7beed6b733964b9da364e1dee4514eded45950fe830c9c14f0a479f",
+      "claim_verifier": "sha256:ca9f73ef92b641d961b0d74a11ed27a654dc9010828249de3eddb33e489d5b09",
+      "comparison_analyzer": "sha256:240084cf6c3d01a063a5f444122ced58d9e017402b41cd3238ef7ace33df2244",
+      "document_parser": "sha256:9a26c7fb3007eede7cd5548c8ed9777464c50104c18aa8dce02df98eca020b8d",
+      "insight_extractor": "sha256:e23954dd837c611e4c958fbc4e9be18e0f61199d0f15500b66c4528194d5a2d9",
+      "limitation_analyst": "sha256:8a247b6e1581cc54d2775a40abea33edef820578c139456540fd9a38cb7f6421",
+      "literature_synthesizer": "sha256:c5fe133f4686cb417cda34e05ab8ddea08fea431def5560a1eb2a0c085dcbe0f",
+      "methodology_reviewer": "sha256:b04d15f347a660f17eb30145c65f29fa517f2bc163671ce692dbfb560048a9d5",
+      "paper_reader": "sha256:dd110ea7adf417109b6931f5b6d6f1b1de3d7486223db7bbec0a40ed33e958ac",
+      "summary_generator": "sha256:f228dc93d53fd419bb512b9765765e2fd95cd936fff5b58fb8028f2079da7b5d"
+    }
+  },
+  "results": [
+    {
+      "suite": "contract",
+      "passed": true,
+      "metrics": {
+        "required_artifacts": 2,
+        "present_artifacts": 2
+      },
+      "failures": []
+    },
+    {
+      "suite": "component",
+      "passed": true,
+      "metrics": {
+        "required_artifacts": 2,
+        "present_artifacts": 2
+      },
+      "failures": []
+    },
+    {
+      "suite": "trajectory",
+      "passed": true,
+      "metrics": {
+        "required_artifacts": 2,
+        "present_artifacts": 2
+      },
+      "failures": []
+    },
+    {
+      "suite": "domain",
+      "passed": true,
+      "metrics": {
+        "required_artifacts": 2,
+        "present_artifacts": 2
+      },
+      "failures": []
+    },
+    {
+      "suite": "e2e",
+      "passed": true,
+      "metrics": {
+        "required_artifacts": 2,
+        "present_artifacts": 2
+      },
+      "failures": []
+    },
+    {
+      "suite": "security",
+      "passed": true,
+      "metrics": {
+        "required_artifacts": 2,
+        "present_artifacts": 2
+      },
+      "failures": []
+    },
+    {
+      "suite": "performance",
+      "passed": true,
+      "metrics": {
+        "required_artifacts": 2,
+        "present_artifacts": 2
+      },
+      "failures": []
+    }
+  ],
+  "passed": true
+}
