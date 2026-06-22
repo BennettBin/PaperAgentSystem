@@ -27,8 +27,14 @@ services:
     command: ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       ENVIRONMENT: development
-      ADAPTER_MODE: fake
-      MODEL_ROUTER_ENDPOINT: http://model-router:8080
+      ADAPTER_MODE: real
+      DATABASE_URL: postgresql+psycopg://paperagent:${POSTGRES_PASSWORD:-paperagent-dev}@postgres:5432/paperagent
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-paperagent}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-paperagent-dev-secret}
+      MINIO_BUCKET_PREFIX: paperagent
+      OLLAMA_ENDPOINT: ${OLLAMA_ENDPOINT:-http://host.docker.internal:11434}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://observability:4317
     ports:
       - "8000:8000"
@@ -39,8 +45,6 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-      model-router:
-        condition: service_healthy
     healthcheck:
       test:
         ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready')"]
@@ -50,8 +54,18 @@ services:
 
   worker:
     <<: *python-service
-    command: ["python", "-m", "deploy.service_runtime", "--service", "worker", "--port", "8090"]
+    command: ["python", "-m", "apps.worker.runtime"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://paperagent:${POSTGRES_PASSWORD:-paperagent-dev}@postgres:5432/paperagent
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-paperagent}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-paperagent-dev-secret}
+      MINIO_BUCKET_PREFIX: paperagent
+      OLLAMA_ENDPOINT: ${OLLAMA_ENDPOINT:-http://host.docker.internal:11434}
     depends_on:
+      api:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       redis:

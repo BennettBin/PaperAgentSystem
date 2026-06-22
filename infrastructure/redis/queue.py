@@ -5,12 +5,12 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Callable, Iterator, Optional
 from uuid import uuid4
 
+from redis import Redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.ports.storage import EventPublisher, TaskQueue
 from infrastructure.postgres.models import QueueJobModel
-from redis import Redis
 
 QUEUE_BY_TASK = {
     "main_agent": "main_agent",
@@ -109,7 +109,7 @@ class RedisTaskQueue(TaskQueue):
             try:
                 if handler is None:
                     raise RuntimeError(f"No handler for {job.task_type}")
-                result = handler(job.payload)
+                result = handler({**job.payload, "_task_id": task_id})
                 if self.is_cancelled(task_id):
                     job.status = "cancelled"
                 else:

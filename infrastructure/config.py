@@ -12,5 +12,6 @@ class InfrastructureSettings(BaseSettings):
     minio_secret_key: str = "minioadmin"
     minio_secure: bool = False
     minio_bucket_prefix: str = "paperagent"
+    ollama_endpoint: str = "http://host.docker.internal:11434"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

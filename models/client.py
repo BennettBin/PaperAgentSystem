@@ -28,12 +28,14 @@ class OpenAICompatibleLLMClient(LLMClient):
         *,
         timeout_seconds: float = 60.0,
         post_json: PostJson | None = None,
+        extra_body: dict[str, Any] | None = None,
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
         self._model = model
         self._timeout = timeout_seconds
         self._post_json = post_json or self._httpx_post
+        self._extra_body = dict(extra_body or {})
 
     async def generate(
         self,
@@ -97,6 +99,7 @@ class OpenAICompatibleLLMClient(LLMClient):
             "max_tokens": max_tokens,
             "temperature": temperature,
             "top_p": top_p,
+            **self._extra_body,
         }
         if stop:
             payload["stop"] = stop
@@ -112,8 +115,11 @@ class OpenAICompatibleLLMClient(LLMClient):
                 payload,
                 self._timeout,
             )
-            return str(data["choices"][0]["message"]["content"])
-        except (KeyError, IndexError, TypeError) as exc:
+            content = str(data["choices"][0]["message"]["content"]).strip()
+            if not content:
+                raise ValueError("Model response content is empty")
+            return content
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
             raise ProjectError(
                 ErrorCode.GENERATION_FAILED,
                 "Model service returned an invalid chat completion",

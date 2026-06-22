@@ -2,7 +2,7 @@
 
 一个全方位的学术论文 Agent 助手，能够处理与论文相关的所有任务——包括论文阅读、理解、分析、对比、撰写、改写和语言润色。
 
-**项目状态**: ✅ 阶段 I 已完成（安全、观测、评测与本地交付基线）
+**项目状态**: ✅ K02 本地模型配置与真实推理已完成
 
 ## 📋 核心特性
 
@@ -13,7 +13,8 @@
 - **学术写作辅助**: 章节撰写、段落改写、引用核验
 - **完整记忆系统**: 短期会话记忆 + 长期跨会话检索
 - **证据追踪**: 所有答案都附带原文页码和引用
-- **本地部署**: Docker Compose 完整部署，支持私有数据
+- **本地模型设置**: 可分别选择 1.7B/4B 的 Base、SFT、RL 版本，并自动检查或下载其他 Ollama Base 模型
+- **本地部署**: Docker Compose + Ollama，支持私有数据
 
 ## 🛠️ 技术栈
 
@@ -45,6 +46,7 @@
 - Python 3.12+
 - Node.js 18+
 - Docker & Docker Compose（推荐）
+- [Ollama](https://ollama.com/download)（真实本地模型推理）
 
 ### 本地开发
 
@@ -56,12 +58,12 @@ cd PaperAgentSystem
 # 2. 复制环境配置
 cp .env.example .env.local
 
-# 3. 启动前端 Mock UI
+# 3. 启动前端
 npm install
 npm run dev
 
-# 4. 启动 Fake API
-uvicorn apps.api.main:app --reload
+# 4. 推荐使用 Docker Compose 启动 API、Worker、PostgreSQL、Redis 和 MinIO
+docker compose up --build -d
 
 # 5. 运行当前阶段检查
 python -m pytest -q
@@ -83,9 +85,18 @@ docker compose ps
 
 API、Web、MinIO Console 分别位于
 `http://localhost:8000`、`http://localhost:3000`、`http://localhost:9001`。
-默认 development 配置使用 Fake 模型能力，不依赖 SFT/RL Adapter。`model-router`
-在没有挂载真实模型权重时保持健康，但模型调用返回结构化 `model_not_available`；
-可选模型服务可用 `docker compose --profile models up --build -d` 启动。
+默认通过宿主机 Ollama 提供真实 OpenAI-compatible 推理。首次使用请启动 Ollama，并准备
+默认 Base 模型：
+
+```bash
+ollama pull qwen3:1.7b
+ollama pull qwen3.5:4b
+```
+
+上传 PDF 后会先在 Worker 中执行 PyMuPDF 解析、分块和检索，再将命中的论文证据传给
+当前设置的大模型。左侧底部“模型配置”可分别切换小模型和大模型；输入其他 Ollama
+Base 模型名后，系统会先探活，本地缺失时自动下载并在成功后启用。SFT/RL 版本只有在
+模型 Manifest 中存在唯一版本且服务可调用时才显示为可选。
 
 ```bash
 docker compose down
@@ -102,9 +113,6 @@ Docker Desktop（如果尚未运行）、构建并启动服务、等待健康检
 ```powershell
 # 跳过镜像重建
 .\scripts\start-paperagent.ps1 -NoBuild
-
-# 同时启动可选模型占位服务
-.\scripts\start-paperagent.ps1 -WithModels
 
 # 启动但不打开浏览器
 .\scripts\start-paperagent.ps1 -NoBrowser
@@ -237,6 +245,14 @@ make/check               # 本地完整检查
   - 私有数据必须显式授权并匿名化；按论文和会话隔离 train/validation/test
   - J02 已提供 1.7B 分任务规模、算法、指标和 fail-closed 前置审计；当前缺少经审核数据、
     Hugging Face 基座权重及独立训练依赖，未生成或发布任何虚假 Adapter
+- **K: 产品入口真实集成** ✅ 完成
+  - 新对话、搜索对话、历史会话恢复和文件库接入真实 PostgreSQL API
+  - 上传 PDF 后由独立 Worker 执行 PyMuPDF 解析、分块和索引
+  - 用户问题经 Redis 队列进入证据检索和 OpenAI-compatible 模型调用
+  - 模型不可用时明确失败，不把 Fake 或规则模板伪装为模型回答
+  - 左侧模型配置页管理 1.7B/4B Base、SFT、RL 版本，默认 Base
+  - Ollama 模型探活、缺失自动下载、选择持久化和 Worker 动态路由
+  - Qwen3 1.7B 与 Qwen3.5 4B Base 已通过真实推理验收
 
 详见 [DEVELOPMENT_PLAN.md](./develop_guide/DEVELOPMENT_PLAN.md)
 

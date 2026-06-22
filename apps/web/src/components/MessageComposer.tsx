@@ -26,6 +26,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
         <svg aria-hidden="true" height="21" viewBox="0 0 24 24" width="21">
           <path d="M12 5v14M5 12h14" />
         </svg>
+        <span>上传论文</span>
       </button>
       <textarea
         aria-label="消息"

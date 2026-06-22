@@ -155,3 +155,19 @@ async def test_openai_compatible_client_parses_chat_completion() -> None:
     assert captured["url"].endswith("/chat/completions")
     assert captured["payload"]["response_format"]["type"] == "json_schema"
     assert captured["headers"]["Authorization"] == "Bearer secret"
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_client_rejects_empty_content() -> None:
+    async def post(url: str, headers: dict, payload: dict, timeout: float) -> dict:
+        return {"choices": [{"message": {"content": ""}}]}
+
+    client = OpenAICompatibleLLMClient(
+        base_url="http://model-service/v1",
+        api_key="",
+        model="logical-model",
+        post_json=post,
+    )
+
+    with pytest.raises(ProjectError):
+        await client.generate("question")

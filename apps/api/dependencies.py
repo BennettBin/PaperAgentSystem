@@ -7,7 +7,9 @@ from core.ports.observability import Clock, IdGenerator
 from core.ports.storage import ObjectStore, TaskQueue
 
 if TYPE_CHECKING:
+    from apps.api.product_service import PaperAgentApplicationPort
     from infrastructure.config import InfrastructureSettings
+    from models.runtime import ModelRuntimeService
 
 
 class ScenarioRunnerPort(Protocol):
@@ -27,6 +29,8 @@ class ApiContainer:
     scenario_runner: ScenarioRunnerPort
     event_stream: TaskEventStreamPort | None = None
     object_store: ObjectStore | None = None
+    paper_agent: "PaperAgentApplicationPort | None" = None
+    model_runtime: "ModelRuntimeService | None" = None
     readiness_checks: tuple[Callable[[], bool | Awaitable[bool]], ...] = ()
 
     async def is_ready(self) -> bool:
@@ -90,12 +94,37 @@ def build_infrastructure_container(
     from sqlalchemy import text
 
     from apps.api.fake_scenarios import FakeScenarioRunner
+    from apps.api.product_service import LOCAL_USER_ID, PaperAgentApplication
     from infrastructure.minio.object_store import MinioObjectStore
     from infrastructure.postgres.database import Database
+    from infrastructure.postgres.models import Base, UserModel, WorkspaceModel
     from infrastructure.redis.queue import RedisTaskQueue
     from infrastructure.sse.service import TaskEventStore, TaskEventStream
+    from models.runtime import ModelRuntimeService, OllamaRuntime
 
     database = Database(settings.database_url)
+    with database.engine.begin() as connection:
+        if connection.dialect.name == "postgresql":
+            connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        Base.metadata.create_all(connection)
+    with database.session_factory() as session:
+        if session.get(UserModel, LOCAL_USER_ID) is None:
+            session.add(
+                UserModel(
+                    id=LOCAL_USER_ID,
+                    email="local@paperagent.test",
+                    name="本地用户",
+                )
+            )
+        if session.get(WorkspaceModel, workspace_id) is None:
+            session.add(
+                WorkspaceModel(
+                    id=workspace_id,
+                    user_id=LOCAL_USER_ID,
+                    name="PaperAgent 本地工作区",
+                )
+            )
+        session.commit()
     redis = Redis.from_url(settings.redis_url)
     queue = RedisTaskQueue(redis, database.session_factory)
     event_stream = TaskEventStream(TaskEventStore(database.session_factory, redis))
@@ -123,5 +152,14 @@ def build_infrastructure_container(
         scenario_runner=FakeScenarioRunner(queue),
         event_stream=event_stream,
         object_store=object_store,
+        paper_agent=PaperAgentApplication(
+            database.session_factory,
+            object_store,
+            queue,
+        ),
+        model_runtime=ModelRuntimeService(
+            database.session_factory,
+            OllamaRuntime(settings.ollama_endpoint),
+        ),
         readiness_checks=(database_ready, lambda: bool(redis.ping())),
     )

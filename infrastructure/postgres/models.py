@@ -415,3 +415,10 @@ class MemoryPreferenceModel(Base, LifecycleMixin, VersionedMixin):
     __table_args__ = (
         UniqueConstraint("workspace_id", "user_id", "key", name="uq_memory_preference"),
     )
+
+
+class ModelRuntimeConfigModel(Base, LifecycleMixin, VersionedMixin):
+    __tablename__ = "model_runtime_configs"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    small_model: Mapped[dict[str, Any]] = mapped_column(JSON)
+    large_model: Mapped[dict[str, Any]] = mapped_column(JSON)

@@ -2,12 +2,12 @@ default_profile: development
 
 versions:
   - version_id: base-1.7b-v1
-    serving_model: paperagent-1.7b
-    base_model: base-1.7b
+    serving_model: qwen3:1.7b
+    base_model: Qwen3-1.7B
     profile_version: "1"
   - version_id: base-4b-v1
-    serving_model: paperagent-4b
-    base_model: base-4b
+    serving_model: qwen3.5:4b
+    base_model: Qwen3.5-4B
     profile_version: "1"
 
 profiles:
