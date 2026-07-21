@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from time import monotonic
 from typing import Any
 from urllib.request import Request, urlopen
@@ -17,6 +18,13 @@ from models.registry import InMemoryModelRegistry, ResolvedModelProfile
 
 PostJson = Callable[[str, dict[str, str], dict[str, Any], float], Awaitable[dict[str, Any]]]
 ClientFactory = Callable[[ResolvedModelProfile], LLMClient]
+
+
+@dataclass(frozen=True, slots=True)
+class ModelTokenUsage:
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
 
 
 class OpenAICompatibleLLMClient(LLMClient):
@@ -36,6 +44,7 @@ class OpenAICompatibleLLMClient(LLMClient):
         self._timeout = timeout_seconds
         self._post_json = post_json or self._httpx_post
         self._extra_body = dict(extra_body or {})
+        self.last_usage = ModelTokenUsage()
 
     async def generate(
         self,
@@ -114,6 +123,18 @@ class OpenAICompatibleLLMClient(LLMClient):
                 headers,
                 payload,
                 self._timeout,
+            )
+            usage = data.get("usage", {})
+            self.last_usage = ModelTokenUsage(
+                input_tokens=int(usage.get("prompt_tokens", 0)),
+                output_tokens=int(usage.get("completion_tokens", 0)),
+                total_tokens=int(
+                    usage.get(
+                        "total_tokens",
+                        int(usage.get("prompt_tokens", 0))
+                        + int(usage.get("completion_tokens", 0)),
+                    )
+                ),
             )
             content = str(data["choices"][0]["message"]["content"]).strip()
             if not content:

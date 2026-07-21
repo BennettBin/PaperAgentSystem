@@ -10,6 +10,7 @@ from uuid import uuid4
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from agent_runtime.react_self_rag import ReActSelfRAGController
 from core.errors import ErrorCode, ProjectError
 from core.ports.llm_client import EmbeddingClient, LLMClient, RerankerClient
 from core.ports.storage import ObjectStore, TaskQueue
@@ -17,9 +18,11 @@ from document_processing.pipeline import BasicPDFPipeline
 from infrastructure.postgres.models import (
     ConversationFileModel,
     ConversationModel,
+    DocumentChunkModel,
     FileModel,
     MessageFileModel,
     MessageModel,
+    ModelUsageModel,
     ParsedDocumentModel,
     QueueJobModel,
 )
@@ -53,6 +56,8 @@ class PaperAgentApplicationPort(Protocol):
     ) -> dict[str, Any]: ...
 
     async def get_task(self, task_id: str) -> dict[str, Any]: ...
+
+    async def conversation_usage(self, conversation_id: str) -> dict[str, Any]: ...
 
 
 class PaperAgentApplication:
@@ -243,6 +248,16 @@ class PaperAgentApplication:
             raise ProjectError(ErrorCode.INVALID_ARGUMENT, "消息不能为空")
         with self._sessions() as session:
             conversation = _conversation(session, conversation_id)
+            pending = session.scalar(
+                select(MessageModel)
+                .where(
+                    MessageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    MessageModel.conversation_id == conversation_id,
+                    MessageModel.role == "assistant",
+                    MessageModel.deleted_at.is_(None),
+                )
+                .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
+            )
             message = MessageModel(
                 id=uuid4().hex,
                 workspace_id=LOCAL_WORKSPACE_ID,
@@ -277,7 +292,44 @@ class PaperAgentApplication:
             if conversation.title == "新对话":
                 conversation.title = clean[:40]
             conversation.updated_at = datetime.now(UTC)
+            resume_metadata = (
+                dict(pending.metadata_json)
+                if pending is not None
+                and (pending.metadata_json or {}).get("kind") == "clarification"
+                and not (pending.metadata_json or {}).get("resolved")
+                else None
+            )
+            if pending is not None and resume_metadata is not None:
+                pending.metadata_json = {**resume_metadata, "resolved": True}
             session.commit()
+        if resume_metadata is not None:
+            root_task_id = str(resume_metadata["root_task_id"])
+            resumed = await self._queue.resume(
+                root_task_id,
+                {
+                    "message_id": message.id,
+                    "question": str(resume_metadata["original_request"]),
+                    "clarification_answer": clean,
+                    "file_ids": list(
+                        dict.fromkeys(
+                            [
+                                *resume_metadata.get("file_ids", []),
+                                *file_ids,
+                            ]
+                        )
+                    ),
+                    "clarification_round": int(
+                        resume_metadata.get("clarification_round", 1)
+                    ),
+                },
+            )
+            if resumed:
+                return {
+                    "message": _message_dict(message),
+                    "task_id": root_task_id,
+                    "status": "queued",
+                    "resumed": True,
+                }
         task_id = await self._queue.enqueue(
             "main_agent",
             {
@@ -293,6 +345,39 @@ class PaperAgentApplication:
             "task_id": task_id,
             "status": "queued",
         }
+
+    async def conversation_usage(self, conversation_id: str) -> dict[str, Any]:
+        with self._sessions() as session:
+            _conversation(session, conversation_id)
+            rows = session.execute(
+                select(
+                    ModelUsageModel.model_role,
+                    func.coalesce(func.sum(ModelUsageModel.input_tokens), 0),
+                    func.coalesce(func.sum(ModelUsageModel.output_tokens), 0),
+                    func.coalesce(func.sum(ModelUsageModel.total_tokens), 0),
+                )
+                .where(
+                    ModelUsageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    ModelUsageModel.conversation_id == conversation_id,
+                )
+                .group_by(ModelUsageModel.model_role)
+            ).all()
+        usage = {
+            "small": _empty_usage(),
+            "large": _empty_usage(),
+        }
+        for role, input_tokens, output_tokens, total_tokens in rows:
+            if role in usage:
+                usage[str(role)] = {
+                    "input_tokens": int(input_tokens),
+                    "output_tokens": int(output_tokens),
+                    "total_tokens": int(total_tokens),
+                }
+        usage["total"] = {
+            key: usage["small"][key] + usage["large"][key]
+            for key in ("input_tokens", "output_tokens", "total_tokens")
+        }
+        return usage
 
     async def get_task(self, task_id: str) -> dict[str, Any]:
         with self._sessions() as session:
@@ -318,15 +403,18 @@ class PaperAgentProcessor:
         reranker: RerankerClient,
         llm: LLMClient,
         events: TaskEventStore | None = None,
+        decision_llm: LLMClient | None = None,
     ) -> None:
         self._sessions = sessions
         self._objects = object_store
         self._parser = BasicPDFPipeline()
         self._indexer = DocumentIndexer(
-            sessions, embeddings, embedding_model="development-embedding"
+            sessions, embeddings, embedding_model="multilingual-hash-v1"
         )
         self._retriever = HybridRetriever(sessions, embeddings, reranker)
         self._llm = llm
+        self._decision_llm = decision_llm or llm
+        self._react = ReActSelfRAGController(self._decision_llm)
         self._events = events
 
     async def parse(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -375,6 +463,7 @@ class PaperAgentProcessor:
         task_id = str(payload.get("_task_id", ""))
         conversation_id = str(payload["conversation_id"])
         question = str(payload["question"])
+        clarification_answer = str(payload.get("clarification_answer", "")).strip()
         file_ids = [str(value) for value in payload.get("file_ids", [])]
         self._event(task_id, "task_started", "任务开始", {})
         if not file_ids:
@@ -388,33 +477,89 @@ class PaperAgentProcessor:
                         )
                     )
                 )
+        decision = await self._react.decide(
+            question,
+            has_files=bool(file_ids),
+            clarification_answer=clarification_answer or None,
+        )
+        self._record_usage(
+            conversation_id, task_id, "small", self._decision_llm
+        )
+        action = decision.action
+        if action == "clarify" and int(payload.get("clarification_round", 0)) >= 2:
+            action = "retrieve" if file_ids else "answer"
+        self._event(
+            task_id,
+            "step_completed",
+            "Self-RAG 决策完成",
+            {"action": action, "section_hint": decision.section_hint},
+        )
+        if action == "clarify":
+            return self._ask_clarification(
+                conversation_id,
+                task_id,
+                question,
+                file_ids,
+                decision.clarification_question or "请补充具体需求。",
+                int(payload.get("clarification_round", 0)) + 1,
+            )
+        if action == "answer":
+            answer = await self._llm.generate(
+                f"用户问题：{question}\n用户补充：{clarification_answer or '无'}",
+                system_prompt="你是论文助手。回答一般问题时简洁、诚实，不虚构论文事实。",
+                max_tokens=1024,
+                temperature=0.2,
+            )
+            self._record_usage(conversation_id, task_id, "large", self._llm)
+            message_id = self._save_answer(
+                conversation_id,
+                task_id,
+                answer,
+                [],
+                {"used": False, "decision": "answer"},
+            )
+            return {"status": "completed", "message_id": message_id, "answer": answer}
         if not file_ids:
-            raise ProjectError(
-                ErrorCode.INVALID_ARGUMENT, "请先上传或选择至少一篇 PDF 论文"
+            return self._ask_clarification(
+                conversation_id,
+                task_id,
+                question,
+                file_ids,
+                "请上传或选择要检索的论文。",
+                int(payload.get("clarification_round", 0)) + 1,
             )
         for file_id in file_ids:
             with self._sessions() as session:
                 indexed = session.scalar(
-                    select(ParsedDocumentModel.id).where(
+                    select(DocumentChunkModel.id)
+                    .join(
+                        ParsedDocumentModel,
+                        ParsedDocumentModel.id == DocumentChunkModel.document_id,
+                    )
+                    .where(
                         ParsedDocumentModel.workspace_id == LOCAL_WORKSPACE_ID,
                         ParsedDocumentModel.file_id == file_id,
+                        DocumentChunkModel.level == "child",
+                        DocumentChunkModel.embedding_model == "multilingual-hash-v1",
                     )
                 )
             if indexed is None:
                 await self.parse({"_task_id": task_id, "file_id": file_id})
         self._event(task_id, "step_started", "检索论文证据", {})
         hits = await self._retriever.search(
-            question,
+            decision.search_query or question,
             workspace_id=LOCAL_WORKSPACE_ID,
             file_ids=set(file_ids),
-            limit=8,
+            limit=20 if decision.section_hint else 8,
+            section_hint=decision.section_hint,
+            expand_section=bool(decision.section_hint),
         )
         if not hits:
             raise ProjectError(
                 ErrorCode.INSUFFICIENT_EVIDENCE,
                 "论文中没有检索到相关证据",
             )
-        prompt = _answer_prompt(question, hits)
+        prompt = _answer_prompt(question, hits, clarification_answer)
         self._event(
             task_id,
             "step_started",
@@ -430,6 +575,75 @@ class PaperAgentProcessor:
             max_tokens=2048,
             temperature=0.1,
         )
+        self._record_usage(conversation_id, task_id, "large", self._llm)
+        message_id = self._save_answer(
+            conversation_id,
+            task_id,
+            answer,
+            hits,
+            {
+                "used": True,
+                "decision": "retrieve",
+                "query": decision.search_query or question,
+                "section_hint": decision.section_hint,
+            },
+        )
+        self._event(
+            task_id,
+            "task_completed",
+            "回答生成完成",
+            {"message_id": message_id},
+        )
+        return {
+            "status": "completed",
+            "message_id": message_id,
+            "answer": answer,
+        }
+
+    def _ask_clarification(
+        self,
+        conversation_id: str,
+        task_id: str,
+        original_request: str,
+        file_ids: list[str],
+        question: str,
+        round_count: int,
+    ) -> dict[str, Any]:
+        if round_count > 2:
+            question = "信息仍不完整。请明确论文、章节和希望得到的结果。"
+        with self._sessions() as session:
+            message = MessageModel(
+                id=uuid4().hex,
+                workspace_id=LOCAL_WORKSPACE_ID,
+                conversation_id=conversation_id,
+                role="assistant",
+                type="clarification",
+                content=question,
+                metadata_json={
+                    "kind": "clarification",
+                    "root_task_id": task_id,
+                    "original_request": original_request,
+                    "file_ids": file_ids,
+                    "clarification_round": round_count,
+                    "resolved": False,
+                },
+            )
+            session.add(message)
+            session.commit()
+        return {
+            "status": "waiting_user",
+            "message_id": message.id,
+            "question": question,
+        }
+
+    def _save_answer(
+        self,
+        conversation_id: str,
+        task_id: str,
+        answer: str,
+        hits: list[RetrievalHit],
+        rag: dict[str, Any],
+    ) -> str:
         with self._sessions() as session:
             message = MessageModel(
                 id=uuid4().hex,
@@ -440,24 +654,43 @@ class PaperAgentProcessor:
                 content=answer,
                 metadata_json={
                     "task_id": task_id,
-                    "evidence": [_hit_dict(index, hit) for index, hit in enumerate(hits, 1)],
+                    "rag": rag,
+                    "evidence": [
+                        _hit_dict(index, hit) for index, hit in enumerate(hits, 1)
+                    ],
                 },
             )
             session.add(message)
             conversation = _conversation(session, conversation_id)
             conversation.updated_at = datetime.now(UTC)
             session.commit()
-        self._event(
-            task_id,
-            "task_completed",
-            "回答生成完成",
-            {"message_id": message.id},
-        )
-        return {
-            "status": "completed",
-            "message_id": message.id,
-            "answer": answer,
-        }
+            return message.id
+
+    def _record_usage(
+        self,
+        conversation_id: str,
+        task_id: str,
+        role: str,
+        client: LLMClient,
+    ) -> None:
+        usage = getattr(client, "last_usage", None)
+        if usage is None or int(getattr(usage, "total_tokens", 0)) <= 0:
+            return
+        with self._sessions() as session:
+            session.add(
+                ModelUsageModel(
+                    id=uuid4().hex,
+                    workspace_id=LOCAL_WORKSPACE_ID,
+                    conversation_id=conversation_id,
+                    task_id=task_id,
+                    model_role=role,
+                    model_name=str(getattr(client, "last_model_name", "unknown")),
+                    input_tokens=int(usage.input_tokens),
+                    output_tokens=int(usage.output_tokens),
+                    total_tokens=int(usage.total_tokens),
+                )
+            )
+            session.commit()
 
     def _event(
         self, task_id: str, event_type: str, title: str, data: dict[str, Any]
@@ -524,13 +757,19 @@ def _file_dict(model: FileModel) -> dict[str, Any]:
     }
 
 
-def _answer_prompt(question: str, hits: list[RetrievalHit]) -> str:
+def _answer_prompt(
+    question: str, hits: list[RetrievalHit], clarification_answer: str = ""
+) -> str:
     evidence = "\n\n".join(
         f"[E{index}] 文件 {hit.file_id}，第 {hit.page_start} 页，"
         f"章节 {' / '.join(hit.section_path)}：\n{hit.text}"
         for index, hit in enumerate(hits, 1)
     )
-    return f"用户问题：{question}\n\n可用论文证据：\n{evidence}\n\n请生成中文回答。"
+    return (
+        f"用户问题：{question}\n"
+        f"用户补充：{clarification_answer or '无'}\n\n"
+        f"可用论文证据：\n{evidence}\n\n请生成中文回答。"
+    )
 
 
 def _hit_dict(index: int, hit: RetrievalHit) -> dict[str, Any]:
@@ -542,3 +781,7 @@ def _hit_dict(index: int, hit: RetrievalHit) -> dict[str, Any]:
         "quote": hit.text[:800],
         "bbox": list(hit.bbox),
     }
+
+
+def _empty_usage() -> dict[str, int]:
+    return {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}

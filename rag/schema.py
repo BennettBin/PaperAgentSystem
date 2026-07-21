@@ -14,7 +14,11 @@ class DocumentChunk(BaseModel):
     file_id: str
     parent_chunk_id: str | None
     level: str
+    section_id: str
+    section_number: str | None = None
+    section_title: str
     section_path: list[str]
+    chunk_index_in_section: int = Field(default=0, ge=0)
     text: str
     page_start: int = Field(ge=1)
     page_end: int = Field(ge=1)

@@ -17,7 +17,6 @@ from apps.api.product_service import (
     PaperAgentProcessor,
 )
 from infrastructure.config import InfrastructureSettings
-from infrastructure.fake.llm_clients import FakeEmbeddingClient, FakeRerankerClient
 from infrastructure.minio.object_store import MinioObjectStore
 from infrastructure.postgres.database import Database
 from infrastructure.redis.queue import RedisTaskQueue
@@ -26,6 +25,10 @@ from models.runtime import (
     ModelRuntimeService,
     OllamaRuntime,
     RuntimeSelectedLLMClient,
+)
+from rag.local_models import (
+    MultilingualHashEmbeddingClient,
+    MultilingualLexicalReranker,
 )
 
 
@@ -73,13 +76,15 @@ def main() -> None:
         ),
     )
     llm = RuntimeSelectedLLMClient(model_runtime, "large")
+    decision_llm = RuntimeSelectedLLMClient(model_runtime, "small")
     processor = PaperAgentProcessor(
         database.session_factory,
         object_store,
-        FakeEmbeddingClient(),
-        FakeRerankerClient(),
+        MultilingualHashEmbeddingClient(),
+        MultilingualLexicalReranker(),
         llm,
         TaskEventStore(database.session_factory, redis),
+        decision_llm=decision_llm,
     )
     queue.register_handler(
         "document_parse", lambda payload: asyncio.run(processor.parse(payload))

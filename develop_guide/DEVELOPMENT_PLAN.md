@@ -1581,6 +1581,69 @@ Fake 必须可配置成功、失败、超时和部分失败。
 
 ---
 
+## K03：可查看引用、ReAct Self-RAG 与章节级检索
+
+### 目标
+
+让产品入口使用有限 ReAct 循环，由模型决定澄清、检索或直接回答，并提高论文正文与
+指定章节的可定位性。
+
+### 功能
+
+- 回答中的 `[E1]` 等引用可点击，展开原文、文件、章节和页码。
+- 信息不足时生成用户可见的澄清问题；用户回答后恢复上一轮原始需求。
+- 小模型输出结构化 ReAct 决策，决定 `clarify`、`retrieve` 或 `answer`。
+- 只有需要论文证据时才执行 RAG；决策和动作次数有固定上限。
+- 生产 Worker 使用真实的多语言哈希 Embedding 与词法 Reranker，不再使用 Fake。
+- 检索支持章节提示、章节标题加权、父块/相邻块展开和全文覆盖。
+- 固定评测集记录 Pass@5、Recall@10 和 MRR@10。
+- 持久化每次模型调用的真实 usage，按会话和小/大模型聚合输入、输出与总 Token。
+- 主界面右侧提供可折叠 Token 用量面板，任务运行期间轮询刷新。
+
+### 验收标准
+
+- 引用展开、澄清恢复和 Self-RAG 决策具有前后端回归测试。
+- 检索固定集 Pass@5 ≥ 0.90、Recall@10 ≥ 0.95、MRR@10 ≥ 0.80。
+- 指定章节问题能返回该章节的连续正文块和可追踪引用。
+- Token 面板能区分小/大模型，并且会话刷新后用量仍存在。
+- 全量测试、前端类型检查/构建和真实 PDF 链路通过。
+
+---
+
+## K04：结构化章节解析与精确作用域检索
+
+完整设计和指标见 `RAG系统修改计划.md`。K04 按以下子工作包顺序执行，前一项验收通过
+后才能进入下一项。
+
+### K04.1：Section Schema、解析树与迁移
+
+- 扩展现有 `DocumentSection`，保留页码、bbox 和 block 来源。
+- 从 PDF layout block 构建编号、标题、父子关系和 section path。
+- 持久化 section catalog，并为 chunk 增加稳定 section metadata。
+- chunk 不跨 section，同节 previous/next 连续。
+- Alembic migration 可 upgrade/downgrade。
+
+### K04.2：Section Reference Parser 与 Resolver
+
+- 解析编号、标题、别名和会话指代。
+- exact、alias、fuzzy 和歧义澄清。
+- 固定 100-query resolver 评测。
+
+### K04.3：Section QA 与 Summary Retrieval
+
+- SQL section scope filter 和 parent/descendant scope。
+- 章节内问答 rerank、相邻块扩展。
+- 完整章节顺序覆盖和长章节压缩。
+- 普通 RAG 指标回归。
+
+### K04.4：集成、重索引、Trace 与 E2E
+
+- 旧 index version 自动安全重建。
+- 接入 ReAct Self-RAG、回答 metadata 和 Trace。
+- 真实多章节 PDF、引用和完整系统验收。
+
+---
+
 ## 4. 工作包状态记录
 
 Codex 每完成一个工作包，在此更新状态：
@@ -1645,6 +1708,11 @@ Codex 每完成一个工作包，在此更新状态：
 | J04 | pending |  |  |
 | K01 | completed | 2026-06-22 | 真实会话/文件 API、独立 Worker、PDF 解析索引、证据 Prompt、模型调用边界和首页交互 |
 | K02 | completed | 2026-06-22 | 模型设置 UI、Ollama 检查/自动下载、选择持久化、Worker 动态路由与 1.7B/4B Base 真实推理 |
+| K03 | completed | 2026-06-22 | 可查看引用、同任务 ReAct 澄清、Self-RAG、Pass@5、章节连续上下文与会话 Token 面板 |
+| K04.1 | completed | 2026-06-22 | Section Schema、PDF layout 章节树、section catalog、chunk metadata 与迁移 |
+| K04.2 | pending |  |  |
+| K04.3 | pending |  |  |
+| K04.4 | pending |  |  |
 
 状态只使用：
 

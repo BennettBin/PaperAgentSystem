@@ -5,6 +5,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from infrastructure.postgres.models import Base, DocumentChunkModel, ParsedDocumentModel
+from rag.local_models import (
+    MultilingualHashEmbeddingClient,
+    MultilingualLexicalReranker,
+)
 from rag.retrieval import HybridRetriever
 
 TOPICS = [
@@ -135,9 +139,73 @@ async def test_retrieval_evaluation_thresholds(database) -> None:
             )
             ranks.append(rank)
 
-    recall_at_5 = sum(rank is not None and rank <= 5 for rank in ranks) / len(ranks)
+    pass_at_5 = sum(rank is not None and rank <= 5 for rank in ranks) / len(ranks)
     recall_at_10 = sum(rank is not None and rank <= 10 for rank in ranks) / len(ranks)
     mrr_at_10 = sum(1 / rank if rank is not None and rank <= 10 else 0 for rank in ranks) / len(ranks)
-    assert recall_at_5 >= 0.80
-    assert recall_at_10 >= 0.90
-    assert mrr_at_10 >= 0.75
+    assert pass_at_5 >= 0.90
+    assert recall_at_10 >= 0.95
+    assert mrr_at_10 >= 0.80
+
+
+@pytest.mark.asyncio
+async def test_named_section_expands_contiguous_section_context(database) -> None:
+    retriever = HybridRetriever(database, TopicEmbeddings(), LexicalReranker())
+
+    hits = await retriever.search(
+        "bayesian calibration",
+        workspace_id="ws-1",
+        file_ids={"file-0"},
+        section_hint="Results",
+        expand_section=True,
+        limit=5,
+    )
+
+    assert len(hits) >= 3
+    assert all(hit.section_path == ("Results",) for hit in hits[:3])
+
+
+@pytest.mark.asyncio
+async def test_production_local_retrieval_pass_at_5(database) -> None:
+    embeddings = MultilingualHashEmbeddingClient()
+    with database() as session:
+        models = session.query(DocumentChunkModel).all()
+        for model in models:
+            model.embedding = await embeddings.embed(model.searchable_text)
+        session.commit()
+    retriever = HybridRetriever(
+        database,
+        embeddings,
+        MultilingualLexicalReranker(),
+    )
+    queries = [
+        (f"{topic} benchmark topic{index}", f"file-{index}")
+        for index, topic in enumerate(TOPICS)
+    ] + [
+        ("retrieval augmented generation 的实验结果", "file-8"),
+        ("medical segmentation 方法", "file-7"),
+        ("causal inference benchmark", "file-2"),
+        ("federated privacy evidence", "file-5"),
+        ("quantum optimization result", "file-9"),
+    ]
+    ranks = []
+    for query, expected_file in queries:
+        hits = await retriever.search(query, workspace_id="ws-1", limit=10)
+        ranks.append(
+            next(
+                (
+                    position
+                    for position, hit in enumerate(hits, start=1)
+                    if hit.file_id == expected_file
+                ),
+                None,
+            )
+        )
+
+    pass_at_5 = sum(rank is not None and rank <= 5 for rank in ranks) / len(ranks)
+    recall_at_10 = sum(rank is not None and rank <= 10 for rank in ranks) / len(ranks)
+    mrr_at_10 = sum(
+        1 / rank if rank is not None and rank <= 10 else 0 for rank in ranks
+    ) / len(ranks)
+    assert pass_at_5 >= 0.90
+    assert recall_at_10 >= 0.95
+    assert mrr_at_10 >= 0.80

@@ -9,18 +9,24 @@ export interface Citation {
 
 export interface CitationCardProps {
   citation: Citation;
+  collapsed?: boolean;
 }
 
-export const CitationCard: React.FC<CitationCardProps> = ({ citation }) => {
+export const CitationCard: React.FC<CitationCardProps> = ({
+  citation,
+  collapsed = false,
+}) => {
+  const [open, setOpen] = React.useState(!collapsed);
   return (
     <div className="citation-card" data-testid={`citation-${citation.id}`}>
-      <a
-        href={`#page-${citation.source_page}`}
-        onClick={(e) => e.preventDefault()}
+      <button
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
       >
-        📄 Page {citation.source_page}
-      </a>
-      <p>{citation.text}</p>
+        {citation.id}
+      </button>
+      <span>第 {citation.source_page} 页</span>
+      {open ? <p>{citation.text}</p> : null}
     </div>
   );
 };

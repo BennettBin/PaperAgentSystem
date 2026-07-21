@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-import re
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -12,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.ports.llm_client import EmbeddingClient, RerankerClient
 from infrastructure.postgres.models import DocumentChunkModel
+from rag.local_models import retrieval_terms
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,12 +75,17 @@ class HybridRetriever:
         workspace_id: str,
         file_ids: set[str] | None = None,
         limit: int | None = None,
+        section_hint: str | None = None,
+        expand_section: bool = False,
     ) -> list[RetrievalHit]:
         rewrites = await self._rewriter.rewrite(query)
-        query_text = " ".join(rewrites)
+        query_text = " ".join([*rewrites, section_hint or ""]).strip()
         query_vector = _pad(await self._embeddings.embed(query_text))
         with self._sessions() as session:
             models = self._load_filtered(session, workspace_id, file_ids)
+            section_models = _section_matches(models, section_hint)
+            if section_models:
+                models = section_models
             if session.bind is not None and session.bind.dialect.name == "postgresql":
                 vector_ids = self._postgres_vector_rank(
                     session, workspace_id, file_ids, query_vector
@@ -110,17 +115,23 @@ class HybridRetriever:
             for rank, model in enumerate(ranking, start=1):
                 scores[model.id] = scores.get(model.id, 0.0) + 1 / (self._rrf_k + rank)
         fused = sorted(scores, key=lambda chunk_id: (-scores[chunk_id], chunk_id))
-        documents = [by_id[chunk_id].text for chunk_id in fused]
+        documents = [
+            f"{' / '.join(by_id[chunk_id].section_path)}\n{by_id[chunk_id].text}"
+            for chunk_id in fused
+        ]
         reranked = await self._reranker.rerank(
             query,
             documents,
             top_k=min(self._final_limit, len(documents)),
         )
         selected = reranked[: (limit or self._final_limit)]
-        return [
+        hits = [
             _hit(by_id[fused[index]], scores[fused[index]] + rerank_score)
             for index, rerank_score in selected
         ]
+        if expand_section and hits:
+            hits = _expand_section(models, hits, limit or self._final_limit)
+        return hits
 
     @staticmethod
     def _load_filtered(
@@ -197,7 +208,7 @@ class HybridRetriever:
 
 
 def _terms(value: str) -> list[str]:
-    return re.findall(r"[\w\u4e00-\u9fff]+", value.casefold())
+    return retrieval_terms(value)
 
 
 def _keyword_score(query_terms: set[str], text_value: str) -> float:
@@ -239,3 +250,53 @@ def _hit(model: DocumentChunkModel, score: float) -> RetrievalHit:
         source_block_ids=tuple(model.source_block_ids),
         score=score,
     )
+
+
+def _section_matches(
+    models: list[DocumentChunkModel], section_hint: str | None
+) -> list[DocumentChunkModel]:
+    if not section_hint:
+        return []
+    aliases = {
+        "实验": "experiments experiment",
+        "方法": "methods methodology method",
+        "结果": "results result findings",
+        "引言": "introduction",
+        "结论": "conclusion conclusions",
+        "讨论": "discussion",
+        "摘要": "abstract",
+    }
+    expanded_hint = f"{section_hint} {aliases.get(section_hint.casefold(), '')}"
+    hint_terms = set(_terms(expanded_hint))
+    if not hint_terms:
+        return []
+    return [
+        model
+        for model in models
+        if hint_terms & set(_terms(" ".join(model.section_path)))
+    ]
+
+
+def _expand_section(
+    models: list[DocumentChunkModel],
+    ranked_hits: list[RetrievalHit],
+    limit: int,
+) -> list[RetrievalHit]:
+    primary = ranked_hits[0]
+    same_section = sorted(
+        (
+            model
+            for model in models
+            if model.file_id == primary.file_id
+            and tuple(model.section_path) == primary.section_path
+        ),
+        key=lambda model: (model.page_start, model.created_at, model.id),
+    )
+    score_by_id = {hit.chunk_id: hit.score for hit in ranked_hits}
+    expanded = [
+        _hit(model, score_by_id.get(model.id, max(0.0, primary.score - 0.01)))
+        for model in same_section
+    ]
+    seen = {hit.chunk_id for hit in expanded}
+    expanded.extend(hit for hit in ranked_hits if hit.chunk_id not in seen)
+    return expanded[:limit]

@@ -171,3 +171,29 @@ async def test_openai_compatible_client_rejects_empty_content() -> None:
 
     with pytest.raises(ProjectError):
         await client.generate("question")
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_client_records_reported_token_usage() -> None:
+    async def post(url: str, headers: dict, payload: dict, timeout: float) -> dict:
+        return {
+            "choices": [{"message": {"content": "answer"}}],
+            "usage": {
+                "prompt_tokens": 120,
+                "completion_tokens": 30,
+                "total_tokens": 150,
+            },
+        }
+
+    client = OpenAICompatibleLLMClient(
+        base_url="http://model-service/v1",
+        api_key="",
+        model="logical-model",
+        post_json=post,
+    )
+
+    await client.generate("question")
+
+    assert client.last_usage.input_tokens == 120
+    assert client.last_usage.output_tokens == 30
+    assert client.last_usage.total_tokens == 150

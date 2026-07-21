@@ -22,12 +22,50 @@ from document_processing.schema import (
 
 class PyMuPDFParser(DocumentParser):
     name = "pymupdf"
-    version = "1.0.0"
-    HEADING_PATTERN = re.compile(
-        r"^(?:\d+(?:\.\d+)*\s+|abstract$|introduction$|methods?$|results?$|"
-        r"discussion$|conclusion$|references$)",
+    version = "1.1.0"
+    NUMBERED_HEADING = re.compile(
+        r"^(?:(?:chapter|section)\s+)?"
+        r"(?P<number>\d+(?:\.\d+)*|[A-Z](?:\.\d+)*|[IVXLC]+)"
+        r"[\s.:\-]+(?P<title>[^.].{1,158})$",
         re.IGNORECASE,
     )
+    APPENDIX_HEADING = re.compile(
+        r"^appendix\s+(?P<number>[A-Z](?:\.\d+)*)[\s.:\-]+"
+        r"(?P<title>.{2,150})$",
+        re.IGNORECASE,
+    )
+    COMMON_SECTION_TITLES = {
+        "abstract",
+        "摘要",
+        "introduction",
+        "引言",
+        "related work",
+        "literature review",
+        "相关工作",
+        "background",
+        "背景",
+        "method",
+        "methods",
+        "methodology",
+        "materials and methods",
+        "方法",
+        "experiments",
+        "experimental setup",
+        "实验",
+        "results",
+        "findings",
+        "结果",
+        "discussion",
+        "讨论",
+        "conclusion",
+        "conclusions",
+        "结论",
+        "references",
+        "参考文献",
+        "appendix",
+        "supplementary material",
+        "附录",
+    }
 
     async def supports_format(self, filename: str) -> bool:
         return filename.lower().endswith(".pdf")
@@ -73,10 +111,12 @@ class PyMuPDFParser(DocumentParser):
             if raw.get("type") != 0:
                 continue
             for line in raw.get("lines", []):
-                text_parts, sizes = [], []
+                text_parts, sizes, fonts, flags = [], [], [], []
                 for span in line.get("spans", []):
                     text_parts.append(str(span.get("text", "")))
                     sizes.append(float(span.get("size", 0)))
+                    fonts.append(str(span.get("font", "")))
+                    flags.append(int(span.get("flags", 0)))
                 text = " ".join(part.strip() for part in text_parts if part.strip()).strip()
                 if text:
                     raw_blocks.append(
@@ -85,6 +125,9 @@ class PyMuPDFParser(DocumentParser):
                             "text": text,
                             "bbox": tuple(float(value) for value in line["bbox"]),
                             "font_size": max(sizes, default=0.0),
+                            "font_name": max(fonts, key=len, default=""),
+                            "is_bold": any(flag & 16 for flag in flags)
+                            or any("bold" in font.casefold() for font in fonts),
                         }
                     )
                     sequence += 1
@@ -101,6 +144,8 @@ class PyMuPDFParser(DocumentParser):
                     y1=item["bbox"][3],
                 ),
                 font_size=item["font_size"],
+                font_name=item["font_name"],
+                is_bold=item["is_bold"],
                 reading_order=index,
             )
             for index, item in enumerate(ordered)
@@ -197,49 +242,139 @@ class PyMuPDFParser(DocumentParser):
             if block.role == "body" and block.font_size > 0
         ]
         baseline = sorted(body_sizes)[len(body_sizes) // 2] if body_sizes else 10
-        headings = [
-            block
-            for page in pages
-            for block in page.blocks
-            if block.role == "body"
-            and (
-                block.font_size >= baseline * 1.25
-                or bool(self.HEADING_PATTERN.match(block.text.strip()))
-            )
-            and len(block.text) <= 160
-        ]
+        toc_pages = self._toc_pages(pages)
         all_body = [
             block for page in pages for block in page.blocks if block.role == "body"
         ]
-        sections = []
-        for index, heading in enumerate(headings):
-            next_heading = headings[index + 1] if index + 1 < len(headings) else None
-            block_ids = [
-                block.block_id
-                for block in all_body
-                if (block.page_number, block.reading_order)
-                >= (heading.page_number, heading.reading_order)
-                and (
-                    next_heading is None
-                    or (block.page_number, block.reading_order)
-                    < (next_heading.page_number, next_heading.reading_order)
-                )
+        candidates = [
+            (block, *self._heading_parts(block.text))
+            for block in all_body
+            if block.page_number not in toc_pages
+            and self._is_heading(block, baseline)
+        ]
+        heading_ids = {block.block_id for block, _, _, _ in candidates}
+        sections: list[DocumentSection] = []
+        stack: list[DocumentSection] = []
+        positions = {
+            block.block_id: index for index, block in enumerate(all_body)
+        }
+        for ordinal, (heading, number, title, level) in enumerate(candidates):
+            while stack and stack[-1].level >= level:
+                stack.pop()
+            parent = stack[-1] if stack else None
+            section_id = f"section-{ordinal + 1}"
+            display_title = heading.text.strip()
+            path = [
+                *(parent.section_path if parent else []),
+                display_title,
             ]
-            sections.append(
-                DocumentSection(
-                    section_id=f"section-{index + 1}",
-                    title=heading.text,
-                    level=(
-                        max(1, heading.text.split()[0].count(".") + 1)
-                        if heading.text[:1].isdigit()
-                        else 1
-                    ),
-                    page_start=heading.page_number,
-                    page_end=next_heading.page_number if next_heading else pages[-1].page_number,
-                    block_ids=block_ids,
-                )
+            start_index = positions[heading.block_id] + 1
+            next_index = (
+                positions[candidates[ordinal + 1][0].block_id]
+                if ordinal + 1 < len(candidates)
+                else len(all_body)
             )
-        return sections
+            direct_ids = [
+                block.block_id
+                for block in all_body[start_index:next_index]
+                if block.block_id not in heading_ids
+            ]
+            scope_end = len(all_body)
+            for later_heading, _, _, later_level in candidates[ordinal + 1 :]:
+                if later_level <= level:
+                    scope_end = positions[later_heading.block_id]
+                    break
+            scope_blocks = all_body[start_index:scope_end]
+            page_end = max(
+                [heading.page_number, *(block.page_number for block in scope_blocks)]
+            )
+            section = DocumentSection(
+                section_id=section_id,
+                number=number,
+                title=display_title,
+                normalized_title=self._normalize_title(title),
+                level=level,
+                parent_section_id=parent.section_id if parent else None,
+                section_path=path,
+                page_start=heading.page_number,
+                page_end=page_end,
+                heading_block_id=heading.block_id,
+                block_ids=direct_ids,
+                ordinal=ordinal,
+            )
+            sections.append(section)
+            stack.append(section)
+        descendants: dict[str, list[str]] = {section.section_id: [] for section in sections}
+        for section in reversed(sections):
+            parent_id = section.parent_section_id
+            if parent_id:
+                descendants[parent_id].extend(
+                    [*section.block_ids, *descendants[section.section_id]]
+                )
+        return [
+            section.model_copy(
+                update={"descendant_block_ids": descendants[section.section_id]}
+            )
+            for section in sections
+        ]
+
+    @classmethod
+    def _is_heading(cls, block: TextBlock, baseline: float) -> bool:
+        text = block.text.strip()
+        if not text or len(text) > 160:
+            return False
+        lower = cls._normalize_title(text)
+        if lower.startswith(("figure ", "fig. ", "table ")):
+            return False
+        if re.match(r"^\d+\s+\w+\s+et\s+al\.", text, re.IGNORECASE):
+            return False
+        if text.endswith(".") and lower not in cls.COMMON_SECTION_TITLES:
+            return False
+        number, title, _ = cls._heading_parts(text)
+        structured = number is not None or lower in cls.COMMON_SECTION_TITLES
+        visual = block.font_size >= baseline * 1.22 or (
+            block.is_bold and block.font_size >= baseline
+        )
+        return structured or visual and len(title.split()) <= 14
+
+    @classmethod
+    def _heading_parts(cls, text: str) -> tuple[str | None, str, int]:
+        clean = " ".join(text.strip().split())
+        appendix = cls.APPENDIX_HEADING.match(clean)
+        match = appendix or cls.NUMBERED_HEADING.match(clean)
+        if match:
+            number = match.group("number").upper()
+            title = match.group("title").strip(" .:-")
+            return number, title, max(1, number.count(".") + 1)
+        return None, clean, 1
+
+    @staticmethod
+    def _normalize_title(title: str) -> str:
+        clean = re.sub(
+            r"^(?:appendix\s+)?(?:\d+(?:\.\d+)*|[A-Z](?:\.\d+)*|[IVXLC]+)"
+            r"[\s.:\-]+",
+            "",
+            title.strip(),
+            flags=re.IGNORECASE,
+        )
+        return " ".join(
+            re.sub(r"[^\w\u4e00-\u9fff]+", " ", clean.casefold()).split()
+        )
+
+    @staticmethod
+    def _toc_pages(pages: list[ParsedPage]) -> set[int]:
+        result = set()
+        dotted_entry = re.compile(r".{2,}\s*\d+\s*$")
+        for page in pages:
+            text_values = [block.text.strip().casefold() for block in page.blocks]
+            has_title = any(
+                value in {"contents", "table of contents", "目录"}
+                for value in text_values
+            )
+            entries = sum(bool(dotted_entry.search(value)) for value in text_values)
+            if has_title and entries >= 2:
+                result.add(page.page_number)
+        return result
 
     @staticmethod
     def _quality(pages: list[ParsedPage], full_text: str) -> ParseQuality:

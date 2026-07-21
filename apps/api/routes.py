@@ -74,6 +74,13 @@ async def get_conversation(
     return await _paper_agent(request).get_conversation(conversation_id)
 
 
+@router.get("/conversations/{conversation_id}/usage")
+async def get_conversation_usage(
+    request: Request, conversation_id: str
+) -> dict[str, Any]:
+    return await _paper_agent(request).conversation_usage(conversation_id)
+
+
 @router.post("/conversations/{conversation_id}/files")
 async def upload_conversation_file(
     request: Request,

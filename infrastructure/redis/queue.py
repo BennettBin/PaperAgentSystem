@@ -79,6 +79,20 @@ class RedisTaskQueue(TaskQueue):
         self.redis.set(f"cancel:{task_id}", "1", ex=3600)
         return True
 
+    async def resume(self, task_id: str, payload: dict) -> bool:
+        with self.session_factory() as session:
+            job = session.get(QueueJobModel, task_id)
+            if job is None or job.status != "waiting_user":
+                return False
+            job.payload = {**job.payload, **payload}
+            job.status = "queued"
+            job.result = None
+            job.error = None
+            session.commit()
+            queue_name = job.queue_name
+        self.redis.lpush(f"queue:{queue_name}", task_id)
+        return True
+
     def is_cancelled(self, task_id: str) -> bool:
         if self.redis.exists(f"cancel:{task_id}"):
             return True
@@ -112,6 +126,8 @@ class RedisTaskQueue(TaskQueue):
                 result = handler({**job.payload, "_task_id": task_id})
                 if self.is_cancelled(task_id):
                     job.status = "cancelled"
+                elif result.get("status") == "waiting_user":
+                    job.status, job.result = "waiting_user", result
                 else:
                     job.status, job.result = "completed", result
                 session.commit()

@@ -4,11 +4,14 @@ import React from "react";
 
 import {
   ChatMessage,
+  ConversationTokenUsage,
   ConversationSummary,
+  EvidenceCitation,
   PaperFile,
   paperApi,
 } from "../lib/api";
 import { ConversationList } from "./ConversationList";
+import { CitationCard } from "./CitationCard";
 import { MessageComposer } from "./MessageComposer";
 import { ModelProfileManager } from "./ModelProfileManager";
 
@@ -19,6 +22,51 @@ const Icon = ({ children, size = 20 }: { children: React.ReactNode; size?: numbe
 );
 
 export interface AppLayoutProps {}
+
+const emptyUsage: ConversationTokenUsage = {
+  small: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+  large: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+  total: { input_tokens: 0, output_tokens: 0, total_tokens: 0 },
+};
+
+const AssistantMessage = ({ message }: { message: ChatMessage }) => {
+  const evidence = Array.isArray(message.metadata?.evidence)
+    ? (message.metadata?.evidence as EvidenceCitation[])
+    : [];
+  const [selected, setSelected] = React.useState<EvidenceCitation | null>(null);
+  const byId = new Map(evidence.map((item) => [item.id, item]));
+  return (
+    <div className="chat-message-assistant">
+      <div>
+        {message.content.split(/(\[E\d+\])/g).map((part, index) => {
+          const id = part.match(/^\[(E\d+)\]$/)?.[1];
+          const citation = id ? byId.get(id) : undefined;
+          return citation ? (
+            <button
+              className="inline-citation"
+              key={`${part}-${index}`}
+              onClick={() => setSelected(citation)}
+            >
+              [{id}]
+            </button>
+          ) : (
+            <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>
+          );
+        })}
+      </div>
+      {selected ? (
+        <CitationCard
+          citation={{
+            id: selected.id,
+            text: selected.quote,
+            source_page: selected.page,
+            file_id: selected.file_id,
+          }}
+        />
+      ) : null}
+    </div>
+  );
+};
 
 export const AppLayout: React.FC<AppLayoutProps> = () => {
   const [conversations, setConversations] = React.useState<ConversationSummary[]>([]);
@@ -33,6 +81,8 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
   const [busy, setBusy] = React.useState(false);
   const [status, setStatus] = React.useState("");
   const [error, setError] = React.useState("");
+  const [usage, setUsage] = React.useState<ConversationTokenUsage>(emptyUsage);
+  const [usageOpen, setUsageOpen] = React.useState(true);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const mountedRef = React.useRef(true);
 
@@ -56,6 +106,27 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
     void refreshConversations();
   }, [refreshConversations]);
 
+  const refreshUsage = React.useCallback(async (conversationId: string) => {
+    try {
+      setUsage(await paperApi.conversationUsage(conversationId));
+    } catch {
+      // Token accounting is informational and must not interrupt the conversation.
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!selectedConversation) {
+      setUsage(emptyUsage);
+      return;
+    }
+    void refreshUsage(selectedConversation);
+    const timer = window.setInterval(
+      () => void refreshUsage(selectedConversation),
+      1000,
+    );
+    return () => window.clearInterval(timer);
+  }, [refreshUsage, selectedConversation]);
+
   const loadConversation = React.useCallback(async (id: string) => {
     setError("");
     try {
@@ -63,12 +134,13 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
       setSelectedConversation(id);
       setMessages(detail.messages);
       setFiles(detail.files);
+      void refreshUsage(id);
       setLibraryOpen(false);
       setModelSettingsOpen(false);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "加载会话失败");
     }
-  }, []);
+  }, [refreshUsage]);
 
   const startNewChat = async () => {
     setBusy(true);
@@ -79,6 +151,7 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
       setSelectedConversation(conversation.id);
       setMessages([]);
       setFiles([]);
+      setUsage(emptyUsage);
       setSearch("");
       setSearchOpen(false);
       setLibraryOpen(false);
@@ -137,10 +210,16 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
       await new Promise((resolve) => window.setTimeout(resolve, 1000));
       if (!mountedRef.current) return;
       const task = await paperApi.task(taskId);
+      void refreshUsage(conversationId);
       if (task.status === "completed") {
         setStatus("回答已生成");
         await loadConversation(conversationId);
         await refreshConversations();
+        return;
+      }
+      if (task.status === "waiting_user") {
+        setStatus("请回答上方的澄清问题，系统将继续原任务");
+        await loadConversation(conversationId);
         return;
       }
       if (task.status === "failed" || task.status === "cancelled") {
@@ -195,7 +274,7 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
   );
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${usageOpen ? " usage-open" : ""}`}>
       <aside className="app-sidebar">
         <div className="brand-row">
           <div className="brand-mark">P</div>
@@ -276,14 +355,15 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
           </section>
         ) : (
           <section className="conversation-surface" aria-label="当前对话">
-            {messages.map((message) => (
-              <div
-                className={message.role === "assistant" ? "chat-message-assistant" : "chat-message-user"}
-                key={message.id}
-              >
-                {message.content}
-              </div>
-            ))}
+            {messages.map((message) =>
+              message.role === "assistant" ? (
+                <AssistantMessage key={message.id} message={message} />
+              ) : (
+                <div className="chat-message-user" key={message.id}>
+                  {message.content}
+                </div>
+              ),
+            )}
           </section>
         )}
 
@@ -318,6 +398,39 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
           </div>
         ) : null}
       </main>
+      <aside className={usageOpen ? "usage-panel" : "usage-panel collapsed"}>
+        <button
+          aria-label={usageOpen ? "折叠 Token 用量" : "展开 Token 用量"}
+          className="usage-toggle"
+          onClick={() => setUsageOpen((value) => !value)}
+        >
+          {usageOpen ? "›" : "‹"}
+        </button>
+        {usageOpen ? (
+          <div className="usage-content">
+            <h2>Token 用量</h2>
+            <p>当前会话 · 实时更新</p>
+            {(["small", "large"] as const).map((role) => (
+              <section key={role}>
+                <strong>{role === "small" ? "小模型" : "大模型"}</strong>
+                <dl>
+                  <div><dt>读入</dt><dd>{usage[role].input_tokens.toLocaleString()}</dd></div>
+                  <div><dt>写出</dt><dd>{usage[role].output_tokens.toLocaleString()}</dd></div>
+                  <div><dt>合计</dt><dd>{usage[role].total_tokens.toLocaleString()}</dd></div>
+                </dl>
+              </section>
+            ))}
+            <section className="usage-total">
+              <strong>总用量</strong>
+              <b>{usage.total.total_tokens.toLocaleString()}</b>
+              <small>
+                读入 {usage.total.input_tokens.toLocaleString()} · 写出{" "}
+                {usage.total.output_tokens.toLocaleString()}
+              </small>
+            </section>
+          </div>
+        ) : null}
+      </aside>
     </div>
   );
 };

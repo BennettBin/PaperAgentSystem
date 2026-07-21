@@ -9,8 +9,17 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.ports.llm_client import EmbeddingClient
-from document_processing.schema import BoundingBox, ParsedDocument, TextBlock
-from infrastructure.postgres.models import DocumentChunkModel, ParsedDocumentModel
+from document_processing.schema import (
+    BoundingBox,
+    DocumentSection,
+    ParsedDocument,
+    TextBlock,
+)
+from infrastructure.postgres.models import (
+    DocumentChunkModel,
+    DocumentSectionModel,
+    ParsedDocumentModel,
+)
 from rag.schema import DocumentChunk
 
 
@@ -36,10 +45,11 @@ class StructureAwareChunker:
             _fallback_section(document, list(by_id))
         ]
         chunks: list[DocumentChunk] = []
-        children: list[DocumentChunk] = []
         for section in sections:
             blocks = [by_id[block_id] for block_id in section.block_ids if block_id in by_id]
-            if not blocks:
+            heading = by_id.get(section.heading_block_id)
+            parent_blocks = ([heading] if heading is not None else []) + blocks
+            if not parent_blocks:
                 continue
             parent_id = uuid4().hex
             parent = _chunk_from_blocks(
@@ -49,15 +59,17 @@ class StructureAwareChunker:
                 file_id,
                 None,
                 "parent",
-                [section.title],
-                blocks,
+                section,
+                parent_blocks,
+                0,
             )
             chunks.append(parent)
+            section_children: list[DocumentChunk] = []
             current: list[TextBlock] = []
             size = 0
             for block in blocks:
                 if current and size + len(block.text) > self._limit:
-                    children.append(
+                    section_children.append(
                         _chunk_from_blocks(
                             uuid4().hex,
                             document_id,
@@ -65,15 +77,16 @@ class StructureAwareChunker:
                             file_id,
                             parent_id,
                             "child",
-                            [section.title],
+                            section,
                             current,
+                            len(section_children),
                         )
                     )
                     current, size = [], 0
                 current.append(block)
                 size += len(block.text)
             if current:
-                children.append(
+                section_children.append(
                     _chunk_from_blocks(
                         uuid4().hex,
                         document_id,
@@ -81,27 +94,29 @@ class StructureAwareChunker:
                         file_id,
                         parent_id,
                         "child",
-                        [section.title],
+                        section,
                         current,
+                        len(section_children),
                     )
                 )
-        linked = []
-        for index, child in enumerate(children):
-            linked.append(
-                child.model_copy(
-                    update={
-                        "previous_chunk_id": (
-                            children[index - 1].chunk_id if index > 0 else None
-                        ),
-                        "next_chunk_id": (
-                            children[index + 1].chunk_id
-                            if index + 1 < len(children)
-                            else None
-                        ),
-                    }
+            for index, child in enumerate(section_children):
+                chunks.append(
+                    child.model_copy(
+                        update={
+                            "previous_chunk_id": (
+                                section_children[index - 1].chunk_id
+                                if index > 0
+                                else None
+                            ),
+                            "next_chunk_id": (
+                                section_children[index + 1].chunk_id
+                                if index + 1 < len(section_children)
+                                else None
+                            ),
+                        }
+                    )
                 )
-            )
-        return [*chunks, *linked]
+        return chunks
 
 
 class DocumentIndexer:
@@ -135,7 +150,32 @@ class DocumentIndexer:
                 )
             )
             if existing is not None:
-                return _load_chunks(session, existing.id)
+                chunks = _load_chunks(session, existing.id)
+                section_schema_current = (
+                    existing.metadata_json or {}
+                ).get("section_schema_version") == 1
+                if (
+                    section_schema_current
+                    and chunks
+                    and all(
+                        chunk.embedding_model == self._embedding_model
+                        and chunk.section_id != "unknown"
+                        for chunk in chunks
+                    )
+                ):
+                    return chunks
+                session.execute(
+                    delete(DocumentChunkModel).where(
+                        DocumentChunkModel.document_id == existing.id
+                    )
+                )
+                session.execute(
+                    delete(DocumentSectionModel).where(
+                        DocumentSectionModel.document_id == existing.id
+                    )
+                )
+                session.delete(existing)
+                session.commit()
         document_id = uuid4().hex
         chunks = self._chunker.chunk(
             document,
@@ -165,10 +205,22 @@ class DocumentIndexer:
                     parser_version=document.parser_version,
                     page_count=document.page_count,
                     quality_score=int(document.quality.score * 100),
-                    metadata_json={"filename": document.filename},
+                    metadata_json={
+                        "filename": document.filename,
+                        "section_schema_version": 1,
+                    },
                 )
             )
             session.flush()
+            for section in document.sections:
+                session.add(
+                    _section_model(
+                        document_id,
+                        workspace_id,
+                        file_id,
+                        section,
+                    )
+                )
             for chunk in indexed:
                 session.add(_chunk_model(chunk))
             session.commit()
@@ -190,6 +242,11 @@ class DocumentIndexer:
                     )
                 )
                 session.execute(
+                    delete(DocumentSectionModel).where(
+                        DocumentSectionModel.document_id.in_(ids)
+                    )
+                )
+                session.execute(
                     delete(ParsedDocumentModel).where(
                         ParsedDocumentModel.id.in_(ids)
                     )
@@ -197,16 +254,21 @@ class DocumentIndexer:
             session.commit()
 
 
-def _fallback_section(document: ParsedDocument, block_ids: list[str]):  # type: ignore[no-untyped-def]
-    from document_processing.schema import DocumentSection
-
+def _fallback_section(
+    document: ParsedDocument, block_ids: list[str]
+) -> DocumentSection:
     return DocumentSection(
         section_id="section-1",
+        number=None,
         title="Document",
+        normalized_title="document",
         level=1,
+        section_path=["Document"],
         page_start=1,
         page_end=max(1, document.page_count),
+        heading_block_id=block_ids[0] if block_ids else "",
         block_ids=block_ids,
+        ordinal=0,
     )
 
 
@@ -217,8 +279,9 @@ def _chunk_from_blocks(
     file_id: str,
     parent_chunk_id: str | None,
     level: str,
-    section_path: list[str],
+    section: DocumentSection,
     blocks: list[TextBlock],
+    chunk_index_in_section: int,
 ) -> DocumentChunk:
     return DocumentChunk(
         chunk_id=chunk_id,
@@ -227,7 +290,11 @@ def _chunk_from_blocks(
         file_id=file_id,
         parent_chunk_id=parent_chunk_id,
         level=level,
-        section_path=section_path,
+        section_id=section.section_id,
+        section_number=section.number,
+        section_title=section.title,
+        section_path=section.section_path or [section.title],
+        chunk_index_in_section=chunk_index_in_section,
         text="\n".join(block.text for block in blocks),
         page_start=min(block.page_number for block in blocks),
         page_end=max(block.page_number for block in blocks),
@@ -253,7 +320,11 @@ def _chunk_model(chunk: DocumentChunk) -> DocumentChunkModel:
         document_id=chunk.document_id,
         parent_chunk_id=chunk.parent_chunk_id,
         level=chunk.level,
+        section_id=chunk.section_id,
+        section_number=chunk.section_number,
+        section_title=chunk.section_title,
         section_path=chunk.section_path,
+        chunk_index_in_section=chunk.chunk_index_in_section,
         text=chunk.text,
         page_start=chunk.page_start,
         page_end=chunk.page_end,
@@ -286,7 +357,13 @@ def _load_chunks(session: Session, document_id: str) -> list[DocumentChunk]:
             file_id=model.file_id,
             parent_chunk_id=model.parent_chunk_id,
             level=model.level,
+            section_id=model.section_id or "unknown",
+            section_number=model.section_number,
+            section_title=model.section_title or (
+                model.section_path[-1] if model.section_path else "Unknown"
+            ),
             section_path=model.section_path,
+            chunk_index_in_section=model.chunk_index_in_section or 0,
             text=model.text,
             page_start=model.page_start,
             page_end=model.page_end,
@@ -304,3 +381,31 @@ def _load_chunks(session: Session, document_id: str) -> list[DocumentChunk]:
         )
         for model in models
     ]
+
+
+def _section_model(
+    document_id: str,
+    workspace_id: str,
+    file_id: str,
+    section: DocumentSection,
+) -> DocumentSectionModel:
+    return DocumentSectionModel(
+        id=uuid4().hex,
+        workspace_id=workspace_id,
+        file_id=file_id,
+        document_id=document_id,
+        section_id=section.section_id,
+        number=section.number,
+        title=section.title,
+        normalized_title=section.normalized_title,
+        level=section.level,
+        parent_section_id=section.parent_section_id,
+        section_path=section.section_path,
+        ordinal=section.ordinal,
+        page_start=section.page_start,
+        page_end=section.page_end,
+        heading_block_id=section.heading_block_id,
+        block_ids=section.block_ids,
+        descendant_block_ids=section.descendant_block_ids,
+        schema_version=1,
+    )

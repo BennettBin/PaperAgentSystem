@@ -354,6 +354,46 @@ class ParsedDocumentModel(Base, LifecycleMixin, VersionedMixin):
     )
 
 
+class DocumentSectionModel(Base, LifecycleMixin, VersionedMixin):
+    __tablename__ = "document_sections"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), index=True)
+    file_id: Mapped[str] = mapped_column(String(64), index=True)
+    document_id: Mapped[str] = mapped_column(
+        ForeignKey("parsed_documents.id"), index=True
+    )
+    section_id: Mapped[str] = mapped_column(String(64))
+    number: Mapped[str | None] = mapped_column(String(32))
+    title: Mapped[str] = mapped_column(String(300))
+    normalized_title: Mapped[str] = mapped_column(String(300))
+    level: Mapped[int] = mapped_column(Integer)
+    parent_section_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    section_path: Mapped[list[str]] = mapped_column(JSON, default=list)
+    ordinal: Mapped[int] = mapped_column(Integer)
+    page_start: Mapped[int] = mapped_column(Integer)
+    page_end: Mapped[int] = mapped_column(Integer)
+    heading_block_id: Mapped[str] = mapped_column(String(64))
+    block_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    descendant_block_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    schema_version: Mapped[int] = mapped_column(Integer, default=1)
+    __table_args__ = (
+        UniqueConstraint("document_id", "section_id", name="uq_document_section"),
+        Index(
+            "ix_document_sections_workspace_file_number",
+            "workspace_id",
+            "file_id",
+            "number",
+        ),
+        Index(
+            "ix_document_sections_workspace_file_title",
+            "workspace_id",
+            "file_id",
+            "normalized_title",
+        ),
+        Index("ix_document_sections_document_ordinal", "document_id", "ordinal"),
+    )
+
+
 class DocumentChunkModel(Base, LifecycleMixin, VersionedMixin):
     __tablename__ = "document_chunks"
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -364,7 +404,11 @@ class DocumentChunkModel(Base, LifecycleMixin, VersionedMixin):
     )
     parent_chunk_id: Mapped[str | None] = mapped_column(String(64), index=True)
     level: Mapped[str] = mapped_column(String(16), index=True)
+    section_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    section_number: Mapped[str | None] = mapped_column(String(32), index=True)
+    section_title: Mapped[str | None] = mapped_column(String(300))
     section_path: Mapped[list[str]] = mapped_column(JSON, default=list)
+    chunk_index_in_section: Mapped[int | None] = mapped_column(Integer)
     text: Mapped[str] = mapped_column(Text)
     page_start: Mapped[int] = mapped_column(Integer)
     page_end: Mapped[int] = mapped_column(Integer)
@@ -422,3 +466,19 @@ class ModelRuntimeConfigModel(Base, LifecycleMixin, VersionedMixin):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     small_model: Mapped[dict[str, Any]] = mapped_column(JSON)
     large_model: Mapped[dict[str, Any]] = mapped_column(JSON)
+
+
+class ModelUsageModel(Base, LifecycleMixin):
+    __tablename__ = "model_usage"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(36), index=True)
+    conversation_id: Mapped[str] = mapped_column(String(36), index=True)
+    task_id: Mapped[str] = mapped_column(String(64), index=True)
+    model_role: Mapped[str] = mapped_column(String(16), index=True)
+    model_name: Mapped[str] = mapped_column(String(200))
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    total_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    __table_args__ = (
+        Index("ix_model_usage_conversation_role", "conversation_id", "model_role"),
+    )

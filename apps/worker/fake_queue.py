@@ -78,6 +78,19 @@ class FakeTaskQueue(TaskQueue):
             return True
         return False
 
+    async def resume(self, task_id: str, payload: dict) -> bool:
+        if task_id not in self.tasks:
+            return False
+        task = self.tasks[task_id]
+        if isinstance(task, QueueTask):
+            self.tasks[task_id] = QueueTask(
+                task_type=task.task_type,
+                payload={**task.payload, **payload},
+                idempotency_key=task.idempotency_key,
+            )
+        self.results[task_id] = TaskResult(status=TaskStatus.PENDING)
+        return True
+
     async def execute(self, task_id: str) -> None:
         """执行任务（测试用）"""
         if task_id not in self.tasks:

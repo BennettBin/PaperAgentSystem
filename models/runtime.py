@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.errors import ErrorCategory, ErrorCode, ProjectError
 from core.ports.llm_client import LLMClient
 from infrastructure.postgres.models import ModelRuntimeConfigModel
-from models.client import OpenAICompatibleLLMClient
+from models.client import ModelTokenUsage, OpenAICompatibleLLMClient
 
 ModelRole = Literal["small", "large"]
 
@@ -299,6 +299,8 @@ class RuntimeSelectedLLMClient(LLMClient):
     def __init__(self, runtime: ModelRuntimeService, role: ModelRole) -> None:
         self._runtime = runtime
         self._role = role
+        self.last_usage = ModelTokenUsage()
+        self.last_model_name = ""
 
     async def generate(
         self,
@@ -310,7 +312,7 @@ class RuntimeSelectedLLMClient(LLMClient):
         stop_sequences: list[str] | None = None,
     ) -> str:
         client = await self._runtime.selected_client(self._role)
-        return await client.generate(
+        result = await client.generate(
             prompt,
             _without_thinking(system_prompt),
             max_tokens,
@@ -318,6 +320,11 @@ class RuntimeSelectedLLMClient(LLMClient):
             top_p,
             stop_sequences,
         )
+        self.last_usage = getattr(client, "last_usage", ModelTokenUsage())
+        self.last_model_name = str(
+            (await self._runtime.selected_descriptor(self._role))["serving_model"]
+        )
+        return result
 
     async def generate_with_schema(
         self,
@@ -328,13 +335,18 @@ class RuntimeSelectedLLMClient(LLMClient):
         temperature: float = 0.7,
     ) -> str:
         client = await self._runtime.selected_client(self._role)
-        return await client.generate_with_schema(
+        result = await client.generate_with_schema(
             prompt,
             _without_thinking(system_prompt),
             response_schema,
             max_tokens,
             temperature,
         )
+        self.last_usage = getattr(client, "last_usage", ModelTokenUsage())
+        self.last_model_name = str(
+            (await self._runtime.selected_descriptor(self._role))["serving_model"]
+        )
+        return result
 
 
 def _infer_role(parameter_size: str) -> ModelRole:

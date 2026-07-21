@@ -18,6 +18,8 @@ class TextBlock(BaseModel):
     text: str
     bbox: BoundingBox
     font_size: float
+    font_name: str = ""
+    is_bold: bool = False
     role: str = "body"
     reading_order: int = Field(ge=0)
 
@@ -35,11 +37,18 @@ class ParsedPage(BaseModel):
 class DocumentSection(BaseModel):
     model_config = ConfigDict(extra="forbid")
     section_id: str
+    number: str | None = None
     title: str
+    normalized_title: str = ""
     level: int = Field(ge=1)
+    parent_section_id: str | None = None
+    section_path: list[str] = Field(default_factory=list)
     page_start: int = Field(ge=1)
     page_end: int = Field(ge=1)
+    heading_block_id: str = ""
     block_ids: list[str]
+    descendant_block_ids: list[str] = Field(default_factory=list)
+    ordinal: int = Field(default=0, ge=0)
 
 
 class ParseQuality(BaseModel):

@@ -85,6 +85,11 @@ class TaskQueue(ABC):
         """取消任务"""
         pass
 
+    @abstractmethod
+    async def resume(self, task_id: str, payload: dict) -> bool:
+        """使用补充输入恢复处于 waiting_user 的原任务"""
+        pass
+
 
 class EventPublisher(ABC):
     """事件发布 Port

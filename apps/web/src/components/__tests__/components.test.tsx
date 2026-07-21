@@ -71,6 +71,12 @@ describe("Frontend Components", () => {
           models: [],
           ollama_available: true,
         };
+      } else if (url.includes("/usage")) {
+        payload = {
+          small: { input_tokens: 120, output_tokens: 20, total_tokens: 140 },
+          large: { input_tokens: 500, output_tokens: 80, total_tokens: 580 },
+          total: { input_tokens: 620, output_tokens: 100, total_tokens: 720 },
+        };
       }
       return {
         ok: true,
@@ -160,6 +166,15 @@ describe("Frontend Components", () => {
     expect(screen.getAllByText("Base").length).toBeGreaterThanOrEqual(2);
   });
 
+  it("shows a collapsible conversation token usage panel", async () => {
+    render(<AppLayout />);
+    expect(screen.getByText("Token 用量")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "折叠 Token 用量" }));
+    expect(screen.queryByText("小模型")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "展开 Token 用量" }));
+    expect(screen.getByText("小模型")).toBeDefined();
+  });
+
   it("renders MessageList with messages", () => {
     const messages = [
       {
@@ -223,6 +238,14 @@ describe("Frontend Components", () => {
     const citation = { id: "1", text: "Citation text", source_page: 5, file_id: "file-1" };
     render(<CitationCard citation={citation} />);
     expect(screen.getByTestId("citation-1")).toBeDefined();
+  });
+
+  it("expands citation text when the citation is clicked", () => {
+    const citation = { id: "E1", text: "Quoted evidence", source_page: 5, file_id: "file-1" };
+    render(<CitationCard citation={citation} collapsed />);
+    expect(screen.queryByText("Quoted evidence")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "E1" }));
+    expect(screen.getByText("Quoted evidence")).toBeDefined();
   });
 
   it("renders ArtifactCard", () => {

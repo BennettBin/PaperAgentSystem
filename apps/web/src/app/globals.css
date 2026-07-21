@@ -9,7 +9,8 @@ html, body { min-height: 100%; }
 body { margin: 0; }
 button, input, textarea { color: inherit; font: inherit; }
 button { cursor: pointer; }
-.app-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr); height: 100vh; overflow: hidden; background: #fff; }
+.app-shell { display: grid; grid-template-columns: 260px minmax(0, 1fr) 42px; height: 100vh; overflow: hidden; background: #fff; }
+.app-shell.usage-open { grid-template-columns: 260px minmax(0, 1fr) 250px; }
 .app-sidebar { display: flex; flex-direction: column; min-width: 0; padding: 12px 10px 10px; border-right: 1px solid #e8e8e8; background: #f7f7f8; }
 .brand-row { display: flex; align-items: center; min-height: 42px; padding: 0 8px 10px; gap: 10px; font-size: 17px; font-weight: 650; }
 .brand-mark, .welcome-symbol { display: grid; place-items: center; color: #fff; background: #111; font-weight: 700; }
@@ -43,6 +44,26 @@ button { cursor: pointer; }
 .conversation-surface { position: absolute; inset: 0 0 190px; width: min(760px, calc(100% - 40px)); margin: auto; padding: 60px 0 20px; overflow-y: auto; }
 .chat-message-user { width: fit-content; max-width: 75%; margin: 0 0 18px auto; padding: 12px 16px; border-radius: 18px 18px 4px 18px; background: #f1f1f1; line-height: 1.55; }
 .chat-message-assistant { max-width: 90%; margin: 0 auto 22px 0; padding: 2px 4px; white-space: pre-wrap; line-height: 1.7; }
+.inline-citation { margin: 0 2px; padding: 1px 5px; border: 0; border-radius: 6px; color: #2855a6; background: #edf3ff; font-size: 11px; vertical-align: 1px; }
+.citation-card { display: grid; grid-template-columns: auto 1fr; margin-top: 10px; padding: 10px 12px; gap: 7px 9px; border: 1px solid #dce5f5; border-radius: 10px; background: #f8fbff; font-size: 12px; }
+.citation-card button { padding: 3px 7px; border: 0; border-radius: 6px; color: #fff; background: #315ea8; font-size: 11px; }
+.citation-card span { align-self: center; color: #667085; }
+.citation-card p { grid-column: 1 / -1; margin: 3px 0 0; white-space: pre-wrap; line-height: 1.55; }
+.usage-panel { position: relative; min-width: 0; border-left: 1px solid #e8e8e8; background: #fafafa; transition: width .2s ease; }
+.usage-panel.collapsed { background: #fff; }
+.usage-toggle { position: absolute; top: 16px; left: 7px; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 22px; line-height: 1; }
+.usage-content { padding: 58px 17px 20px; }
+.usage-content h2 { margin: 0; font-size: 16px; }
+.usage-content > p { margin: 6px 0 22px; color: #888; font-size: 11px; }
+.usage-content section { padding: 14px 0; border-top: 1px solid #e6e6e6; }
+.usage-content section > strong { font-size: 12px; }
+.usage-content dl { margin: 9px 0 0; }
+.usage-content dl div { display: flex; justify-content: space-between; margin: 6px 0; font-size: 11px; }
+.usage-content dt { color: #777; }
+.usage-content dd { margin: 0; font-variant-numeric: tabular-nums; }
+.usage-total { display: grid; gap: 5px; }
+.usage-total b { font-size: 25px; font-variant-numeric: tabular-nums; }
+.usage-total small { color: #777; font-size: 10px; }
 .composer-dock { position: absolute; bottom: 24px; left: 50%; width: min(770px, calc(100% - 40px)); transform: translateX(-50%); }
 .message-composer { display: flex; min-height: 58px; align-items: center; padding: 7px 8px 7px 10px; gap: 7px; border: 1px solid #dedede; border-radius: 24px; background: #fff; box-shadow: 0 8px 30px rgba(0, 0, 0, .07); }
 .message-composer textarea { min-width: 0; min-height: 26px; max-height: 140px; flex: 1; padding: 5px 2px; resize: none; overflow-y: auto; border: 0; outline: 0; background: transparent; line-height: 1.45; }
@@ -103,8 +124,9 @@ button { cursor: pointer; }
 .library-file span, .library-file small { color: #777; font-size: 12px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
 @media (max-width: 760px) {
-  .app-shell { grid-template-columns: 1fr; }
+  .app-shell, .app-shell.usage-open { grid-template-columns: 1fr; }
   .app-sidebar { display: none; }
+  .usage-panel { display: none; }
   .welcome-panel { margin-top: -120px; padding: 0 20px; }
   .welcome-panel p { max-width: 290px; }
   .quick-actions { flex-wrap: wrap; }

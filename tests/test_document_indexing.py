@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from document_processing.pdf_parser import PyMuPDFParser
-from infrastructure.postgres.models import Base
+from infrastructure.postgres.models import Base, DocumentChunkModel, DocumentSectionModel
 from rag.indexing import DocumentIndexer, StructureAwareChunker
 
 
@@ -76,6 +76,17 @@ async def test_parent_child_chunks_are_fully_traceable(database) -> None:
     assert all(set(chunk.source_block_ids) <= source_ids for chunk in chunks)
     assert children[0].next_chunk_id == children[1].chunk_id
     assert children[1].previous_chunk_id == children[0].chunk_id
+    assert all(chunk.section_id == parsed.sections[0].section_id for chunk in chunks)
+    assert all(chunk.section_number == "1" for chunk in chunks)
+    assert [chunk.chunk_index_in_section for chunk in children] == list(
+        range(len(children))
+    )
+    with database() as session:
+        catalog = session.query(DocumentSectionModel).all()
+        stored_chunks = session.query(DocumentChunkModel).all()
+        assert len(catalog) == len(parsed.sections)
+        assert catalog[0].heading_block_id == parsed.sections[0].heading_block_id
+        assert all(model.section_id for model in stored_chunks)
 
 
 @pytest.mark.asyncio
@@ -109,3 +120,10 @@ async def test_workspace_isolation_and_delete_invalidation(database) -> None:
 
     assert {chunk.workspace_id for chunk in second} == {"ws-2"}
     assert reindexed[0].document_id != first[0].document_id
+    with database() as session:
+        assert (
+            session.query(DocumentSectionModel)
+            .filter(DocumentSectionModel.workspace_id == "ws-1")
+            .count()
+            == len(parsed.sections)
+        )
