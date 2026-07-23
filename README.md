@@ -104,7 +104,7 @@ Copy-Item .env.example .env
 ### 3. 启动系统
 
 ```bash
-docker compose -f infrastructure/docker/compose.yaml up --build -d
+docker compose --env-file .env -f infrastructure/docker/compose.yaml up --build -d
 ```
 
 等待服务健康后访问：
@@ -118,13 +118,13 @@ docker compose -f infrastructure/docker/compose.yaml up --build -d
 查看服务状态：
 
 ```bash
-docker compose -f infrastructure/docker/compose.yaml ps
+docker compose --env-file .env -f infrastructure/docker/compose.yaml ps
 ```
 
 停止系统并保留数据：
 
 ```bash
-docker compose -f infrastructure/docker/compose.yaml down
+docker compose --env-file .env -f infrastructure/docker/compose.yaml down
 ```
 
 Windows 用户也可以直接运行：
@@ -133,7 +133,7 @@ Windows 用户也可以直接运行：
 start-paperagent.cmd
 ```
 
-停止时运行 `stop-paperagent.cmd`。该方式会复用已有镜像和持久卷，并在服务健康后打开 Web 页面。
+停止时运行 `stop-paperagent.cmd`。该方式会使用 Docker 构建缓存同步当前代码、复用持久卷，并在服务健康后打开 Web 页面。
 
 ## 基本使用
 
@@ -341,8 +341,8 @@ ollama list
 ### 查看容器状态和日志
 
 ```bash
-docker compose -f infrastructure/docker/compose.yaml ps
-docker compose -f infrastructure/docker/compose.yaml logs --tail=200 api worker
+docker compose --env-file .env -f infrastructure/docker/compose.yaml ps
+docker compose --env-file .env -f infrastructure/docker/compose.yaml logs --tail=200 api worker
 ```
 
 ### PDF 已上传但仍在处理中
@@ -350,7 +350,7 @@ docker compose -f infrastructure/docker/compose.yaml logs --tail=200 api worker
 检查 Worker、Redis 和 PostgreSQL：
 
 ```bash
-docker compose -f infrastructure/docker/compose.yaml logs --tail=200 worker redis postgres
+docker compose --env-file .env -f infrastructure/docker/compose.yaml logs --tail=200 worker redis postgres
 ```
 
 ### 完全重置本地数据
@@ -358,7 +358,7 @@ docker compose -f infrastructure/docker/compose.yaml logs --tail=200 worker redi
 以下操作会删除 PostgreSQL、Redis 和 MinIO 的本地持久卷：
 
 ```bash
-docker compose -f infrastructure/docker/compose.yaml down -v
+docker compose --env-file .env -f infrastructure/docker/compose.yaml down -v
 ```
 
 ## 许可证

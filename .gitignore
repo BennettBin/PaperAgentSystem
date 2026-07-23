@@ -151,3 +151,4 @@ runtime/scratch/l02_sources/
 runtime/diagnostics/rag/*.json
 runtime/diagnostics/rag/*.md
 runtime/scratch/
+docs/

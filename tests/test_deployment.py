@@ -42,8 +42,9 @@ def test_model_services_expose_explicit_unavailable_degradation() -> None:
 def test_readme_contains_fresh_environment_startup_command() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "docker compose -f infrastructure/docker/compose.yaml up --build" in readme
-    assert "docker compose -f infrastructure/docker/compose.yaml ps" in readme
+    compose = "docker compose --env-file .env -f infrastructure/docker/compose.yaml"
+    assert f"{compose} up --build" in readme
+    assert f"{compose} ps" in readme
 
 
 def test_web_image_builds_rewrites_with_compose_api_address() -> None:
@@ -68,3 +69,30 @@ def test_docker_build_context_never_contains_local_environment_files() -> None:
 
     assert ".env" in dockerignore
     assert ".env.*" in dockerignore
+
+
+def test_windows_startup_probe_does_not_abort_when_docker_engine_is_stopped() -> None:
+    script = (ROOT / "scripts" / "start-paperagent.ps1").read_text(encoding="utf-8")
+
+    assert "function Test-DockerEngine" in script
+    assert "if (-not (Test-DockerEngine))" in script
+    assert "if (-not (docker info" not in script
+    assert '$ErrorActionPreference = "SilentlyContinue"' in script
+    assert "if (-not $NoBuild)" in script
+    assert 'Test-HttpEndpoint "http://127.0.0.1:8080/health/ready"' in script
+
+
+def test_windows_startup_preserves_data_and_syncs_persisted_database_password() -> None:
+    script = (ROOT / "scripts" / "start-paperagent.ps1").read_text(encoding="utf-8")
+
+    assert "function Sync-PostgresPassword" in script
+    assert '@("compose", "--env-file", ".env", "-f", "infrastructure/docker/compose.yaml")' in script
+    assert "Sync-PostgresPassword -ComposeArguments $composeArguments" in script
+    assert script.index("Sync-PostgresPassword -ComposeArguments $composeArguments") < script.index(
+        'Write-Host "Starting PaperAgentSystem..."'
+    )
+    assert "down -v" not in script
+
+
+def test_deployment_runtime_has_an_explicit_top_level_python_package() -> None:
+    assert (ROOT / "infrastructure" / "__init__.py").is_file()

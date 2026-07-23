@@ -7,7 +7,16 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
 
-$arguments = @("compose", "-f", "infrastructure/docker/compose.yaml", "--profile", "models", "down")
+$arguments = @(
+    "compose",
+    "--env-file",
+    ".env",
+    "-f",
+    "infrastructure/docker/compose.yaml",
+    "--profile",
+    "models",
+    "down"
+)
 if ($RemoveVolumes) {
     $arguments += "--volumes"
 }
