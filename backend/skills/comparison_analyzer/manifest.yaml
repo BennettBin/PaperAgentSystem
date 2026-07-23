@@ -8,7 +8,7 @@ input_contract:
 output_contract:
   format: markdown_table
   min_length: 12
-  required_columns: [论文, 方法]
+  required_columns: [论文]
 trigger_conditions: [比较多篇论文的方法、数据或结果, 生成结构化对比表]
 non_trigger_conditions: [只阅读一篇论文, 跨文献叙事综述]
 routing_keywords: [比较, 对比, compare]

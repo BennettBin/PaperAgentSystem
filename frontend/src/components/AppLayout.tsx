@@ -16,7 +16,6 @@ import {
   VisualArtifactReference,
 } from "../lib/api";
 import { ConversationList } from "./ConversationList";
-import { CitationCard } from "./CitationCard";
 import { MessageComposer } from "./MessageComposer";
 import { ModelProfileManager } from "./ModelProfileManager";
 
@@ -151,56 +150,154 @@ export const AssistantMessage = ({ message }: { message: ChatMessage }) => {
   const evidence = Array.isArray(message.metadata?.evidence)
     ? (message.metadata?.evidence as EvidenceCitation[])
     : [];
-  const [selected, setSelected] = React.useState<EvidenceCitation | null>(null);
   const visualArtifacts = Array.isArray(message.metadata?.visual_artifacts)
     ? (message.metadata?.visual_artifacts as VisualArtifactReference[])
     : [];
+  const [hoveredReference, setHoveredReference] = React.useState<string | null>(null);
+  const [pinnedReference, setPinnedReference] = React.useState<string | null>(null);
   const byId = new Map(evidence.map((item) => [item.id, item]));
+  const visualByLabel = new Map(
+    visualArtifacts.map((item) => [item.label.toLocaleLowerCase(), item]),
+  );
+  const visualLabels = [...visualByLabel.keys()].sort(
+    (left, right) => right.length - left.length,
+  );
+  const referencePattern = new RegExp(
+    `(\\[E\\d+\\]${
+      visualLabels.length
+        ? `|${visualLabels.map((label) => label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")}`
+        : ""
+    })`,
+    "gi",
+  );
+  const referencedVisualIds = new Set<string>();
+  const togglePinned = (key: string) => {
+    setPinnedReference((current) => (current === key ? null : key));
+  };
+  const isOpen = (key: string) =>
+    hoveredReference === key || pinnedReference === key;
+
   return (
     <div className="chat-message-assistant">
       <div>
-        {message.content.split(/(\[E\d+\])/g).map((part, index) => {
+        {message.content.split(referencePattern).map((part, index) => {
           const id = part.match(/^\[(E\d+)\]$/)?.[1];
           const citation = id ? byId.get(id) : undefined;
-          return citation ? (
-            <button
-              className="inline-citation"
-              key={`${part}-${index}`}
-              onClick={() => setSelected(citation)}
-            >
-              [{id}]
-            </button>
-          ) : (
-            <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>
-          );
+          if (citation) {
+            const key = `citation:${citation.id}`;
+            return (
+              <span
+                className="inline-reference-shell"
+                data-testid={`inline-reference-${citation.id}`}
+                key={`${part}-${index}`}
+                onMouseEnter={() => setHoveredReference(key)}
+                onMouseLeave={() => setHoveredReference(null)}
+              >
+                <button
+                  aria-expanded={isOpen(key)}
+                  className="inline-citation"
+                  onBlur={() => setHoveredReference(null)}
+                  onClick={() => togglePinned(key)}
+                  onFocus={() => setHoveredReference(key)}
+                  type="button"
+                >
+                  [{id}]
+                </button>
+                {isOpen(key) ? (
+                  <span className="reference-popover citation-popover" role="tooltip">
+                    <span>
+                      <strong>{citation.id}</strong>
+                      <small>第 {citation.page} 页</small>
+                    </span>
+                    <span>{citation.quote}</span>
+                  </span>
+                ) : null}
+              </span>
+            );
+          }
+          const visual = visualByLabel.get(part.toLocaleLowerCase());
+          if (visual) {
+            referencedVisualIds.add(visual.id);
+            const key = `visual:${visual.id}`;
+            return (
+              <span
+                className="inline-reference-shell"
+                data-testid={`inline-reference-${visual.id}`}
+                key={`${part}-${index}`}
+                onMouseEnter={() => setHoveredReference(key)}
+                onMouseLeave={() => setHoveredReference(null)}
+              >
+                <button
+                  aria-expanded={isOpen(key)}
+                  className="inline-citation inline-visual-reference"
+                  onBlur={() => setHoveredReference(null)}
+                  onClick={() => togglePinned(key)}
+                  onFocus={() => setHoveredReference(key)}
+                  type="button"
+                >
+                  {visual.label}
+                </button>
+                {isOpen(key) ? (
+                  <span className="reference-popover visual-popover" role="tooltip">
+                    <img
+                      alt={`${visual.label}，论文第 ${visual.page} 页`}
+                      loading="lazy"
+                      src={visual.image_url}
+                    />
+                    <span>
+                      <strong>{visual.label}</strong>
+                      <small>第 {visual.page} 页</small>
+                      {visual.caption ? <span>{visual.caption}</span> : null}
+                    </span>
+                  </span>
+                ) : null}
+              </span>
+            );
+          }
+          return <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>;
         })}
       </div>
-      {selected ? (
-        <CitationCard
-          citation={{
-            id: selected.id,
-            text: selected.quote,
-            source_page: selected.page,
-            file_id: selected.file_id,
-          }}
-        />
-      ) : null}
-      {visualArtifacts.length ? (
-        <div className="visual-artifact-gallery" aria-label="回答引用的论文截图">
-          {visualArtifacts.map((artifact) => (
-            <figure key={artifact.id}>
-              <img
-                alt={`${artifact.label}，论文第 ${artifact.page} 页`}
-                loading="lazy"
-                src={artifact.image_url}
-              />
-              <figcaption>
-                <strong>{artifact.label}</strong>
-                <span>第 {artifact.page} 页</span>
-                {artifact.caption ? <p>{artifact.caption}</p> : null}
-              </figcaption>
-            </figure>
-          ))}
+      {visualArtifacts.some((artifact) => !referencedVisualIds.has(artifact.id)) ? (
+        <div className="visual-reference-list" aria-label="回答引用的论文截图">
+          {visualArtifacts
+            .filter((artifact) => !referencedVisualIds.has(artifact.id))
+            .map((artifact) => {
+              const key = `visual:${artifact.id}`;
+              return (
+                <span
+                  className="inline-reference-shell"
+                  data-testid={`inline-reference-${artifact.id}`}
+                  key={artifact.id}
+                  onMouseEnter={() => setHoveredReference(key)}
+                  onMouseLeave={() => setHoveredReference(null)}
+                >
+                  <button
+                    aria-expanded={isOpen(key)}
+                    className="inline-citation inline-visual-reference"
+                    onBlur={() => setHoveredReference(null)}
+                    onClick={() => togglePinned(key)}
+                    onFocus={() => setHoveredReference(key)}
+                    type="button"
+                  >
+                    {artifact.label}
+                  </button>
+                  {isOpen(key) ? (
+                    <span className="reference-popover visual-popover" role="tooltip">
+                      <img
+                        alt={`${artifact.label}，论文第 ${artifact.page} 页`}
+                        loading="lazy"
+                        src={artifact.image_url}
+                      />
+                      <span>
+                        <strong>{artifact.label}</strong>
+                        <small>第 {artifact.page} 页</small>
+                        {artifact.caption ? <span>{artifact.caption}</span> : null}
+                      </span>
+                    </span>
+                  ) : null}
+                </span>
+              );
+            })}
         </div>
       ) : null}
     </div>

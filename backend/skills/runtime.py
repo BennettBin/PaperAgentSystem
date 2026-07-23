@@ -59,12 +59,20 @@ class SkillRuntime:
         output_data: Any,
         trace_id: str,
     ) -> Any:
+        self.validate_output(activation, output_data)
+        await self._registry.trace_complete(activation.skill, trace_id, "completed")
+        return output_data
+
+    def validate_output(
+        self,
+        activation: SkillActivation,
+        output_data: Any,
+    ) -> None:
+        """Validate a generated result without completing the Skill lifecycle."""
         try:
             _validate_structured_value(output_data, activation.skill.output_contract)
         except ValueError as exc:
             raise ValueError(f"Skill output is invalid: {exc}") from exc
-        await self._registry.trace_complete(activation.skill, trace_id, "completed")
-        return output_data
 
     async def start_tool(
         self,

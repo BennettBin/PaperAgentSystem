@@ -48,16 +48,24 @@ button { cursor: pointer; }
 .conversation-surface { position: absolute; inset: 0 0 190px; width: min(760px, calc(100% - 40px)); margin: auto; padding: 60px 0 20px; overflow-y: auto; }
 .chat-message-user { width: fit-content; max-width: 75%; margin: 0 0 18px auto; padding: 12px 16px; border-radius: 18px 18px 4px 18px; background: #f1f1f1; line-height: 1.55; }
 .chat-message-assistant { max-width: 90%; margin: 0 auto 22px 0; padding: 2px 4px; white-space: pre-wrap; line-height: 1.7; }
+.inline-reference-shell { position: relative; display: inline-block; white-space: normal; }
 .inline-citation { margin: 0 2px; padding: 1px 5px; border: 0; border-radius: 6px; color: #2855a6; background: #edf3ff; font-size: 11px; vertical-align: 1px; }
+.inline-citation:hover, .inline-citation:focus-visible, .inline-citation[aria-expanded="true"] { color: #173f82; background: #dfeaff; outline: none; }
+.inline-visual-reference { color: #6b3fa0; background: #f3eefe; font-size: 12px; }
+.reference-popover { position: absolute; z-index: 40; top: calc(100% + 8px); left: 50%; display: grid; width: min(380px, 72vw); padding: 11px 13px; border: 1px solid #ccd8eb; border-radius: 12px; color: #202735; background: #fff; box-shadow: 0 12px 34px rgba(23, 42, 74, .18); transform: translateX(-50%); white-space: normal; line-height: 1.5; }
+.reference-popover::after { position: absolute; bottom: 100%; left: 50%; width: 10px; height: 10px; border-top: 1px solid #ccd8eb; border-left: 1px solid #ccd8eb; background: #fff; content: ""; transform: translate(-50%, 5px) rotate(45deg); }
+.citation-popover { gap: 8px; font-size: 12px; }
+.citation-popover > span:first-child { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #526071; }
+.citation-popover small, .visual-popover small { color: #667085; font-size: 11px; }
+.visual-popover { width: min(520px, 82vw); padding: 0; overflow: hidden; }
+.visual-popover img { display: block; width: 100%; max-height: 420px; object-fit: contain; background: #f8fafc; }
+.visual-popover > span { display: grid; grid-template-columns: 1fr auto; padding: 9px 11px; gap: 4px 10px; font-size: 12px; }
+.visual-popover > span > span { grid-column: 1 / -1; color: #475467; }
+.visual-reference-list { display: flex; flex-wrap: wrap; margin-top: 8px; gap: 6px; }
 .citation-card { display: grid; grid-template-columns: auto 1fr; margin-top: 10px; padding: 10px 12px; gap: 7px 9px; border: 1px solid #dce5f5; border-radius: 10px; background: #f8fbff; font-size: 12px; }
 .citation-card button { padding: 3px 7px; border: 0; border-radius: 6px; color: #fff; background: #315ea8; font-size: 11px; }
 .citation-card span { align-self: center; color: #667085; }
 .citation-card p { grid-column: 1 / -1; margin: 3px 0 0; white-space: pre-wrap; line-height: 1.55; }
-.visual-artifact-gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 12px; gap: 12px; }
-.visual-artifact-gallery figure { overflow: hidden; margin: 0; border: 1px solid #dce5f5; border-radius: 10px; background: #fff; }
-.visual-artifact-gallery img { display: block; width: 100%; max-height: 420px; object-fit: contain; background: #f8fafc; }
-.visual-artifact-gallery figcaption { display: grid; grid-template-columns: 1fr auto; padding: 9px 11px; gap: 4px 10px; color: #475467; font-size: 12px; }
-.visual-artifact-gallery figcaption p { grid-column: 1 / -1; margin: 0; line-height: 1.45; }
 .usage-panel { position: relative; min-width: 0; min-height: 0; height: 100%; overflow: hidden; border-left: 1px solid #e8e8e8; background: #fafafa; transition: width .2s ease; }
 .usage-panel.collapsed { background: #fff; }
 .usage-toggle { position: absolute; top: 16px; left: 7px; display: grid; width: 28px; height: 28px; place-items: center; border: 1px solid #ddd; border-radius: 8px; background: #fff; font-size: 22px; line-height: 1; }

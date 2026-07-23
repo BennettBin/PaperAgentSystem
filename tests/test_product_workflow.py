@@ -1,6 +1,7 @@
 import hashlib
 from datetime import UTC, datetime
 from io import BytesIO
+from pathlib import Path
 from types import SimpleNamespace
 
 import fitz
@@ -8,6 +9,7 @@ import pytest
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
+from backend.agent_runtime.skill_selector import SkillSelector
 from backend.apps.api import product_service as product_service_module
 from backend.apps.api.product_service import PaperAgentApplication, PaperAgentProcessor
 from backend.apps.worker.fake_queue import FakeTaskQueue
@@ -28,6 +30,19 @@ from backend.infrastructure.postgres.models import (
     WorkspaceModel,
 )
 from backend.rag.indexing import CURRENT_INDEX_VERSION, CURRENT_SECTION_SCHEMA_VERSION
+from backend.skills.loader import SkillManifestLoader, SkillRegistry
+from backend.skills.runtime import SkillRuntime
+
+SKILLS_ROOT = Path(__file__).resolve().parents[1] / "backend" / "skills"
+REAL_TOOLS = {
+    "parse_document",
+    "search_document",
+    "get_document_section",
+    "extract_paper_card",
+    "build_comparison_table",
+    "build_literature_review",
+    "save_artifact",
+}
 
 
 def _paper_pdf() -> bytes:
@@ -164,6 +179,48 @@ class EllipticalFollowUpLLM(RecordingLLM):
             '{"action":"retrieve","search_query":"列举一下",'
             '"section_hint":"数据集","clarification_question":null}'
         )
+
+
+class ComparisonLLM(RecordingLLM):
+    def __init__(self) -> None:
+        super().__init__()
+        self.generation_count = 0
+
+    async def generate(self, prompt: str, **_kwargs) -> str:
+        self.prompt = prompt
+        self.generation_count += 1
+        if self.generation_count == 1:
+            return (
+                "Alpha 研究结构化智能体 [E1]，Beta 研究检索增强生成 [E5]。"
+                "两篇论文都研究学术智能体，但技术重点不同。"
+            )
+        return (
+            "| 论文 | 主要内容 |\n"
+            "|---|---|\n"
+            "| alpha.pdf | Alpha 研究结构化智能体 [E1]。 |\n"
+            "| beta.pdf | Beta 研究检索增强生成 [E5]。 |\n\n"
+            "两篇论文都研究学术智能体，但技术重点不同。"
+        )
+
+    async def generate_with_schema(self, prompt: str, **_kwargs) -> str:
+        return (
+            '{"action":"retrieve","search_query":"主要内容 方法 贡献",'
+            '"section_hint":null,"clarification_question":null}'
+        )
+
+
+def _skill_runtime() -> SkillRuntime:
+    registry = SkillRegistry(FakeTraceWriter())
+    registry.load_all(
+        SkillManifestLoader(
+            SKILLS_ROOT,
+            registered_tools=REAL_TOOLS,
+            available_profiles={"development", "paper_reader_v1"},
+        )
+    )
+    return SkillRuntime(
+        SkillSelector(registry, fallback_skill="paper_reader"), registry
+    )
 
 
 @pytest.fixture
@@ -462,6 +519,68 @@ async def test_elliptical_follow_up_uses_prior_question_to_retrieve(
 
 
 @pytest.mark.asyncio
+async def test_short_follow_up_ending_with_ne_uses_the_immediately_previous_exchange(
+    product_database,
+) -> None:
+    with product_database() as session:
+        _add_debug_index(session)
+        session.add_all(
+            [
+                MessageModel(
+                    id="results-user",
+                    workspace_id="local-workspace",
+                    conversation_id="conversation-1",
+                    role="user",
+                    type="text",
+                    content="这篇论文采用了什么方法？",
+                    metadata_json={},
+                ),
+                MessageModel(
+                    id="results-assistant",
+                    workspace_id="local-workspace",
+                    conversation_id="conversation-1",
+                    role="assistant",
+                    type="text",
+                    content="论文采用结构化 Agent runtime。",
+                    metadata_json={},
+                ),
+            ]
+        )
+        session.commit()
+    llm = EllipticalFollowUpLLM()
+    processor = PaperAgentProcessor(
+        product_database,
+        FakeObjectStore(),
+        FakeEmbeddingClient(),
+        FakeRerankerClient(),
+        llm,
+    )
+
+    result = await processor.answer(
+        {
+            "_task_id": "short-ne-follow-up-task",
+            "conversation_id": "conversation-1",
+            "question": "准确率呢？",
+            "file_ids": ["file-debug"],
+        }
+    )
+
+    assert result["status"] == "completed"
+    assert "这篇论文采用了什么方法" in llm.prompt
+    assert "结构化 Agent runtime" in llm.prompt
+    with product_database() as session:
+        answer = session.scalars(
+            select(MessageModel)
+            .where(MessageModel.role == "assistant")
+            .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
+        ).first()
+        assert answer is not None
+        rag = answer.metadata_json["rag"]
+        assert rag["history_used"] is True
+        assert "这篇论文采用了什么方法" in rag["query"]
+
+
+@pytest.mark.asyncio
 async def test_answer_that_mentions_table_includes_same_page_screenshot_metadata(
     product_database,
 ) -> None:
@@ -569,6 +688,56 @@ async def test_upload_reuses_soft_deleted_file_checksum(product_database):
         assert file_model.storage_path in store.objects
         assert link is not None
         assert link.deleted_at is None
+
+
+@pytest.mark.asyncio
+async def test_submit_message_ignores_a_stale_deleted_file_and_keeps_the_follow_up(
+    product_database,
+) -> None:
+    deleted_at = datetime.now(UTC)
+    with product_database() as session:
+        session.add(
+            FileModel(
+                id="stale-file",
+                workspace_id="local-workspace",
+                filename="stale.pdf",
+                content_type="application/pdf",
+                size_bytes=1,
+                storage_path="uploads/stale.pdf",
+                checksum="e" * 64,
+                is_deleted=True,
+                reference_count=0,
+                deleted_at=deleted_at,
+                metadata_json={"parse_status": "deleted"},
+            )
+        )
+        session.add(
+            ConversationFileModel(
+                id="stale-link",
+                workspace_id="local-workspace",
+                conversation_id="conversation-1",
+                file_id="stale-file",
+            )
+        )
+        session.commit()
+    queue = FakeTaskQueue()
+    application = PaperAgentApplication(
+        product_database,
+        FakeObjectStore(),
+        queue,
+    )
+
+    result = await application.submit_message(
+        "conversation-1",
+        "那实验结果呢？",
+        ["stale-file"],
+    )
+
+    with product_database() as session:
+        saved = session.get(MessageModel, result["message"]["id"])
+        assert saved is not None
+        assert saved.content == "那实验结果呢？"
+    assert queue.tasks[result["task_id"]].payload["file_ids"] == []
 
 
 @pytest.mark.asyncio
@@ -743,6 +912,68 @@ async def test_delete_conversation_removes_history_files_and_indexes(product_dat
         assert session.get(DocumentChunkModel, "chunk-delete") is None
 
 
+@pytest.mark.asyncio
+async def test_delete_conversation_preserves_a_file_shared_by_an_active_conversation(
+    product_database,
+) -> None:
+    store = FakeObjectStore()
+    data = _paper_pdf()
+    object_key = await store.upload("uploads/shared.pdf", data, "application/pdf")
+    with product_database() as session:
+        session.add(
+            ConversationModel(
+                id="conversation-2",
+                workspace_id="local-workspace",
+                user_id="local-user",
+                title="Second conversation",
+            )
+        )
+        session.add(
+            FileModel(
+                id="shared-file",
+                workspace_id="local-workspace",
+                filename="shared.pdf",
+                content_type="application/pdf",
+                size_bytes=len(data),
+                storage_path=object_key,
+                checksum="f" * 64,
+                reference_count=2,
+                metadata_json={"parse_status": "parsed"},
+            )
+        )
+        session.add_all(
+            [
+                ConversationFileModel(
+                    id="shared-link-1",
+                    workspace_id="local-workspace",
+                    conversation_id="conversation-1",
+                    file_id="shared-file",
+                ),
+                ConversationFileModel(
+                    id="shared-link-2",
+                    workspace_id="local-workspace",
+                    conversation_id="conversation-2",
+                    file_id="shared-file",
+                ),
+            ]
+        )
+        session.commit()
+    application = PaperAgentApplication(product_database, store, FakeTaskQueue())
+
+    result = await application.delete_conversation("conversation-1")
+
+    assert result["deleted_file_count"] == 0
+    assert await store.exists(object_key)
+    remaining = await application.get_conversation("conversation-2")
+    assert [item["id"] for item in remaining["files"]] == ["shared-file"]
+    with product_database() as session:
+        file_model = session.get(FileModel, "shared-file")
+        assert file_model is not None
+        assert file_model.is_deleted is False
+        assert file_model.deleted_at is None
+        assert file_model.reference_count == 1
+
+
 def _add_debug_index(session) -> None:
     session.add(
         FileModel(
@@ -823,6 +1054,148 @@ def _add_debug_index(session) -> None:
             searchable_text="Ablation Analysis compares each component and reports PaperBench gains.",
         )
     )
+
+
+def _add_comparison_indexes(session) -> None:
+    for paper_index, (file_id, filename, topic) in enumerate(
+        (
+            ("file-alpha", "alpha.pdf", "结构化智能体"),
+            ("file-beta", "beta.pdf", "检索增强生成"),
+        ),
+        1,
+    ):
+        checksum = str(paper_index) * 64
+        document_id = f"document-{paper_index}"
+        section_id = f"section-{paper_index}"
+        session.add(
+            FileModel(
+                id=file_id,
+                workspace_id="local-workspace",
+                filename=filename,
+                content_type="application/pdf",
+                size_bytes=100,
+                storage_path=f"uploads/{filename}",
+                checksum=checksum,
+                metadata_json={"parse_status": "parsed"},
+            )
+        )
+        session.add(
+            ConversationFileModel(
+                id=f"link-{paper_index}",
+                workspace_id="local-workspace",
+                conversation_id="conversation-1",
+                file_id=file_id,
+            )
+        )
+        session.add(
+            ParsedDocumentModel(
+                id=document_id,
+                workspace_id="local-workspace",
+                file_id=file_id,
+                checksum=checksum,
+                parser_name="fixture",
+                parser_version="1",
+                page_count=1,
+                quality_score=99,
+                metadata_json={
+                    "index_version": CURRENT_INDEX_VERSION,
+                    "section_schema_version": CURRENT_SECTION_SCHEMA_VERSION,
+                },
+            )
+        )
+        session.add(
+            DocumentSectionModel(
+                id=section_id,
+                workspace_id="local-workspace",
+                file_id=file_id,
+                document_id=document_id,
+                section_id=section_id,
+                number="1",
+                title="Introduction",
+                normalized_title="introduction",
+                level=1,
+                parent_section_id=None,
+                section_path=["1 Introduction"],
+                ordinal=1,
+                page_start=1,
+                page_end=1,
+                heading_block_id=f"heading-{paper_index}",
+                block_ids=[f"heading-{paper_index}", f"body-{paper_index}"],
+                descendant_block_ids=[
+                    f"heading-{paper_index}",
+                    f"body-{paper_index}",
+                ],
+            )
+        )
+        chunk_count = 12 if file_id == "file-alpha" else 1
+        for chunk_index in range(chunk_count):
+            session.add(
+                DocumentChunkModel(
+                    id=f"chunk-{paper_index}-{chunk_index}",
+                    workspace_id="local-workspace",
+                    file_id=file_id,
+                    document_id=document_id,
+                    parent_chunk_id=None,
+                    level="child",
+                    section_id=section_id,
+                    section_title="Introduction",
+                    section_path=["1 Introduction"],
+                    chunk_index_in_section=chunk_index,
+                    text=f"论文主要内容、方法和贡献聚焦于{topic}。",
+                    page_start=1,
+                    page_end=1,
+                    bbox_json=[0, 0, 100, 100],
+                    source_block_ids=[f"body-{paper_index}"],
+                    embedding=[0.2] * 1024,
+                    embedding_model="multilingual-hash-v1",
+                    searchable_text=f"主要内容 方法 贡献 {topic}",
+                )
+            )
+
+
+@pytest.mark.asyncio
+async def test_multi_document_comparison_balances_evidence_and_uses_file_names(
+    product_database,
+) -> None:
+    with product_database() as session:
+        _add_comparison_indexes(session)
+        session.commit()
+    llm = ComparisonLLM()
+    processor = PaperAgentProcessor(
+        product_database,
+        FakeObjectStore(),
+        FakeEmbeddingClient(),
+        FakeRerankerClient(),
+        llm,
+        skill_runtime=_skill_runtime(),
+    )
+
+    result = await processor.answer(
+        {
+            "_task_id": "comparison-task",
+            "conversation_id": "conversation-1",
+            "question": "对比一下这两篇文章的主要内容",
+            "file_ids": ["file-alpha", "file-beta"],
+        }
+    )
+
+    assert result["status"] == "completed"
+    assert llm.generation_count == 2
+    assert "上一次回答的结构不符合" in llm.prompt
+    assert "论文 alpha.pdf" in llm.prompt
+    assert "论文 beta.pdf" in llm.prompt
+    with product_database() as session:
+        answer = session.scalar(
+            select(MessageModel).where(MessageModel.role == "assistant")
+        )
+        assert answer is not None
+        assert {
+            evidence["file_id"] for evidence in answer.metadata_json["evidence"]
+        } == {"file-alpha", "file-beta"}
+        assert (
+            answer.metadata_json["rag"]["retrieval_mode"]
+            == "comparison_balanced_rag"
+        )
 
 
 @pytest.mark.asyncio

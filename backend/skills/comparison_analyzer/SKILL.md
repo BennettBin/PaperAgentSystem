@@ -23,7 +23,7 @@ description: 按统一维度比较至少两篇论文并保留逐项证据。 Use
 1. 按 manifest 的输入契约校验任务、文件范围和参数。
 2. 根据下表选择最少必要 Tool；调用前校验其真实 Pydantic 输入 Schema。
 3. 保留页码、章节、证据 ID，并区分论文事实、推断和缺失信息。
-4. 按 manifest 声明的 `markdown_table` 输出契约生成结果。
+4. 按 manifest 声明的 `markdown_table` 输出契约生成结果；“论文”是固定列，其余列必须根据用户要求选择，不得把“方法”强加给只比较主要内容、数据集或结果的任务。
 5. 校验输出结构和证据后完成；失败时返回明确错误，不降级为随意文本。
 
 ## Available Tools
@@ -42,7 +42,7 @@ Tool 的真实实现由 `implementation` 指向 `tool_runtime` 中的 Pydantic T
 ```json
 {
   "request": "比较多篇论文",
-  "file_ids": ["file-001"],
+  "file_ids": ["file-001", "file-002"],
   "conversation_id": "conversation-001",
   "parameters": {}
 }
@@ -50,12 +50,13 @@ Tool 的真实实现由 `implementation` 指向 `tool_runtime` 中的 Pydantic T
 
 ## Structured Output
 
-格式：`markdown_table`，必须包含 manifest 声明的列。示例：
+格式：`markdown_table`，必须包含 manifest 声明的固定“论文”列，并至少包含一个与用户问题匹配的对比维度。每篇论文单独一行，论文名称与证据不得混淆。示例：
 
 ```markdown
-| 论文 | 方法 |
+| 论文 | 主要内容 |
 |---|---|
-| Paper A | 方法描述 [E1] |
+| Paper A | 研究学术智能体规划 [E1] |
+| Paper B | 研究检索与引用核验 [E5] |
 ```
 
 ## Acceptance

@@ -152,3 +152,6 @@ runtime/diagnostics/rag/*.json
 runtime/diagnostics/rag/*.md
 runtime/scratch/
 docs/
+!docs/
+docs/*
+!docs/项目面试完整介绍.md

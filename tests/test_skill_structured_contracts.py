@@ -77,6 +77,29 @@ async def test_markdown_output_is_validated_without_json_envelope() -> None:
 
 
 @pytest.mark.asyncio
+async def test_comparison_contract_accepts_task_specific_dimension_columns() -> None:
+    registry, _ = _registry()
+    runtime = SkillRuntime(
+        SkillSelector(registry, fallback_skill="paper_reader"), registry
+    )
+    activation = await runtime.activate(
+        "对比两篇论文的主要内容",
+        {
+            "request": "对比两篇论文的主要内容",
+            "file_ids": ["file-1", "file-2"],
+            "conversation_id": "conversation-1",
+            "parameters": {},
+        },
+        "trace-comparison",
+    )
+
+    output = "| 论文 | 主要内容 |\n|---|---|\n| A | 内容 A [E1] |\n| B | 内容 B [E2] |"
+
+    runtime.validate_output(activation, output)
+    assert await runtime.complete(activation, output, "trace-comparison") == output
+
+
+@pytest.mark.asyncio
 async def test_skill_tool_arguments_are_checked_and_traced() -> None:
     registry, traces = _registry()
     runtime = SkillRuntime(

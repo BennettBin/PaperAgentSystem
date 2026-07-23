@@ -3,11 +3,12 @@
     "input": {
       "request": "比较多篇论文的方法、数据或结果",
       "file_ids": [
-        "file-001"
+        "file-001",
+        "file-002"
       ],
       "conversation_id": "conversation-001",
       "parameters": {}
     },
-    "output": "| 论文 | 方法 |\\n|---|---|\\n| Paper A | 方法描述 [E1] |"
+    "output": "| 论文 | 主要内容 |\\n|---|---|\\n| Paper A | 研究学术智能体规划 [E1] |\\n| Paper B | 研究检索与引用核验 [E5] |"
   }
 ]

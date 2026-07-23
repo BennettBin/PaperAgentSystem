@@ -321,10 +321,19 @@ describe("Frontend Components", () => {
         message={{
           id: "assistant-visual",
           role: "assistant",
-          content: "如表 1 所示 [E1]。",
+          content: "如 Table 1 所示 [E1]。",
           created_at: "2026-07-22T00:00:00Z",
           metadata: {
-            evidence: [],
+            evidence: [
+              {
+                id: "E1",
+                file_id: "file-1",
+                page: 3,
+                section: ["Results"],
+                quote: "The main result improves citation support.",
+                bbox: [10, 20, 300, 200],
+              },
+            ],
             visual_artifacts: [
               {
                 id: "file-1-p1-visual-1",
@@ -343,10 +352,20 @@ describe("Frontend Components", () => {
       />,
     );
 
+    expect(screen.queryByText("The main result improves citation support.")).toBeNull();
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "[E1]" }));
+    expect(screen.getByText("The main result improves citation support.")).toBeDefined();
+    fireEvent.mouseLeave(screen.getByTestId("inline-reference-E1"));
+
+    expect(screen.queryByRole("img", { name: "Table 1，论文第 3 页" })).toBeNull();
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "Table 1" }));
     expect(
       screen.getByRole("img", { name: "Table 1，论文第 3 页" }).getAttribute("src"),
     ).toBe("/api/v1/visual-artifacts/file-1-p1-visual-1/image");
     expect(screen.getByText("Table 1: Main results")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "Table 1" }));
+    fireEvent.mouseLeave(screen.getByTestId("inline-reference-file-1-p1-visual-1"));
+    expect(screen.getByRole("img", { name: "Table 1，论文第 3 页" })).toBeDefined();
   });
 
   it("renders FilePreview", () => {

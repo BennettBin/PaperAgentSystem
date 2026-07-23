@@ -195,34 +195,68 @@ class PaperAgentApplication:
     async def delete_conversation(self, conversation_id: str) -> dict[str, Any]:
         now = datetime.now(UTC)
         object_keys: list[str] = []
+        deleted_files: list[FileModel] = []
         with self._sessions() as session:
             conversation = _conversation(session, conversation_id)
             file_ids = list(
-                session.scalars(
-                    select(ConversationFileModel.file_id).where(
-                        ConversationFileModel.workspace_id == LOCAL_WORKSPACE_ID,
-                        ConversationFileModel.conversation_id == conversation_id,
-                        ConversationFileModel.deleted_at.is_(None),
+                dict.fromkeys(
+                    session.scalars(
+                        select(ConversationFileModel.file_id).where(
+                            ConversationFileModel.workspace_id
+                            == LOCAL_WORKSPACE_ID,
+                            ConversationFileModel.conversation_id
+                            == conversation_id,
+                            ConversationFileModel.deleted_at.is_(None),
+                        )
                     )
                 )
             )
-            files = []
-            if file_ids:
-                files = list(
+            files = (
+                list(
                     session.scalars(
                         select(FileModel).where(
                             FileModel.workspace_id == LOCAL_WORKSPACE_ID,
                             FileModel.id.in_(file_ids),
                             FileModel.deleted_at.is_(None),
+                            FileModel.is_deleted.is_(False),
                         )
                     )
                 )
-                object_keys = [file.storage_path for file in files]
+                if file_ids
+                else []
+            )
+            for file in files:
+                remaining_references = int(
+                    session.scalar(
+                        select(func.count(ConversationFileModel.id))
+                        .join(
+                            ConversationModel,
+                            ConversationModel.id
+                            == ConversationFileModel.conversation_id,
+                        )
+                        .where(
+                            ConversationFileModel.workspace_id
+                            == LOCAL_WORKSPACE_ID,
+                            ConversationFileModel.file_id == file.id,
+                            ConversationFileModel.conversation_id
+                            != conversation_id,
+                            ConversationFileModel.deleted_at.is_(None),
+                            ConversationModel.deleted_at.is_(None),
+                        )
+                    )
+                    or 0
+                )
+                if remaining_references:
+                    file.reference_count = remaining_references
+                    continue
+                deleted_files.append(file)
+                object_keys.append(file.storage_path)
                 parsed_documents = list(
                     session.scalars(
                         select(ParsedDocumentModel).where(
-                            ParsedDocumentModel.workspace_id == LOCAL_WORKSPACE_ID,
-                            ParsedDocumentModel.file_id.in_(file_ids),
+                            ParsedDocumentModel.workspace_id
+                            == LOCAL_WORKSPACE_ID,
+                            ParsedDocumentModel.file_id == file.id,
                         )
                     )
                 )
@@ -234,29 +268,28 @@ class PaperAgentApplication:
                 session.execute(
                     delete(DocumentChunkModel).where(
                         DocumentChunkModel.workspace_id == LOCAL_WORKSPACE_ID,
-                        DocumentChunkModel.file_id.in_(file_ids),
+                        DocumentChunkModel.file_id == file.id,
                     )
                 )
                 session.execute(
                     delete(DocumentSectionModel).where(
                         DocumentSectionModel.workspace_id == LOCAL_WORKSPACE_ID,
-                        DocumentSectionModel.file_id.in_(file_ids),
+                        DocumentSectionModel.file_id == file.id,
                     )
                 )
                 session.execute(
                     delete(ParsedDocumentModel).where(
                         ParsedDocumentModel.workspace_id == LOCAL_WORKSPACE_ID,
-                        ParsedDocumentModel.file_id.in_(file_ids),
+                        ParsedDocumentModel.file_id == file.id,
                     )
                 )
-                for file in files:
-                    file.is_deleted = True
-                    file.deleted_at = now
-                    file.reference_count = 0
-                    file.metadata_json = {
-                        **(file.metadata_json or {}),
-                        "parse_status": "deleted",
-                    }
+                file.is_deleted = True
+                file.deleted_at = now
+                file.reference_count = 0
+                file.metadata_json = {
+                    **(file.metadata_json or {}),
+                    "parse_status": "deleted",
+                }
             message_ids = list(
                 session.scalars(
                     select(MessageModel.id).where(
@@ -330,7 +363,7 @@ class PaperAgentApplication:
         return {
             "deleted": True,
             "conversation_id": conversation_id,
-            "deleted_file_count": len(files),
+            "deleted_file_count": len(deleted_files),
         }
 
     async def upload_file(
@@ -413,6 +446,23 @@ class PaperAgentApplication:
             elif link.deleted_at is not None:
                 link.deleted_at = None
                 link.uploaded_by_user = True
+            session.flush()
+            file_model.reference_count = int(
+                session.scalar(
+                    select(func.count(ConversationFileModel.id))
+                    .join(
+                        ConversationModel,
+                        ConversationModel.id == ConversationFileModel.conversation_id,
+                    )
+                    .where(
+                        ConversationFileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        ConversationFileModel.file_id == file_model.id,
+                        ConversationFileModel.deleted_at.is_(None),
+                        ConversationModel.deleted_at.is_(None),
+                    )
+                )
+                or 1
+            )
             session.commit()
             file_id = file_model.id
         task_id = await self._queue.enqueue(
@@ -470,6 +520,14 @@ class PaperAgentApplication:
             raise ProjectError(ErrorCode.INVALID_ARGUMENT, "消息不能为空")
         with self._sessions() as session:
             conversation = _conversation(session, conversation_id)
+            active_file_ids = set(
+                _active_conversation_file_ids(session, conversation_id)
+            )
+            file_ids = [
+                file_id
+                for file_id in dict.fromkeys(file_ids)
+                if file_id in active_file_ids
+            ]
             pending = session.scalar(
                 select(MessageModel)
                 .where(
@@ -532,14 +590,16 @@ class PaperAgentApplication:
                     "message_id": message.id,
                     "question": str(resume_metadata["original_request"]),
                     "clarification_answer": clean,
-                    "file_ids": list(
-                        dict.fromkeys(
+                    "file_ids": [
+                        file_id
+                        for file_id in dict.fromkeys(
                             [
                                 *resume_metadata.get("file_ids", []),
                                 *file_ids,
                             ]
                         )
-                    ),
+                        if file_id in active_file_ids
+                    ],
                     "clarification_round": int(
                         resume_metadata.get("clarification_round", 1)
                     ),
@@ -980,17 +1040,18 @@ class PaperAgentProcessor:
             exclude_message_id=str(payload.get("message_id", "")),
         )
         self._event(task_id, "task_started", "任务开始", {})
+        with self._sessions() as session:
+            active_file_ids = _active_conversation_file_ids(
+                session, conversation_id
+            )
+        active_file_id_set = set(active_file_ids)
+        file_ids = [
+            file_id
+            for file_id in dict.fromkeys(file_ids)
+            if file_id in active_file_id_set
+        ]
         if not file_ids:
-            with self._sessions() as session:
-                file_ids = list(
-                    session.scalars(
-                        select(ConversationFileModel.file_id).where(
-                            ConversationFileModel.workspace_id == LOCAL_WORKSPACE_ID,
-                            ConversationFileModel.conversation_id == conversation_id,
-                            ConversationFileModel.deleted_at.is_(None),
-                        )
-                    )
-                )
+            file_ids = active_file_ids
         runtime_mode = "legacy_safe"
         if self._unified_runtime is not None:
             runtime_execution = await self._unified_runtime.execute(
@@ -1110,6 +1171,12 @@ class PaperAgentProcessor:
             conversation_id,
             task_id,
         )
+        is_multi_paper_comparison = bool(
+            skill_activation is not None
+            and skill_activation.skill.name == "comparison_analyzer"
+            and len(dict.fromkeys(file_ids)) >= 2
+        )
+        file_labels = _active_file_labels(self._sessions, file_ids)
         for file_id in file_ids:
             with self._sessions() as session:
                 checksum = _file(session, file_id).checksum
@@ -1180,13 +1247,34 @@ class PaperAgentProcessor:
                 "section_context_truncated": section_result.truncated,
             }
         else:
-            hits = await self._retriever.search(
-                retrieval_query,
-                workspace_id=LOCAL_WORKSPACE_ID,
-                file_ids=set(file_ids),
-                limit=8,
-            )
-            retrieval_metadata = {"retrieval_mode": "ordinary_rag"}
+            if is_multi_paper_comparison:
+                hits, missing_file_ids = await self._retrieve_comparison_hits(
+                    retrieval_query,
+                    file_ids,
+                )
+                if missing_file_ids:
+                    missing_labels = [
+                        file_labels.get(file_id, file_id)
+                        for file_id in missing_file_ids
+                    ]
+                    raise ProjectError(
+                        ErrorCode.INSUFFICIENT_EVIDENCE,
+                        "以下论文没有检索到可用于对比的证据",
+                        {"files": missing_labels},
+                    )
+                retrieval_metadata = {
+                    "retrieval_mode": "comparison_balanced_rag",
+                    "comparison_file_ids": list(dict.fromkeys(file_ids)),
+                    "comparison_file_labels": file_labels,
+                }
+            else:
+                hits = await self._retriever.search(
+                    retrieval_query,
+                    workspace_id=LOCAL_WORKSPACE_ID,
+                    file_ids=set(file_ids),
+                    limit=8,
+                )
+                retrieval_metadata = {"retrieval_mode": "ordinary_rag"}
         if not hits:
             raise ProjectError(
                 ErrorCode.INSUFFICIENT_EVIDENCE,
@@ -1247,6 +1335,18 @@ class PaperAgentProcessor:
             skill_instructions=(
                 skill_activation.skill.instructions if skill_activation else ""
             ),
+            file_labels=file_labels,
+            is_multi_paper_comparison=is_multi_paper_comparison,
+            output_format=(
+                skill_activation.skill.output_contract.format
+                if skill_activation
+                else ""
+            ),
+            required_columns=(
+                skill_activation.skill.output_contract.required_columns
+                if skill_activation
+                else ()
+            ),
         )
         self._event(
             task_id,
@@ -1262,6 +1362,12 @@ class PaperAgentProcessor:
             ),
             max_tokens=2048,
             temperature=0.1,
+        )
+        answer = await self._repair_skill_output_if_needed(
+            skill_activation,
+            answer,
+            prompt,
+            task_id,
         )
         self._record_usage(conversation_id, task_id, "large", self._llm)
         self._event(
@@ -1417,6 +1523,76 @@ class PaperAgentProcessor:
             output,
             task_id or "unpersisted-task",
         )
+
+    async def _retrieve_comparison_hits(
+        self,
+        query: str,
+        file_ids: list[str],
+    ) -> tuple[list[RetrievalHit], list[str]]:
+        unique_file_ids = list(dict.fromkeys(file_ids))
+        per_file_limit = max(1, 8 // len(unique_file_ids))
+        hits_by_file: list[list[RetrievalHit]] = []
+        missing_file_ids: list[str] = []
+        for file_id in unique_file_ids:
+            file_hits = await self._retriever.search(
+                query,
+                workspace_id=LOCAL_WORKSPACE_ID,
+                file_ids={file_id},
+                limit=per_file_limit,
+            )
+            hits_by_file.append(file_hits)
+            if not file_hits:
+                missing_file_ids.append(file_id)
+        balanced_hits = [
+            hit
+            for file_hits in hits_by_file
+            for hit in file_hits
+        ][:8]
+        return balanced_hits, missing_file_ids
+
+    async def _repair_skill_output_if_needed(
+        self,
+        activation: SkillActivation | None,
+        answer: str,
+        original_prompt: str,
+        task_id: str,
+    ) -> str:
+        if activation is None or self._skill_runtime is None:
+            return answer
+        try:
+            self._skill_runtime.validate_output(activation, answer)
+            return answer
+        except ValueError:
+            contract = activation.skill.output_contract
+            columns = "、".join(contract.required_columns) or "无固定列"
+            self._event(
+                task_id,
+                "step_started",
+                "修复 Skill 输出格式",
+                {
+                    "stage": "skill_output_repair",
+                    "skill_name": activation.skill.name,
+                    "output_format": contract.format,
+                },
+            )
+            repair_prompt = (
+                f"{original_prompt}\n\n"
+                f"上一次回答：\n{answer}\n\n"
+                "上一次回答的结构不符合已激活 Skill 的输出契约。"
+                f"请保持事实、证据标签和结论不变，仅重写为 {contract.format}；"
+                f"必须包含的表头列为：{columns}。只输出修复后的完整回答。"
+            )
+            repaired = await self._generate_substantive_answer(
+                repair_prompt,
+                system_prompt=(
+                    "你是论文问答助手。只能依据提供的证据修复输出格式；"
+                    "不得新增事实或证据标签。"
+                ),
+                max_tokens=2048,
+                temperature=0.0,
+            )
+            self._skill_runtime.validate_output(activation, repaired)
+            return repaired
 
     async def _generate_substantive_answer(
         self,
@@ -1674,6 +1850,52 @@ def _file_dict(model: FileModel) -> dict[str, Any]:
     }
 
 
+def _active_conversation_file_ids(
+    session: Session,
+    conversation_id: str,
+) -> list[str]:
+    return list(
+        session.scalars(
+            select(ConversationFileModel.file_id)
+            .join(FileModel, FileModel.id == ConversationFileModel.file_id)
+            .where(
+                ConversationFileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                ConversationFileModel.conversation_id == conversation_id,
+                ConversationFileModel.deleted_at.is_(None),
+                FileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                FileModel.deleted_at.is_(None),
+                FileModel.is_deleted.is_(False),
+            )
+            .order_by(ConversationFileModel.created_at, ConversationFileModel.id)
+        )
+    )
+
+
+def _active_file_labels(
+    sessions: sessionmaker[Session],
+    file_ids: list[str],
+) -> dict[str, str]:
+    unique_file_ids = list(dict.fromkeys(file_ids))
+    if not unique_file_ids:
+        return {}
+    with sessions() as session:
+        files = list(
+            session.scalars(
+                select(FileModel).where(
+                    FileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    FileModel.id.in_(unique_file_ids),
+                    FileModel.deleted_at.is_(None),
+                    FileModel.is_deleted.is_(False),
+                )
+            )
+        )
+    names = {file_model.id: file_model.filename for file_model in files}
+    return {
+        file_id: names.get(file_id, file_id)
+        for file_id in unique_file_ids
+    }
+
+
 def _answer_prompt(
     question: str,
     hits: list[RetrievalHit],
@@ -1682,9 +1904,15 @@ def _answer_prompt(
     conversation_context: str = "",
     visual_artifacts: list[dict[str, Any]] | None = None,
     skill_instructions: str = "",
+    file_labels: dict[str, str] | None = None,
+    is_multi_paper_comparison: bool = False,
+    output_format: str = "",
+    required_columns: tuple[str, ...] = (),
 ) -> str:
+    labels = file_labels or {}
     evidence = "\n\n".join(
-        f"[E{index}] 文件 {hit.file_id}，第 {hit.page_start} 页，"
+        f"[E{index}] 论文 {labels.get(hit.file_id, hit.file_id)}"
+        f"（file_id: {hit.file_id}），第 {hit.page_start} 页，"
         f"章节 {' / '.join(hit.section_path)}：\n{hit.text}"
         for index, hit in enumerate(hits, 1)
     )
@@ -1693,6 +1921,23 @@ def _answer_prompt(
         f"章节 {' / '.join(item['section']) or '未识别'}）：{item['caption'] or '无标题文字'}"
         for item in (visual_artifacts or [])
     )
+    output_requirements = ""
+    if output_format == "markdown_table":
+        columns = " | ".join(required_columns) or "论文"
+        output_requirements = (
+            "\n输出结构要求：必须包含合法的 Markdown 表格，"
+            f"表头至少包含：{columns}。"
+        )
+    if is_multi_paper_comparison:
+        paper_names = "、".join(
+            labels.get(file_id, file_id) for file_id in dict.fromkeys(labels)
+        )
+        output_requirements += (
+            f"\n多论文对比要求：对 {paper_names} 分别归纳；每篇论文在表格中"
+            "单独占一行，使用论文文件名，不得把不同论文的证据混为一篇；"
+            "除“论文”列外，根据用户问题选择“主要内容”“方法”“数据集”"
+            "或“结果”等对比维度，并在对应事实后保留证据标签。"
+        )
     return (
         f"已激活 Skill 指令：\n{skill_instructions or '无'}\n\n"
         f"与当前问题相关的历史问答：\n{conversation_context or '无'}\n\n"
@@ -1701,6 +1946,7 @@ def _answer_prompt(
         f"可用论文证据：\n{evidence}\n\n请生成中文回答。"
         f"\n\n可用视觉材料：\n{visuals or '无'}\n"
         "如果回答提到图、表或算法，请使用其准确标签；界面会自动附上对应截图。"
+        f"{output_requirements}"
     )
 
 
@@ -1745,22 +1991,25 @@ def _related_conversation_context(
             re.IGNORECASE,
         )
     )
+    compact_question = "".join(question.split())
+    follow_up = follow_up or bool(
+        len(compact_question) <= 40
+        and re.search(
+            r"(?:呢|又如何|怎么样|如何|怎样|多少|哪些|是什么)[？?]?$",
+            compact_question,
+            re.IGNORECASE,
+        )
+    )
     scored: list[tuple[float, MessageModel]] = []
     for message in messages:
         terms = set(retrieval_terms(message.content))
         overlap = len(question_terms & terms) / max(1, len(question_terms))
         scored.append((overlap, message))
     max_overlap = max((score for score, _ in scored), default=0.0)
-    if not follow_up and max_overlap < 0.18:
-        return {
-            "text": "",
-            "source_message_ids": [],
-            "reason": "independent_turn",
-            "retrieval_query": "",
-        }
     selected_ids = {
         message.id for score, message in scored if score >= 0.12
     }
+    selected_ids.update(message.id for message in messages[-2:])
     if follow_up:
         selected_ids.update(message.id for message in messages[-4:])
     selected = [message for message in messages if message.id in selected_ids][
@@ -1790,7 +2039,13 @@ def _related_conversation_context(
     return {
         "text": "\n".join(lines),
         "source_message_ids": source_ids,
-        "reason": "follow_up" if follow_up else "topic_overlap",
+        "reason": (
+            "follow_up"
+            if follow_up
+            else "topic_overlap"
+            if max_overlap >= 0.18
+            else "recent_context"
+        ),
         "retrieval_query": retrieval_query,
     }
 
