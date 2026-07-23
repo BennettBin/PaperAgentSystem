@@ -1,0 +1,633 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-07-21T00:00:00Z",
+  "dataset_version": "paperagent-eval-v1",
+  "truth_class": "integration_real",
+  "gold_truth_class": "human_review",
+  "gold_provenance": "L02 QASPER human reference answers; negative candidates are controlled perturbations, not human answers",
+  "case_count": 50,
+  "human_reference_gold_count": 50,
+  "controlled_negative_count": 25,
+  "agreement_rate": 1.0,
+  "three_run_consistency_rate": 1.0,
+  "results": [
+    {
+      "case_id": "l2-001",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "0f9c1586f1b4b531fa4fd113e767d06af90b1ae8-e1",
+        "0f9c1586f1b4b531fa4fd113e767d06af90b1ae8-e2"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-002",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "ec2045e0da92989642a5b5f2b1130c8bd765bcc5-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-003",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "cc8bcea4052bf92f249dda276acc5fd16cac6fb4-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-004",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "f7d61648ae4bd46c603a271185c3adfac5fc5114-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-005",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "058b6e3fdbb607fa7dbfc688628b3e13e130c35a-e1",
+        "058b6e3fdbb607fa7dbfc688628b3e13e130c35a-e2"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-006",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "79e61134a6e29141cd19252571ffc92a0b4bc97f-e1",
+        "79e61134a6e29141cd19252571ffc92a0b4bc97f-e2"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-007",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "998fa38634000f2d7b52d16518b9e18e898ce933-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-008",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "894bbb1e42540894deb31c04cba0e6cfb10ea912-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-009",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "a79a23573d74ec62cbed5d5457a51419a66f6296-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-011",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "860257956b83099cccf1359e5d960289d7d50265-e1",
+        "860257956b83099cccf1359e5d960289d7d50265-e2"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-012",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "1d10e069b4304fabfbed69acf409f0a311bdc441-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-013",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "6e37f43f4f54ffc77c785d60c6058fbad2147922-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-014",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "4485e32052741972877375667901f61e602ec4de-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-015",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "42dcf1bb19b8470993c05e55413eed487b0f2559-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-016",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "2aeabec8a734a6e8ca9e7a308dd8c9a1011b3d6e-e1",
+        "2aeabec8a734a6e8ca9e7a308dd8c9a1011b3d6e-e2"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-017",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "a9d5f83f4b32c52105f2ae1c570f1c590ac52487-e1",
+        "a9d5f83f4b32c52105f2ae1c570f1c590ac52487-e2"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-018",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "5aa6556ffd7142933f820a015f1294d38e8cd96c-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-019",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "1c3a20dceec2a86fb61e70fab97a9fb549b5c54c-e1",
+        "1c3a20dceec2a86fb61e70fab97a9fb549b5c54c-e2"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-021",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "814e945668e2b6f31b088918758b120fb00ada7d-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-022",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "14fdc8087f2a62baea9d50c4aa3a3f8310b38d17-e1",
+        "14fdc8087f2a62baea9d50c4aa3a3f8310b38d17-e2",
+        "14fdc8087f2a62baea9d50c4aa3a3f8310b38d17-e3",
+        "14fdc8087f2a62baea9d50c4aa3a3f8310b38d17-e4"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-023",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "9887ca3d25e2109f41d1da80eeea05c465053fbc-e1",
+        "9887ca3d25e2109f41d1da80eeea05c465053fbc-e2"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-024",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "baad4b6f834d5944f61bd12f30908e3cf3739dcd-e1",
+        "baad4b6f834d5944f61bd12f30908e3cf3739dcd-e2",
+        "baad4b6f834d5944f61bd12f30908e3cf3739dcd-e3",
+        "baad4b6f834d5944f61bd12f30908e3cf3739dcd-e4"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-025",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "5a7d1ae6796e09299522ebda7bfcfad312d6d128-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-026",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "0bde3ecfdd7c4a9af23f53da2cda6cd7a8398220-e1"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-027",
+      "expected_verdict": "pass",
+      "actual_verdict": "pass",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Candidate exactly matches the normalized human reference answer and uses valid evidence IDs.",
+      "evidence_ids": [
+        "3e3e45094f952704f1f679701470c3dbd845999e-e2",
+        "3e3e45094f952704f1f679701470c3dbd845999e-e3",
+        "3e3e45094f952704f1f679701470c3dbd845999e-e5",
+        "3e3e45094f952704f1f679701470c3dbd845999e-e7",
+        "3e3e45094f952704f1f679701470c3dbd845999e-e8"
+      ],
+      "calibration_variant": "human_reference_exact"
+    },
+    {
+      "case_id": "l2-028",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-029",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-031",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-032",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-033",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-034",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-035",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-036",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-037",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-038",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-039",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-041",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-042",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-043",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-044",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-045",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-046",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-047",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-048",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-049",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-051",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-052",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-053",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-054",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    },
+    {
+      "case_id": "l2-055",
+      "expected_verdict": "fail",
+      "actual_verdict": "fail",
+      "three_run_consistency": 1.0,
+      "judge_type": "programmatic",
+      "judge_version": "programmatic-judge-v1",
+      "reason_summary": "Evidence-required answer contains no candidate evidence IDs.",
+      "evidence_ids": [],
+      "calibration_variant": "controlled_missing_evidence_negative"
+    }
+  ]
+}

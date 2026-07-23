@@ -1,0 +1,105 @@
+{
+  "schema_version": "1.0",
+  "demo_version": "p05-offline-demo-v1",
+  "scenario": "L4 multi-paper comparison evidence tour",
+  "policy_notice": "The production route remains Safe RAG. Dynamic Planner and Multi-Agent are demonstrated as bounded experimental evidence because M06/N05 are NO-GO.",
+  "steps": [
+    {
+      "sequence": 1,
+      "kind": "route",
+      "title": "Route complex request without silently promoting experiments",
+      "truth_class": "integration_real",
+      "source_artifact": "evaluation/reports/p01_runtime_integration_v1/report.json",
+      "data": {
+        "production_default": "safe_rag",
+        "dynamic_planner": "opt_in_no_go",
+        "multi_agent": "opt_in_no_go",
+        "cascade": "unavailable_o_skipped"
+      }
+    },
+    {
+      "sequence": 2,
+      "kind": "plan_change",
+      "title": "Show bounded Plan state transition",
+      "truth_class": "unit_fixture",
+      "source_artifact": "tests/test_m05_dynamic_executor.py",
+      "data": {
+        "from_version": 1,
+        "to_version": 2,
+        "trigger": "insufficient_evidence",
+        "max_replans": 2,
+        "claim_boundary": "mechanism evidence only"
+      }
+    },
+    {
+      "sequence": 3,
+      "kind": "agent_roles",
+      "title": "Replay the bounded collaboration roles",
+      "truth_class": "offline_real_model",
+      "source_artifact": "evaluation/reports/n05_multi_agent_ablation_v1/report.json",
+      "data": {
+        "roles": [
+          "paper_reader",
+          "evidence",
+          "critic",
+          "writer",
+          "verifier"
+        ],
+        "depth": 1,
+        "calls_per_case": 5,
+        "promotion_decision": "NO-GO"
+      }
+    },
+    {
+      "sequence": 4,
+      "kind": "citations",
+      "title": "Inspect Gold evidence IDs and page provenance",
+      "truth_class": "human_review",
+      "source_artifact": "evaluation/datasets/v1/test_cases_v1.jsonl",
+      "data": {
+        "case_id": "l4-001",
+        "evidence_count": 2,
+        "items": [
+          {
+            "evidence_id": "l4-001-p1-e1",
+            "paper_id": "qasper:1802.06053",
+            "page": 12,
+            "section": "Corpora and acoustic features"
+          },
+          {
+            "evidence_id": "l4-001-p2-e1",
+            "paper_id": "qasper:1708.01065",
+            "page": 40,
+            "section": "Data Properties"
+          }
+        ]
+      }
+    },
+    {
+      "sequence": 5,
+      "kind": "verifier",
+      "title": "Inspect the frozen Full-System quality outcome",
+      "truth_class": "offline_real_model",
+      "source_artifact": "evaluation/reports/n05_multi_agent_ablation_v1/case_scores.jsonl",
+      "data": {
+        "task_success": false,
+        "claim_support": 0.5,
+        "omission_rate": 0.5,
+        "negative_result_visible": true
+      }
+    },
+    {
+      "sequence": 6,
+      "kind": "metrics",
+      "title": "Close with measured Token and latency",
+      "truth_class": "offline_real_model",
+      "source_artifact": "evaluation/reports/n05_multi_agent_ablation_v1/case_scores.jsonl",
+      "data": {
+        "total_tokens": 9401,
+        "latency_ms": 39779,
+        "system_id": "full_system",
+        "report": "evaluation/reports/p04_final_v1/report.json"
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "file_id",
+    "page_count",
+    "section_count",
+    "chunk_count",
+    "visual_artifact_count"
+  ],
+  "properties": {
+    "file_id": {
+      "type": "string"
+    },
+    "page_count": {
+      "type": "integer"
+    },
+    "section_count": {
+      "type": "integer"
+    },
+    "chunk_count": {
+      "type": "integer"
+    },
+    "visual_artifact_count": {
+      "type": "integer"
+    }
+  }
+}

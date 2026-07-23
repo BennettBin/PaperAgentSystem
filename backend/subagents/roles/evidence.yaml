@@ -1,0 +1,20 @@
+name: evidence_agent
+version: 1.0.0
+role: evidence
+description: Builds claim-to-source evidence mappings from paper artifacts.
+model_profile: evidence_v1
+allowed_tools: [build_comparison_table, verify_claim]
+input_schema: evidence.input.schema.json
+output_schema: evidence.output.schema.json
+budget: {max_tokens: 2500, max_steps: 5, max_tool_calls: 8, timeout_seconds: 90, max_retries: 1}
+stop_conditions: [evidence_bundle_emitted, no_supported_claims]
+failure_policy: {required: true, on_unavailable: fail, on_timeout: retry_once}
+max_depth: 1
+can_message_user: false
+can_spawn_agents: false
+example_input:
+  claim_refs: [artifact://claim/claim-1]
+  paper_card_refs: [artifact://paper_card/paper-1-v1]
+example_output:
+  evidence_bundle_ref: artifact://evidence/bundle-1
+  unsupported_claim_refs: []

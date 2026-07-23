@@ -2,10 +2,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from infrastructure.fake.llm_clients import FakeEmbeddingClient
-from infrastructure.postgres.models import Base
-from workspace.search import WorkspaceSearchService
-from workspace.service import WorkspaceService
+from backend.infrastructure.fake.llm_clients import FakeEmbeddingClient
+from backend.infrastructure.postgres.models import Base
+from backend.workspace.search import WorkspaceSearchService
+from backend.workspace.service import WorkspaceService
 
 
 @pytest.fixture

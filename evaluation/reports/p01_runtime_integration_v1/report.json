@@ -1,0 +1,37 @@
+{
+  "work_package": "P01",
+  "status": "completed_with_user_scope_override",
+  "recorded_at": "2026-07-22",
+  "scope_override": {
+    "stage_o": "skipped_by_user",
+    "cascade": "unavailable_o_skipped",
+    "model_upgrade_e2e": "fail_closed_not_claimed"
+  },
+  "production_policy": {
+    "default_mode": "fast_path_or_safe_rag",
+    "dynamic_planner_default": false,
+    "multi_agent_default": false,
+    "experimental_no_go_default": false,
+    "fake_answer_adapter_default": false
+  },
+  "evidence": {
+    "python_regression": "36 passed",
+    "frontend_components": "18 passed",
+    "final_acceptance_and_runtime": "4 passed",
+    "ruff": "passed",
+    "mypy": "passed",
+    "typescript": "passed",
+    "next_build": "passed",
+    "compose_services_healthy": 8,
+    "api_adapter_mode": "real",
+    "web_http_status": 200,
+    "legacy_migration": "idempotent runtime schema migration tested",
+    "dynamic_real_evidence": "evaluation/reports/m06_planner_ablation_v1",
+    "multi_agent_real_evidence": "evaluation/reports/n05_multi_agent_ablation_v1"
+  },
+  "limitations": [
+    "M06 and N05 are effect No-Go, so their paths remain non-default.",
+    "Stage O was skipped by explicit user instruction; no SFT or Cascade effect is claimed.",
+    "The model-upgrade E2E acceptance item is replaced by a tested fail-closed unavailable state."
+  ]
+}

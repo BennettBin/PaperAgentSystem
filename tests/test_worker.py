@@ -1,9 +1,9 @@
 import pytest
 
-from apps.worker.fake_queue import FakeTaskQueue
-from apps.worker.handler_registry import HandlerRegistry
-from apps.worker.main import create_worker
-from apps.worker.tasks import (
+from backend.apps.worker.fake_queue import FakeTaskQueue
+from backend.apps.worker.handler_registry import HandlerRegistry
+from backend.apps.worker.main import create_worker
+from backend.apps.worker.tasks import (
     CancellationToken,
     DocumentParseTask,
     MainAgentTask,
@@ -13,7 +13,7 @@ from apps.worker.tasks import (
     TaskStatus,
     TaskType,
 )
-from core.domain.ids import TaskId, WorkspaceId
+from backend.core.domain.ids import TaskId, WorkspaceId
 
 
 @pytest.mark.asyncio

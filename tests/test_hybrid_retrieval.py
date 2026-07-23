@@ -4,12 +4,17 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from infrastructure.postgres.models import Base, DocumentChunkModel, ParsedDocumentModel
-from rag.local_models import (
+from backend.infrastructure.postgres.models import (
+    Base,
+    DocumentChunkModel,
+    DocumentSectionModel,
+    ParsedDocumentModel,
+)
+from backend.rag.local_models import (
     MultilingualHashEmbeddingClient,
     MultilingualLexicalReranker,
 )
-from rag.retrieval import HybridRetriever
+from backend.rag.retrieval import HybridRetriever
 
 TOPICS = [
     "bayesian calibration",
@@ -50,6 +55,14 @@ class LexicalReranker:
             for index, document in enumerate(documents)
         ]
         return sorted(scored, key=lambda item: (-item[1], item[0]))[:top_k]
+
+
+class ZeroEmbeddings:
+    async def embed(self, text: str) -> list[float]:
+        return [0.0] * 1024
+
+    async def embed_batch(self, texts: list[str]) -> list[list[float]]:
+        return [[0.0] * 1024 for _ in texts]
 
 
 @pytest.fixture
@@ -165,6 +178,16 @@ async def test_named_section_expands_contiguous_section_context(database) -> Non
 
 
 @pytest.mark.asyncio
+async def test_exact_and_bm25_recall_work_when_vectors_are_uninformative(database) -> None:
+    retriever = HybridRetriever(database, ZeroEmbeddings(), LexicalReranker())
+
+    hits = await retriever.search("unique token topic6", workspace_id="ws-1", limit=5)
+
+    assert hits
+    assert hits[0].file_id == "file-6"
+
+
+@pytest.mark.asyncio
 async def test_production_local_retrieval_pass_at_5(database) -> None:
     embeddings = MultilingualHashEmbeddingClient()
     with database() as session:
@@ -209,3 +232,289 @@ async def test_production_local_retrieval_pass_at_5(database) -> None:
     assert pass_at_5 >= 0.90
     assert recall_at_10 >= 0.95
     assert mrr_at_10 >= 0.80
+
+
+@pytest.fixture
+def section_database(tmp_path):
+    engine = create_engine(f"sqlite:///{(tmp_path / 'section-retrieval.db').as_posix()}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(engine, expire_on_commit=False)
+    with factory() as session:
+        session.add(
+            ParsedDocumentModel(
+                id="doc-sections",
+                workspace_id="ws-1",
+                file_id="paper-1",
+                checksum="a" * 64,
+                parser_name="fixture",
+                parser_version="1",
+                page_count=8,
+                quality_score=100,
+            )
+        )
+        sections = [
+            ("s4", "4", "Experiments", None, 0),
+            ("s41", "4.1", "Datasets", "s4", 1),
+            ("s42", "4.2", "Ablation Study", "s4", 2),
+            ("s5", "5", "Conclusion", None, 3),
+        ]
+        for section_id, number, title, parent_id, ordinal in sections:
+            session.add(
+                DocumentSectionModel(
+                    id=f"row-{section_id}",
+                    workspace_id="ws-1",
+                    file_id="paper-1",
+                    document_id="doc-sections",
+                    section_id=section_id,
+                    number=number,
+                    title=title,
+                    normalized_title=title.casefold(),
+                    level=1 if parent_id is None else 2,
+                    parent_section_id=parent_id,
+                    section_path=(
+                        ["4 Experiments", f"{number} {title}"]
+                        if parent_id
+                        else [f"{number} {title}"]
+                    ),
+                    ordinal=ordinal,
+                    page_start=ordinal + 1,
+                    page_end=ordinal + 1,
+                    heading_block_id=f"heading-{section_id}",
+                )
+            )
+        chunk_specs = [
+            ("c4", "s4", "Experiments", ["4 Experiments"], 0, "Experiment overview and protocol."),
+            ("c41", "s41", "Datasets", ["4 Experiments", "4.1 Datasets"], 0, "The study uses PaperBench and ScholarQA datasets."),
+            ("c42", "s42", "Ablation Study", ["4 Experiments", "4.2 Ablation Study"], 0, "The ablation removes memory, routing, and reranking."),
+            ("c5", "s5", "Conclusion", ["5 Conclusion"], 0, "The conclusion describes future work."),
+        ]
+        for index, (chunk_id, section_id, title, path, chunk_index, text) in enumerate(chunk_specs):
+            session.add(
+                DocumentChunkModel(
+                    id=chunk_id,
+                    workspace_id="ws-1",
+                    file_id="paper-1",
+                    document_id="doc-sections",
+                    parent_chunk_id=None,
+                    level="child",
+                    section_id=section_id,
+                    section_number=path[-1].split()[0],
+                    section_title=title,
+                    section_path=path,
+                    chunk_index_in_section=chunk_index,
+                    text=text,
+                    page_start=index + 1,
+                    page_end=index + 1,
+                    bbox_json=[0, 0, 100, 100],
+                    source_block_ids=[f"block-{chunk_id}"],
+                    embedding=vector(text),
+                    embedding_model="topic-v1",
+                    searchable_text=f"{' / '.join(path)}\n{text}",
+                )
+            )
+        session.commit()
+    return factory
+
+
+@pytest.mark.asyncio
+async def test_parent_section_summary_includes_descendants_in_document_order(
+    section_database,
+) -> None:
+    retriever = HybridRetriever(
+        section_database,
+        TopicEmbeddings(),
+        LexicalReranker(),
+    )
+
+    result = await retriever.search_section(
+        "请总结第 4 节",
+        workspace_id="ws-1",
+        file_ids={"paper-1"},
+        max_context_characters=10_000,
+    )
+
+    assert result.resolution.status == "resolved"
+    assert result.mode == "summary"
+    assert result.scope_section_ids == ("s4", "s41", "s42")
+    assert [hit.chunk_id for hit in result.hits] == ["c4", "c41", "c42"]
+    assert result.truncated is False
+
+
+@pytest.mark.asyncio
+async def test_section_qa_uses_exact_resolved_scope(section_database) -> None:
+    retriever = HybridRetriever(
+        section_database,
+        TopicEmbeddings(),
+        LexicalReranker(),
+    )
+
+    result = await retriever.search_section(
+        "第 4.1 节使用了什么数据集？",
+        workspace_id="ws-1",
+        file_ids={"paper-1"},
+    )
+
+    assert result.resolution.status == "resolved"
+    assert result.mode == "qa"
+    assert result.scope_section_ids == ("s41",)
+    assert result.hits
+    assert {hit.chunk_id for hit in result.hits} == {"c41"}
+
+
+@pytest.mark.asyncio
+async def test_section_qa_expands_adjacent_chunks_after_rerank(
+    section_database,
+) -> None:
+    with section_database() as session:
+        for index, text in (
+            (1, "Dataset preprocessing details before the metric."),
+            (2, "The special metric reaches 97 percent accuracy."),
+            (3, "Dataset limitations discussed after the metric."),
+        ):
+            session.add(
+                DocumentChunkModel(
+                    id=f"qa-adjacent-{index}",
+                    workspace_id="ws-1",
+                    file_id="paper-1",
+                    document_id="doc-sections",
+                    parent_chunk_id=None,
+                    level="child",
+                    section_id="s41",
+                    section_number="4.1",
+                    section_title="Datasets",
+                    section_path=["4 Experiments", "4.1 Datasets"],
+                    chunk_index_in_section=index,
+                    text=text,
+                    page_start=2,
+                    page_end=2,
+                    bbox_json=[0, 0, 100, 100],
+                    source_block_ids=[f"qa-block-{index}"],
+                    embedding=vector(text),
+                    embedding_model="topic-v1",
+                    searchable_text=text,
+                )
+            )
+        session.commit()
+    retriever = HybridRetriever(
+        section_database,
+        TopicEmbeddings(),
+        LexicalReranker(),
+    )
+
+    result = await retriever.search_section(
+        "第 4.1 节的 special metric 是多少？",
+        workspace_id="ws-1",
+        file_ids={"paper-1"},
+        limit=3,
+    )
+
+    assert [hit.chunk_id for hit in result.hits] == [
+        "qa-adjacent-1",
+        "qa-adjacent-2",
+        "qa-adjacent-3",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_long_section_summary_keeps_head_middle_tail_under_budget(
+    section_database,
+) -> None:
+    with section_database() as session:
+        for index in range(1, 6):
+            text = f"ordered segment {index} " + ("x" * 60)
+            session.add(
+                DocumentChunkModel(
+                    id=f"c41-{index}",
+                    workspace_id="ws-1",
+                    file_id="paper-1",
+                    document_id="doc-sections",
+                    parent_chunk_id=None,
+                    level="child",
+                    section_id="s41",
+                    section_number="4.1",
+                    section_title="Datasets",
+                    section_path=["4 Experiments", "4.1 Datasets"],
+                    chunk_index_in_section=index,
+                    text=text,
+                    page_start=index + 2,
+                    page_end=index + 2,
+                    bbox_json=[0, 0, 100, 100],
+                    source_block_ids=[f"block-c41-{index}"],
+                    embedding=vector(text),
+                    embedding_model="topic-v1",
+                    searchable_text=text,
+                )
+            )
+        session.commit()
+    retriever = HybridRetriever(
+        section_database,
+        TopicEmbeddings(),
+        LexicalReranker(),
+    )
+
+    result = await retriever.search_section(
+        "总结第 4.1 节",
+        workspace_id="ws-1",
+        file_ids={"paper-1"},
+        max_context_characters=180,
+    )
+
+    ids = [hit.chunk_id for hit in result.hits]
+    assert result.truncated is True
+    assert ids[0] == "c41"
+    assert "c41-3" in ids
+    assert ids[-1] == "c41-5"
+
+
+@pytest.mark.asyncio
+async def test_duplicate_section_number_across_files_requires_clarification(
+    section_database,
+) -> None:
+    with section_database() as session:
+        session.add(
+            ParsedDocumentModel(
+                id="doc-other",
+                workspace_id="ws-1",
+                file_id="paper-2",
+                checksum="b" * 64,
+                parser_name="fixture",
+                parser_version="1",
+                page_count=1,
+                quality_score=100,
+            )
+        )
+        session.add(
+            DocumentSectionModel(
+                id="row-other-s4",
+                workspace_id="ws-1",
+                file_id="paper-2",
+                document_id="doc-other",
+                section_id="other-s4",
+                number="4",
+                title="Evaluation",
+                normalized_title="evaluation",
+                level=1,
+                parent_section_id=None,
+                section_path=["4 Evaluation"],
+                ordinal=0,
+                page_start=1,
+                page_end=1,
+                heading_block_id="other-heading",
+            )
+        )
+        session.commit()
+    retriever = HybridRetriever(
+        section_database,
+        TopicEmbeddings(),
+        LexicalReranker(),
+    )
+
+    result = await retriever.search_section(
+        "总结第 4 节",
+        workspace_id="ws-1",
+        file_ids={"paper-1", "paper-2"},
+    )
+
+    assert result.resolution.status == "ambiguous"
+    assert result.resolution.clarification_question
+    assert result.hits == ()

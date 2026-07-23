@@ -2,16 +2,17 @@ import json
 
 import pytest
 
-from core.errors import ErrorCode, ProjectError
-from infrastructure.fake.llm_clients import FakeLLMClient
-from infrastructure.fake.observability import FakeTraceWriter
-from models.client import OpenAICompatibleLLMClient, ProfiledLLMClient
-from models.registry import (
+from backend.core.errors import ErrorCode, ProjectError
+from backend.infrastructure.fake.llm_clients import FakeLLMClient
+from backend.infrastructure.fake.observability import FakeTraceWriter
+from backend.models.client import OpenAICompatibleLLMClient, ProfiledLLMClient
+from backend.models.registry import (
     InMemoryModelRegistry,
     ModelProfileConfig,
     ModelVersionManifest,
     default_model_registry,
 )
+from backend.models.runtime import RuntimeSelectedLLMClient
 
 
 def profile(
@@ -171,6 +172,53 @@ async def test_openai_compatible_client_rejects_empty_content() -> None:
 
     with pytest.raises(ProjectError):
         await client.generate("question")
+
+
+@pytest.mark.asyncio
+async def test_openai_compatible_client_rejects_think_only_content() -> None:
+    async def post(url: str, headers: dict, payload: dict, timeout: float) -> dict:
+        return {"choices": [{"message": {"content": "<think>hidden</think>"}}]}
+
+    client = OpenAICompatibleLLMClient(
+        base_url="http://model-service/v1",
+        api_key="",
+        model="logical-model",
+        post_json=post,
+    )
+
+    with pytest.raises(ProjectError):
+        await client.generate("question")
+
+
+@pytest.mark.asyncio
+async def test_runtime_selected_client_puts_no_think_in_user_prompt() -> None:
+    class CapturingClient(FakeLLMClient):
+        prompt = ""
+        system_prompt = ""
+
+        async def generate(
+            self, prompt: str, system_prompt: str | None = None, *args, **kwargs
+        ) -> str:
+            self.prompt = prompt
+            self.system_prompt = system_prompt or ""
+            return await super().generate(prompt, system_prompt, *args, **kwargs)
+
+    class Runtime:
+        client = CapturingClient()
+
+        async def selected_client(self, role: str):
+            return self.client
+
+        async def selected_descriptor(self, role: str):
+            return {"serving_model": "qwen-test"}
+
+    runtime = Runtime()
+    client = RuntimeSelectedLLMClient(runtime, "large")
+
+    await client.generate("回答问题", system_prompt="系统指令")
+
+    assert runtime.client.prompt.endswith("/no_think")
+    assert "/no_think" not in runtime.client.system_prompt
 
 
 @pytest.mark.asyncio

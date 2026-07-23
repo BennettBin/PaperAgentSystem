@@ -2,19 +2,19 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.domain.conversation import Conversation, Message
-from core.domain.user import User, Workspace
-from infrastructure.fake.llm_clients import FakeEmbeddingClient
-from infrastructure.postgres.models import Base
-from infrastructure.postgres.repositories import (
+from backend.core.domain.conversation import Conversation, Message
+from backend.core.domain.user import User, Workspace
+from backend.infrastructure.fake.llm_clients import FakeEmbeddingClient
+from backend.infrastructure.postgres.models import Base
+from backend.infrastructure.postgres.repositories import (
     SqlAlchemyConversationRepository,
     SqlAlchemyMessageRepository,
     SqlAlchemyUserRepository,
     SqlAlchemyWorkspaceRepository,
 )
-from memory.long_term import LongTermMemoryService
-from workspace.search import WorkspaceSearchService
-from workspace.service import WorkspaceService
+from backend.memory.long_term import LongTermMemoryService
+from backend.workspace.search import WorkspaceSearchService
+from backend.workspace.service import WorkspaceService
 
 
 @pytest.fixture

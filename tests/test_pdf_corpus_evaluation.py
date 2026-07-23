@@ -6,7 +6,7 @@ from pathlib import Path
 import fitz
 import pytest
 
-from document_processing.pdf_parser import PyMuPDFParser
+from backend.document_processing.pdf_parser import PyMuPDFParser
 
 CORPUS = Path(__file__).parent / "fixtures" / "pdf_corpus" / "ground_truth.json"
 

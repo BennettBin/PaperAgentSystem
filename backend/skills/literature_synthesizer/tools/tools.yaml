@@ -1,0 +1,16 @@
+tools:
+  - name: search_document
+    purpose: 在当前 Skill 获准的论文范围内检索页码证据。
+    when_to_use: 回答、总结、核验或综合前需要定位证据时调用。
+    implementation: backend.tool_runtime.document_tools.SearchDocumentTool
+    example_input: {"query":"research question","file_ids":["file-001"],"limit":8}
+  - name: build_literature_review
+    purpose: 从证据矩阵和主题映射生成综述草稿。
+    when_to_use: 证据检索和主题归类完成后调用。
+    implementation: backend.tool_runtime.academic_tools.LiteratureReviewTool
+    example_input: {"evidence_map":[],"themes":{},"inferences":[]}
+  - name: save_artifact
+    purpose: 将用户需要长期管理的综述结果保存为 Artifact。
+    when_to_use: 用户要求生成可下载或长期保存的成果时调用。
+    implementation: backend.tool_runtime.workspace_tools.SaveArtifact
+    example_input: {"filename":"review.md","content":"## Review","content_type":"text/markdown"}

@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["assignment_refs","required_roles"],"properties":{"assignment_refs":{"type":"array","items":{"type":"string","minLength":1},"minItems":1},"required_roles":{"type":"array","items":{"type":"string","enum":["paper_reader","evidence","critic","writer","verifier"]},"minItems":1}}}

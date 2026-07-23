@@ -1,4 +1,4 @@
-from academic_tasks.writing_brief import (
+from backend.academic_tasks.writing_brief import (
     SourceMaterial,
     StatementKind,
     WritingBriefBuilder,

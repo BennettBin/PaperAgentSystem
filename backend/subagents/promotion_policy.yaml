@@ -1,0 +1,14 @@
+schema_version: 1.0
+decision: no_go
+source_report: evaluation/reports/n05_multi_agent_ablation_v1/report.json
+production_default: single_agent
+multi_agent_enabled_by_default: false
+roles:
+  reader_parallel: experimental_only
+  evidence: experimental_only
+  critic: experimental_only
+  verifier: deterministic_gate_only
+full_revision_enabled: false
+reason: >-
+  The 90-case offline-real-model ablation missed the Claim Support and Token gates;
+  the extra Verifier LLM pass had zero quality gain and full revision reduced Claim Support.

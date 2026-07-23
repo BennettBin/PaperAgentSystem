@@ -1,0 +1,11 @@
+tools:
+  - name: search_document
+    purpose: 在当前 Skill 获准的论文范围内检索方法与实验设计证据。
+    when_to_use: 方法信息分散在多个章节或附录时调用。
+    implementation: backend.tool_runtime.document_tools.SearchDocumentTool
+    example_input: {"query":"methodology experimental setup","file_ids":["file-001"],"limit":8}
+  - name: get_document_section
+    purpose: 读取指定论文的一个已索引章节。
+    when_to_use: 任务明确限定方法、结果或其他章节时调用。
+    implementation: backend.tool_runtime.document_tools.GetDocumentSectionTool
+    example_input: {"file_id":"file-001","section_title":"Methods"}

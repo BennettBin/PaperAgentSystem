@@ -1,0 +1,13 @@
+[
+  {
+    "input": {
+      "request": "总结论文、章节或实验",
+      "file_ids": [
+        "file-001"
+      ],
+      "conversation_id": "conversation-001",
+      "parameters": {}
+    },
+    "output": "## summary_generator\\n\\n基于论文证据的结构化结果 [E1]。"
+  }
+]

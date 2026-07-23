@@ -3,7 +3,7 @@ from io import BytesIO
 import fitz
 import pytest
 
-from document_processing.pdf_parser import PyMuPDFParser
+from backend.document_processing.pdf_parser import PyMuPDFParser
 
 
 def make_pdf(*, two_columns: bool = False, pages: int = 2) -> bytes:
@@ -43,6 +43,35 @@ def make_pdf(*, two_columns: bool = False, pages: int = 2) -> bytes:
     return stream.getvalue()
 
 
+def make_visual_pdf() -> bytes:
+    document = fitz.open()
+    page = document.new_page(width=600, height=800)
+    page.insert_text((40, 70), "2 Methods", fontsize=16)
+    page.insert_text((40, 100), "Body text before visual regions.", fontsize=11)
+
+    page.draw_rect(fitz.Rect(45, 120, 280, 245), color=(0, 0, 0))
+    page.insert_text((60, 150), "diagram pixels", fontsize=11)
+    page.insert_text((45, 265), "Figure 1: System overview", fontsize=10)
+
+    for x in (45, 145, 245):
+        page.draw_line((x, 330), (x, 430), color=(0, 0, 0))
+    for y in (330, 380, 430):
+        page.draw_line((45, y), (245, y), color=(0, 0, 0))
+    page.insert_text((65, 360), "CELL-A", fontsize=10)
+    page.insert_text((165, 360), "CELL-B", fontsize=10)
+    page.insert_text((45, 450), "Table 1: Main results", fontsize=10)
+
+    page.draw_rect(fitz.Rect(320, 500, 555, 650), color=(0, 0, 0))
+    page.insert_text((330, 525), "Algorithm 1: Training", fontsize=10)
+    page.insert_text((335, 555), "INPUT hidden-token", fontsize=10)
+    page.insert_text((335, 580), "UPDATE hidden-token", fontsize=10)
+    page.insert_text((40, 700), "Body text after visual regions.", fontsize=11)
+    stream = BytesIO()
+    document.save(stream)
+    document.close()
+    return stream.getvalue()
+
+
 @pytest.mark.asyncio
 async def test_parser_extracts_pages_bbox_headers_footers_and_sections() -> None:
     parsed = await PyMuPDFParser().parse(make_pdf(), "paper.pdf")
@@ -69,6 +98,34 @@ async def test_double_column_reading_order_is_column_major() -> None:
 
     assert body[:5] == [f"LEFT-0-{row} alpha beta gamma" for row in range(5)]
     assert body[5:] == [f"RIGHT-0-{row} delta epsilon" for row in range(5)]
+    assert parsed.pages[0].layout == "double_column"
+    assert parsed.pages[0].column_count == 2
+
+
+@pytest.mark.asyncio
+async def test_single_column_layout_is_recorded_per_page() -> None:
+    parsed = await PyMuPDFParser().parse(make_pdf(pages=1), "single.pdf")
+
+    assert parsed.pages[0].layout == "single_column"
+    assert parsed.pages[0].column_count == 1
+
+
+@pytest.mark.asyncio
+async def test_visual_regions_are_cropped_and_excluded_from_body_text() -> None:
+    parsed = await PyMuPDFParser().parse(make_visual_pdf(), "visuals.pdf")
+
+    assert {item.kind for item in parsed.visual_artifacts} == {
+        "figure",
+        "table",
+        "algorithm",
+    }
+    assert all(item.image_png.startswith(b"\x89PNG") for item in parsed.visual_artifacts)
+    assert all(item.page_number == 1 for item in parsed.visual_artifacts)
+    assert all(item.section_path == ["2 Methods"] for item in parsed.visual_artifacts)
+    assert "CELL-A" not in parsed.full_text
+    assert "INPUT hidden-token" not in parsed.full_text
+    assert "Figure 1: System overview" in parsed.full_text
+    assert "Table 1: Main results" in parsed.full_text
 
 
 @pytest.mark.asyncio

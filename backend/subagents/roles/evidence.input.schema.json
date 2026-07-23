@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["claim_refs","paper_card_refs"],"properties":{"claim_refs":{"type":"array","items":{"type":"string","minLength":1},"minItems":1},"paper_card_refs":{"type":"array","items":{"type":"string","minLength":1},"minItems":1}}}

@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "dataset_version": "evaluation-v1-contract",
+  "contract_only": true,
+  "group_keys": [
+    "paper_id",
+    "conversation_id",
+    "source_cluster_id",
+    "text_fingerprint",
+    "embedding_cluster_id"
+  ],
+  "splits": {
+    "train": [],
+    "validation": [],
+    "test": []
+  },
+  "leakage_policy": "fail_closed",
+  "note": "Empty until L02; test cases are permanently excluded from training, few-shot and threshold tuning."
+}

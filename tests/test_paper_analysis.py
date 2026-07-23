@@ -1,4 +1,4 @@
-from academic_tasks.paper_analysis import EvidencePassage, PaperCardExtractor
+from backend.academic_tasks.paper_analysis import EvidencePassage, PaperCardExtractor
 
 
 def passages(index: int = 0) -> list[EvidencePassage]:

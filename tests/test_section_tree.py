@@ -3,7 +3,7 @@ from io import BytesIO
 import fitz
 import pytest
 
-from document_processing.pdf_parser import PyMuPDFParser
+from backend.document_processing.pdf_parser import PyMuPDFParser
 
 
 def structured_pdf() -> bytes:

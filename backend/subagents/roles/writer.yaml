@@ -1,0 +1,20 @@
+name: writer_agent
+version: 1.0.0
+role: writer
+description: Produces a cited draft from approved plans and evidence artifacts.
+model_profile: writer_v1
+allowed_tools: [save_artifact]
+input_schema: writer.input.schema.json
+output_schema: writer.output.schema.json
+budget: {max_tokens: 4000, max_steps: 5, max_tool_calls: 2, timeout_seconds: 120, max_retries: 1}
+stop_conditions: [draft_emitted, evidence_insufficient]
+failure_policy: {required: true, on_unavailable: fail, on_timeout: retry_once}
+max_depth: 1
+can_message_user: false
+can_spawn_agents: false
+example_input:
+  outline_ref: artifact://outline/outline-1
+  evidence_bundle_ref: artifact://evidence/bundle-1
+example_output:
+  draft_ref: artifact://draft/draft-1
+  citation_refs: [artifact://citation/citation-1]

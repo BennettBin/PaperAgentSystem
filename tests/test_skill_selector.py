@@ -2,13 +2,28 @@ from pathlib import Path
 
 import pytest
 
-from agent_runtime.skill_selector import SkillSelector
+from backend.agent_runtime.skill_selector import SkillSelector
+from backend.infrastructure.fake.observability import FakeTraceWriter
+from backend.skills.loader import SkillManifestLoader, SkillRegistry
 
-SKILLS_ROOT = Path(__file__).parents[1] / "skills"
+SKILLS_ROOT = Path(__file__).parents[1] / "backend" / "skills"
 
 
 def selector() -> SkillSelector:
-    return SkillSelector(SKILLS_ROOT, fallback_skill="paper_reader")
+    registry = SkillRegistry(FakeTraceWriter())
+    registry.load_all(
+        SkillManifestLoader(
+            SKILLS_ROOT,
+            registered_tools={
+                "parse_document", "get_document_section", "search_document",
+                "build_comparison_table",
+                "save_artifact",
+                "build_literature_review", "extract_paper_card",
+            },
+            available_profiles={"development", "paper_reader_v1"},
+        )
+    )
+    return SkillSelector(registry, fallback_skill="paper_reader")
 
 
 @pytest.mark.asyncio
@@ -20,7 +35,8 @@ async def test_selector_returns_top_three_and_lazily_loads_only_selected_body() 
     assert result.selected.name == "comparison_analyzer"
     assert len(result.candidates) == 3
     assert service.loaded_instruction_names == {"comparison_analyzer"}
-    assert result.selected.instructions.startswith("#")
+    assert result.selected.instructions.startswith("---")
+    assert "# 多论文对比" in result.selected.instructions
 
 
 @pytest.mark.asyncio

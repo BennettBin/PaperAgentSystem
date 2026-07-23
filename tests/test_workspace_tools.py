@@ -2,24 +2,24 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from core.errors import ErrorCode, ProjectError
-from infrastructure.fake.adapters import FakeObjectStore
-from infrastructure.fake.llm_clients import FakeEmbeddingClient
-from infrastructure.fake.observability import FakeTraceWriter
-from infrastructure.postgres.models import Base
-from tool_runtime import (
+from backend.core.errors import ErrorCode, ProjectError
+from backend.infrastructure.fake.adapters import FakeObjectStore
+from backend.infrastructure.fake.llm_clients import FakeEmbeddingClient
+from backend.infrastructure.fake.observability import FakeTraceWriter
+from backend.infrastructure.postgres.models import Base
+from backend.tool_runtime import (
     InMemoryDataRefStore,
     InMemoryIdempotencyStore,
     ToolContext,
     ToolRegistry,
     ToolRuntime,
 )
-from tool_runtime.workspace_tools import (
+from backend.tool_runtime.workspace_tools import (
     InMemoryWorkspaceAuditWriter,
     register_workspace_tools,
 )
-from workspace.search import WorkspaceSearchService
-from workspace.service import WorkspaceService
+from backend.workspace.search import WorkspaceSearchService
+from backend.workspace.service import WorkspaceService
 
 
 @pytest.fixture

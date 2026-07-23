@@ -1,0 +1,19 @@
+[
+  {
+    "input": {
+      "request": "上传文件后的解析与索引",
+      "file_ids": [
+        "file-001"
+      ],
+      "conversation_id": "conversation-001",
+      "parameters": {}
+    },
+    "output": {
+      "file_id": "file-001",
+      "page_count": 10,
+      "section_count": 6,
+      "chunk_count": 24,
+      "visual_artifact_count": 3
+    }
+  }
+]

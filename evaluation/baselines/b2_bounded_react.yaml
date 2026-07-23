@@ -1,0 +1,27 @@
+schema_version: "1.0"
+baseline_id: b2_bounded_react
+label: B2 Current Bounded ReAct
+kind: bounded_react
+frozen: true
+description: Current 1.7B clarification-retrieve-answer decision followed by bounded section-aware retrieval.
+execution:
+  answer_profile: evaluation
+  decision_profile: development
+  routing: bounded_react
+  planning: none
+  retrieval: hybrid
+  verification: deterministic
+  multi_agent: false
+  max_steps: 4
+  max_replans: 0
+retrieval:
+  pipeline: [exact, section, vector, bm25, rrf, rerank]
+  candidate_limit: 30
+  final_limit: 8
+  section_resolution: true
+prompt_versions:
+  react: react-self-rag-v1
+  answer: product-rag-answer-v1
+allowed_truth_classes: [unit_fake, integration_real, offline_real_model, human_review]
+effect_metric_truth_classes: [integration_real, offline_real_model, human_review]
+effect_metrics_require_real_model: true

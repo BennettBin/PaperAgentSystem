@@ -103,7 +103,7 @@ def test_repository_j02_preflight_truthfully_reports_missing_assets() -> None:
         PreflightRequest(
             task="router",
             dataset=ROOT / "training/data/router/train.jsonl",
-            base_model=ROOT / "models/base/qwen3-1.7b",
+            base_model=ROOT / "backend/models/base/qwen3-1.7b",
             catalog=ROOT / "training/configs/profiles.yaml",
         )
     )

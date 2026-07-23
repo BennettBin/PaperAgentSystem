@@ -1,0 +1,51 @@
+{
+  "artifacts": {
+    "baseline_report.json": "sha256:219f3a8fbc735872459e02678d4728cca6f1b89a3f070277bbea2996c0157875",
+    "baseline_report.md": "sha256:327eb4706f1e85799419c872da90a055e5b9f7cc9520a1658a9e12ab76cc614f",
+    "case_scores.jsonl": "sha256:8187c42295aaa86fbfc304cfd7b34a9ba86416a30fecdfc654969046d85acdfc",
+    "dashboard.json": "sha256:d2feeb8c73945b3af4036440fc4a472fd5db8ac72e1490926a283b69149010d1"
+  },
+  "dataset_version": "paperagent-eval-v1",
+  "run_metadata": {
+    "baselines": {
+      "b0_vanilla_rag": {
+        "config_hash": "sha256:971166a6942342fef4c4fff99fed4d490bfa392374e52328075177af973243bf",
+        "prompt_versions": {
+          "answer": "product-rag-answer-v1"
+        }
+      },
+      "b1_fixed_workflow": {
+        "config_hash": "sha256:46167edb442eb82d4b3c076840b32d34bb3bd03bb049880c2f1ea7893c250231",
+        "prompt_versions": {
+          "answer": "product-rag-answer-v1",
+          "workflow": "fixed-paper-workflow-v1"
+        }
+      },
+      "b2_bounded_react": {
+        "config_hash": "sha256:be3a234a707276ce7574b8af3bee09ee22c300303a723d870c70e8fa99b01c51",
+        "prompt_versions": {
+          "answer": "product-rag-answer-v1",
+          "react": "react-self-rag-v1"
+        }
+      },
+      "b3_full_4b": {
+        "config_hash": "sha256:f863fd8c853d1faeb187f9c6e56875477d1f022355a734e7dc0f672b130b6798",
+        "prompt_versions": {
+          "answer": "product-rag-answer-v1",
+          "react": "react-self-rag-v1"
+        }
+      }
+    },
+    "dataset_cases_sha256": "afad75fa0f067d83005a0c460c8f4a599641089613b9b5a861ce196abf53e224",
+    "git_dirty": true,
+    "model_versions": {
+      "qwen3.5:4b": "sha256:2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd",
+      "qwen3:1.7b": "sha256:8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7"
+    },
+    "retriever": "in-memory-production-equivalent-hybrid-v1",
+    "seed": 20260721,
+    "truth_evidence": "ollama_real_model_usage"
+  },
+  "schema_version": "1.0",
+  "truth_class": "offline_real_model"
+}

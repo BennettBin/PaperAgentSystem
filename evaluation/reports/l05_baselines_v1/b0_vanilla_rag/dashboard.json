@@ -1,0 +1,21 @@
+{
+  "case_count": 300,
+  "dataset_version": "paperagent-eval-v1",
+  "schema_version": "1.0",
+  "systems": [
+    {
+      "case_count": 300,
+      "errors": {
+        "generation": 251,
+        "verification": 25
+      },
+      "model_calls": 300,
+      "pass_rate": 0.08,
+      "passed": 24,
+      "system_error_rate": 0.0,
+      "system_id": "b0_vanilla_rag",
+      "total_tokens": 446486
+    }
+  ],
+  "truth_class": "offline_real_model"
+}

@@ -5,11 +5,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from testcontainers.redis import RedisContainer
 
-from apps.api.config import ApiSettings
-from apps.api.dependencies import build_fake_container
-from apps.api.main import create_app
-from infrastructure.postgres.models import Base
-from infrastructure.sse.service import TaskEventStore, TaskEventStream
+from backend.apps.api.config import ApiSettings
+from backend.apps.api.dependencies import build_fake_container
+from backend.apps.api.main import create_app
+from backend.infrastructure.postgres.models import Base
+from backend.infrastructure.sse.service import TaskEventStore, TaskEventStream
 
 pytestmark = pytest.mark.integration
 

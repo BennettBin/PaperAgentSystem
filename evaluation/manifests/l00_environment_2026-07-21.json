@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "captured_at": "2026-07-21T16:55:00-04:00",
+  "commit": "ac43c4b08555cedce90c653b2095fd0b89a72cd5",
+  "worktree": {
+    "dirty": true,
+    "porcelain_entry_count": 57,
+    "note": "The snapshot includes user-owned and ongoing K-stage changes. Baseline reports must record their actual runtime commit and dirty state; this manifest is not a clean-release claim."
+  },
+  "runtime": {
+    "os": "Microsoft Windows 11 Home China 10.0.26200 64-bit",
+    "python": "3.12.3",
+    "docker_client": "29.5.3",
+    "docker_server": "29.5.3",
+    "docker_compose": "5.1.4"
+  },
+  "hardware": {
+    "cpu": "Intel Core i7-14700HX",
+    "cpu_cores": 20,
+    "cpu_logical_processors": 28,
+    "ram_bytes": 16944848896,
+    "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+    "gpu_vram_mib": 8188,
+    "nvidia_driver": "577.00"
+  },
+  "ollama_models_in_scope": [
+    {
+      "serving_model": "qwen3:1.7b",
+      "ollama_id": "8f68893c685c",
+      "size": "1.4 GB",
+      "role": "development/small decision profile"
+    },
+    {
+      "serving_model": "qwen3.5:4b",
+      "ollama_id": "2a654d98e6fb",
+      "size": "3.4 GB",
+      "role": "evaluation/production answer profile"
+    }
+  ],
+  "other_installed_models_not_in_frozen_baselines": [
+    "qwen3.5:9b",
+    "qwen3-embedding:8b",
+    "qwen3:8b",
+    "deepseek-r1:8b",
+    "llama3.1:8b",
+    "llama3.2:3b"
+  ],
+  "sha256": {
+    "models/registry.yaml": "ff27dd66d78678863814cf4c0af5032b20d162dea15cc81f2c0ca07470987f18",
+    "compose.yaml": "972a9dd34273f24c9a429903ce7b6a24551e5ded57f92b8249557f7eec618ee8",
+    "pyproject.toml": "7edcc3fddf842295a8aa0c4ce869416b855c944920e3a1179515f2642d2510c7",
+    "agent_runtime/planner.py": "ee47859e48a57b30749cd56bbc2bae3726119b041505839ae73c2c6568ce5d38",
+    "agent_runtime/react_self_rag.py": "b34289d3c369726cd2edb3244249055e45be76e0d06d10af805eb02b6dd1b553",
+    "subagents/manager.py": "def52e1eafb051307ed8334023197395d5eb9cf4ca4dc6a8f27206eccb4705b9",
+    "evaluation/runner.py": "92855456f3a541b7b2359ec84d0f207154d6992b5984a1418738ddc242040dbb"
+  },
+  "privacy": {
+    "contains_secrets": false,
+    "contains_user_paper_text": false,
+    "contains_prompts_or_responses": false
+  }
+}

@@ -1,0 +1,6 @@
+tools:
+  - name: search_document
+    purpose: 在当前 Skill 获准的论文范围内检索页码证据。
+    when_to_use: 回答、总结、核验或综合前需要定位证据时调用。
+    implementation: backend.tool_runtime.document_tools.SearchDocumentTool
+    example_input: {"query":"research question","file_ids":["file-001"],"limit":8}

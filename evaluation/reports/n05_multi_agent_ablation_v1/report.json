@@ -1,0 +1,126 @@
+{
+  "all_gates_passed": false,
+  "gates": {
+    "claim_support_gain": false,
+    "conflict_recall_gain": false,
+    "severe_unsupported_reduction": false,
+    "six_group_matrix_complete": true,
+    "token_increase_within_limit": false
+  },
+  "limitations": [
+    "Conflict gold is unavailable in frozen L4/L5; conflict Recall and its promotion gate are unavailable.",
+    "The frozen single-Agent report has no claim-level unsupported-fact annotation, so reduction is unavailable."
+  ],
+  "marginal_contribution": {
+    "critic_to_verifier": {
+      "claim_support_delta": 0.0,
+      "mean_latency_ms_delta": 6607.244444444441,
+      "mean_token_delta": 886.5999999999995,
+      "task_success_delta": 0.0
+    },
+    "evidence_to_critic": {
+      "claim_support_delta": 0.10815764482431148,
+      "mean_latency_ms_delta": 13422.477777777782,
+      "mean_token_delta": 1251.4111111111115,
+      "task_success_delta": 0.0
+    },
+    "reader_parallel_to_evidence": {
+      "claim_support_delta": 0.03425925925925927,
+      "mean_latency_ms_delta": 13114.966666666665,
+      "mean_token_delta": 3238.5444444444443,
+      "task_success_delta": 0.0
+    },
+    "verifier_to_full_system": {
+      "claim_support_delta": -0.020709876543209882,
+      "mean_latency_ms_delta": 0.0,
+      "mean_token_delta": 0.0,
+      "task_success_delta": 0.0
+    }
+  },
+  "matrix_complete": true,
+  "metrics": {
+    "claim_support_delta": 0.05632716049382715,
+    "conflict_recall_delta": null,
+    "paired_case_count": 90,
+    "severe_unsupported_reduction": null,
+    "task_success_delta": -0.011111111111111112,
+    "task_success_delta_ci": {
+      "lower": -0.03333333333333333,
+      "upper": 0.0
+    },
+    "token_per_success_increase": null,
+    "total_token_increase": 3.9802881575882605
+  },
+  "per_system": {
+    "critic": {
+      "claim_support_rate": 0.18745963912630578,
+      "mean_latency_ms": 38300.76666666667,
+      "mean_tokens": 7428.544444444445,
+      "omission_rate": 0.8125403608736943,
+      "task_success": 0.0
+    },
+    "evidence": {
+      "claim_support_rate": 0.0793019943019943,
+      "mean_latency_ms": 24878.28888888889,
+      "mean_tokens": 6177.133333333333,
+      "omission_rate": 0.9206980056980058,
+      "task_success": 0.0
+    },
+    "full_system": {
+      "claim_support_rate": 0.1667497625830959,
+      "mean_latency_ms": 44908.01111111111,
+      "mean_tokens": 8315.144444444444,
+      "omission_rate": 0.8332502374169041,
+      "task_success": 0.0
+    },
+    "reader_parallel": {
+      "claim_support_rate": 0.04504273504273504,
+      "mean_latency_ms": 11763.322222222223,
+      "mean_tokens": 2938.588888888889,
+      "omission_rate": 0.954957264957265,
+      "task_success": 0.0
+    },
+    "single_agent": {
+      "claim_support_rate": 0.11042260208926875,
+      "mean_latency_ms": 9418.655555555555,
+      "mean_tokens": 1669.611111111111,
+      "omission_rate": 0.8895773979107312,
+      "task_success": 0.011111111111111112
+    },
+    "verifier": {
+      "claim_support_rate": 0.18745963912630578,
+      "mean_latency_ms": 44908.01111111111,
+      "mean_tokens": 8315.144444444444,
+      "omission_rate": 0.8125403608736943,
+      "task_success": 0.0
+    }
+  },
+  "role_decision": {
+    "critic": "experimental_only",
+    "full_revision": "disabled; negative marginal Claim Support",
+    "multi_agent_enabled_by_default": false,
+    "production_default": "single_agent",
+    "verifier": "merge_with_deterministic_verification_gate; disable extra LLM pass"
+  },
+  "run_metadata": {
+    "case_count": 90,
+    "completed_candidate_cases": 90,
+    "gold_used_only_after_execution": true,
+    "model": "qwen3.5:4b",
+    "model_version": "sha256:2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd",
+    "role_calls_per_case": 5,
+    "same_max_token_budget": true,
+    "same_model": true,
+    "same_paper_set": true
+  },
+  "schema_version": "1.0",
+  "systems": {
+    "critic": 90,
+    "evidence": 90,
+    "full_system": 90,
+    "reader_parallel": 90,
+    "single_agent": 90,
+    "verifier": 90
+  },
+  "truth_class": "offline_real_model"
+}

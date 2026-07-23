@@ -1,0 +1,16 @@
+name: claim_verifier
+version: 1.0.0
+description: 依据给定证据判定主张为支持、矛盾或证据不足。
+model_profile: development
+input_contract:
+  format: object
+  schema: input.schema.json
+output_contract:
+  format: markdown
+  min_length: 8
+trigger_conditions: [核验或验证明确主张, 检查结论是否有证据支持]
+non_trigger_conditions: [从正文抽取主张, 无证据的一般知识问答]
+routing_keywords: [验证, 核验, verify]
+clarification_conditions: [缺少完成任务所需的论文、范围或目标]
+termination_conditions: [已返回通过结构化契约校验的结果或明确失败原因]
+acceptance_rules: [所有事实性内容保留证据或来源标识, 不得调用 Skill tools 目录以外的 Tool 或虚构论文内容]

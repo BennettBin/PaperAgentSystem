@@ -5,9 +5,14 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from document_processing.pdf_parser import PyMuPDFParser
-from infrastructure.postgres.models import Base, DocumentChunkModel, DocumentSectionModel
-from rag.indexing import DocumentIndexer, StructureAwareChunker
+from backend.document_processing.pdf_parser import PyMuPDFParser
+from backend.infrastructure.postgres.models import (
+    Base,
+    DocumentChunkModel,
+    DocumentSectionModel,
+    ParsedDocumentModel,
+)
+from backend.rag.indexing import CURRENT_INDEX_VERSION, DocumentIndexer, StructureAwareChunker
 
 
 def paper_pdf() -> bytes:
@@ -127,3 +132,30 @@ async def test_workspace_isolation_and_delete_invalidation(database) -> None:
             .count()
             == len(parsed.sections)
         )
+
+
+@pytest.mark.asyncio
+async def test_old_index_version_is_detected_and_rebuilt(database) -> None:
+    data = paper_pdf()
+    parsed = await PyMuPDFParser().parse(data, "paper.pdf")
+    embeddings = CountingEmbeddings()
+    indexer = DocumentIndexer(database, embeddings, embedding_model="fake-v1")
+    first = await indexer.index("ws-1", "file-1", data, parsed)
+    calls_after_first = embeddings.calls
+    with database() as session:
+        stored = session.query(ParsedDocumentModel).one()
+        stored.metadata_json = {
+            **(stored.metadata_json or {}),
+            "index_version": CURRENT_INDEX_VERSION - 1,
+        }
+        session.commit()
+
+    assert indexer.is_current("ws-1", "file-1") is False
+    rebuilt = await indexer.index("ws-1", "file-1", data, parsed)
+
+    assert rebuilt[0].document_id != first[0].document_id
+    assert embeddings.calls > calls_after_first
+    assert indexer.is_current("ws-1", "file-1") is True
+    with database() as session:
+        stored = session.query(ParsedDocumentModel).one()
+        assert stored.metadata_json["index_version"] == CURRENT_INDEX_VERSION

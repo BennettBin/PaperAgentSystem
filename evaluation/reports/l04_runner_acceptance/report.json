@@ -1,0 +1,19 @@
+{
+  "case_count": 300,
+  "comparison": [
+    {
+      "case_count": 300,
+      "errors": {},
+      "model_calls": 300,
+      "pass_rate": 1.0,
+      "passed": 300,
+      "system_error_rate": 0.0,
+      "system_id": "candidate",
+      "total_tokens": 0
+    }
+  ],
+  "dataset_version": "l02-v1",
+  "schema_version": "1.0",
+  "truth_class": "unit_fake",
+  "unclassified_exceptions": 0
+}

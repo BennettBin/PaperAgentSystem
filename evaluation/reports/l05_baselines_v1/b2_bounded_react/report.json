@@ -1,0 +1,23 @@
+{
+  "case_count": 300,
+  "comparison": [
+    {
+      "case_count": 300,
+      "errors": {
+        "generation": 200,
+        "retrieval": 60,
+        "verification": 21
+      },
+      "model_calls": 600,
+      "pass_rate": 0.06333333333333334,
+      "passed": 19,
+      "system_error_rate": 0.0,
+      "system_id": "b2_bounded_react",
+      "total_tokens": 305850
+    }
+  ],
+  "dataset_version": "paperagent-eval-v1",
+  "schema_version": "1.0",
+  "truth_class": "offline_real_model",
+  "unclassified_exceptions": 0
+}

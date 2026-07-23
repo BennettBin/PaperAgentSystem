@@ -1,0 +1,6 @@
+tools:
+  - name: parse_document
+    purpose: 解析并索引一个已注入 Workspace PDF。
+    when_to_use: 文件尚未解析或索引版本过期时调用。
+    implementation: backend.tool_runtime.document_tools.ParseDocumentTool
+    example_input: {"workspace_entry_id":"file-001"}

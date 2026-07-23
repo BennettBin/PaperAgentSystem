@@ -7,9 +7,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from testcontainers.redis import RedisContainer
 
-from infrastructure.postgres.models import Base, QueueJobModel
-from infrastructure.redis.celery_app import create_celery_app
-from infrastructure.redis.queue import RedisEventPublisher, RedisTaskQueue
+from backend.infrastructure.postgres.models import Base, QueueJobModel
+from backend.infrastructure.redis.celery_app import create_celery_app
+from backend.infrastructure.redis.queue import RedisEventPublisher, RedisTaskQueue
 
 pytestmark = pytest.mark.integration
 

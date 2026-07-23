@@ -32,8 +32,24 @@ def _commit(root: Path) -> str:
         return "unavailable"
 
 
+def _worktree(root: Path) -> tuple[bool | str, int | str]:
+    try:
+        output = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+        entries = len([line for line in output.splitlines() if line.strip()])
+        return entries > 0, entries
+    except (OSError, subprocess.CalledProcessError):
+        return "unavailable", "unavailable"
+
+
 def discover_metadata(root: Path) -> EvaluationMetadata:
-    registry = _yaml(root / "models" / "registry.yaml")
+    registry = _yaml(root / "backend" / "models" / "registry.yaml")
+    git_dirty, git_dirty_entries = _worktree(root)
     profiles = {
         str(item["name"]): str(item["model_version_id"])
         for item in registry.get("profiles", [])
@@ -41,7 +57,7 @@ def discover_metadata(root: Path) -> EvaluationMetadata:
     }
     skills: dict[str, str] = {}
     prompts: dict[str, str] = {}
-    for manifest_path in sorted((root / "skills").glob("*/manifest.yaml")):
+    for manifest_path in sorted((root / "backend" / "skills").glob("*/manifest.yaml")):
         manifest = _yaml(manifest_path)
         name = str(manifest.get("name", manifest_path.parent.name))
         skills[name] = str(manifest.get("version", "unversioned"))
@@ -62,9 +78,11 @@ def discover_metadata(root: Path) -> EvaluationMetadata:
     return EvaluationMetadata(
         commit=_commit(root),
         config={
-            "registry": "models/registry.yaml",
+            "registry": "backend/models/registry.yaml",
             "default_profile": registry.get("default_profile", "unavailable"),
             "report_schema": "1.0",
+            "git_dirty": git_dirty,
+            "git_dirty_entries": git_dirty_entries,
         },
         profiles=profiles,
         skills=skills,

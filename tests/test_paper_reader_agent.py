@@ -1,9 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from core.errors import ErrorCode, ProjectError
-from infrastructure.fake.observability import FakeTraceWriter
-from subagents.paper_reader import (
+from backend.core.errors import ErrorCode, ProjectError
+from backend.infrastructure.fake.observability import FakeTraceWriter
+from backend.subagents.paper_reader import (
     PaperCard,
     PaperReaderAgent,
     PaperReaderRequest,

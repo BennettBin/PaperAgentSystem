@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["verification_ref","status"],"properties":{"verification_ref":{"type":"string","minLength":1},"status":{"type":"string","enum":["passed","failed"]}}}

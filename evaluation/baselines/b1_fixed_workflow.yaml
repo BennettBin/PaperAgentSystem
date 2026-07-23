@@ -1,0 +1,27 @@
+schema_version: "1.0"
+baseline_id: b1_fixed_workflow
+label: B1 Fixed Workflow
+kind: fixed_workflow
+frozen: true
+description: Rule routing and a fixed retrieval-answer-verification workflow using the 4B answer profile.
+execution:
+  answer_profile: evaluation
+  decision_profile: null
+  routing: rules
+  planning: fixed
+  retrieval: hybrid
+  verification: deterministic
+  multi_agent: false
+  max_steps: 4
+  max_replans: 0
+retrieval:
+  pipeline: [exact, section, vector, bm25, rrf, rerank]
+  candidate_limit: 30
+  final_limit: 8
+  section_resolution: true
+prompt_versions:
+  answer: product-rag-answer-v1
+  workflow: fixed-paper-workflow-v1
+allowed_truth_classes: [unit_fake, integration_real, offline_real_model, human_review]
+effect_metric_truth_classes: [integration_real, offline_real_model, human_review]
+effect_metrics_require_real_model: true

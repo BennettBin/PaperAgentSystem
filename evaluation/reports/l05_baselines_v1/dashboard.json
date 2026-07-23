@@ -1,0 +1,772 @@
+{
+  "comparisons_to_b0": [
+    {
+      "answer_correctness_delta": {
+        "confidence": 0.95,
+        "estimate": -0.024753645344180536,
+        "lower": -0.04875263932072526,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20264721,
+        "upper": -0.0011953414942141587
+      },
+      "baseline_id": "b0_vanilla_rag",
+      "candidate_id": "b1_fixed_workflow",
+      "citation_recall_delta": {
+        "confidence": 0.95,
+        "estimate": -0.023399674399674386,
+        "lower": -0.054376923076923024,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20265721,
+        "upper": 0.006268050468050483
+      },
+      "paired_case_count": 300,
+      "task_success_delta": {
+        "confidence": 0.95,
+        "estimate": -0.016666666666666663,
+        "lower": -0.043333333333333335,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20263721,
+        "upper": 0.006666666666666675
+      }
+    },
+    {
+      "answer_correctness_delta": {
+        "confidence": 0.95,
+        "estimate": -0.05239597086783657,
+        "lower": -0.08058735833346058,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20264722,
+        "upper": -0.025054194924053953
+      },
+      "baseline_id": "b0_vanilla_rag",
+      "candidate_id": "b2_bounded_react",
+      "citation_recall_delta": {
+        "confidence": 0.95,
+        "estimate": -0.04542989417989418,
+        "lower": -0.0746122354497354,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20265722,
+        "upper": -0.015078273809523826
+      },
+      "paired_case_count": 300,
+      "task_success_delta": {
+        "confidence": 0.95,
+        "estimate": -0.016666666666666663,
+        "lower": -0.04333333333333334,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20263722,
+        "upper": 0.010000000000000009
+      }
+    },
+    {
+      "answer_correctness_delta": {
+        "confidence": 0.95,
+        "estimate": -0.02834481831433161,
+        "lower": -0.058289578596765354,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20264723,
+        "upper": 0.0007298208682922823
+      },
+      "baseline_id": "b0_vanilla_rag",
+      "candidate_id": "b3_full_4b",
+      "citation_recall_delta": {
+        "confidence": 0.95,
+        "estimate": -0.055061050061050054,
+        "lower": -0.09051905270655262,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20265723,
+        "upper": -0.020171164021164027
+      },
+      "paired_case_count": 300,
+      "task_success_delta": {
+        "confidence": 0.95,
+        "estimate": -0.009999999999999995,
+        "lower": -0.043333333333333335,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20263723,
+        "upper": 0.02333333333333333
+      }
+    }
+  ],
+  "go_no_go": {
+    "all_four_baselines_complete": true,
+    "no_fake_results": true,
+    "three_actionable_failure_classes": true
+  },
+  "schema_version": "1.0",
+  "success_gates": {
+    "M": "L3/L4 task success improves >=5pp over best frozen baseline with paired 95% CI excluding 0.",
+    "N": "L4/L5 task success improves >=8pp and partial-failure usability does not regress.",
+    "O": "1.7B handles >=70% eligible decisions while task success drops <=2pp and p95 latency improves >=20%."
+  },
+  "systems": [
+    {
+      "answer_correctness_ci": {
+        "confidence": 0.95,
+        "estimate": 0.24367594268269901,
+        "lower": 0.21037569709004705,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20261721,
+        "upper": 0.2774439022160971
+      },
+      "by_difficulty": {
+        "L1": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 60,
+          "task_success": 0.0
+        },
+        "L2": {
+          "answer_correctness": 0.4362102925883239,
+          "citation_recall": 0.4748809523809524,
+          "count": 60,
+          "task_success": 0.2
+        },
+        "L3": {
+          "answer_correctness": 0.28452742981072726,
+          "citation_recall": 0.28043650793650793,
+          "count": 60,
+          "task_success": 0.06666666666666667
+        },
+        "L4": {
+          "answer_correctness": 0.2661126858573921,
+          "citation_recall": 0.2111111111111111,
+          "count": 45,
+          "task_success": 0.044444444444444446
+        },
+        "L5": {
+          "answer_correctness": 0.2597195812753995,
+          "citation_recall": 0.10453262786596121,
+          "count": 45,
+          "task_success": 0.08888888888888889
+        },
+        "L6": {
+          "answer_correctness": 0.20653558132970057,
+          "citation_recall": 0.5436507936507937,
+          "count": 30,
+          "task_success": 0.06666666666666667
+        }
+      },
+      "by_task_family": {
+        "cross_section_reasoning": {
+          "answer_correctness": 0.28452742981072726,
+          "citation_recall": 0.28043650793650793,
+          "count": 60,
+          "task_success": 0.06666666666666667
+        },
+        "evidence_matrix_claim_verification": {
+          "answer_correctness": 0.2597195812753995,
+          "citation_recall": 0.10453262786596121,
+          "count": 45,
+          "task_success": 0.08888888888888889
+        },
+        "multi_paper_comparison": {
+          "answer_correctness": 0.2661126858573921,
+          "citation_recall": 0.2111111111111111,
+          "count": 45,
+          "task_success": 0.044444444444444446
+        },
+        "robustness_cancellation": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_citation_ambiguity": {
+          "answer_correctness": 0.11913746630727765,
+          "citation_recall": 0.42857142857142855,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_clarification": {
+          "answer_correctness": 0.1421182931249619,
+          "citation_recall": 1.0,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_partial_failure": {
+          "answer_correctness": 0.3515151515151515,
+          "citation_recall": 0.4,
+          "count": 5,
+          "task_success": 0.4
+        },
+        "robustness_prompt_injection": {
+          "answer_correctness": 0.35025210084033614,
+          "citation_recall": 0.2333333333333333,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_tool_failure": {
+          "answer_correctness": 0.2761904761904762,
+          "citation_recall": 0.2,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "single_paper_qa": {
+          "answer_correctness": 0.4362102925883239,
+          "citation_recall": 0.4748809523809524,
+          "count": 60,
+          "task_success": 0.2
+        },
+        "skill_tool_category": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 30,
+          "task_success": 0.0
+        },
+        "skill_tool_discipline": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 30,
+          "task_success": 0.0
+        }
+      },
+      "case_count": 300,
+      "citation_recall_ci": {
+        "confidence": 0.95,
+        "estimate": 0.4527751322751323,
+        "lower": 0.40376150793650795,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20262721,
+        "upper": 0.5019150793650794
+      },
+      "errors": {
+        "generation": 79,
+        "planning": 8,
+        "routing": 65,
+        "tool_parameters": 5,
+        "verification": 119
+      },
+      "four_b_call_rate": 1.0,
+      "input_tokens": 433317,
+      "latency_p50_ms": 4414.0,
+      "latency_p95_ms": 6032.35,
+      "local_monetary_cost": 0.0,
+      "model_calls": 300,
+      "output_tokens": 13169,
+      "overall": {
+        "answer_correctness": 0.24367594268269901,
+        "citation_recall": 0.4527751322751323,
+        "count": 300,
+        "task_success": 0.08
+      },
+      "system_id": "b0_vanilla_rag",
+      "task_success_ci": {
+        "confidence": 0.95,
+        "estimate": 0.08,
+        "lower": 0.05,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20260721,
+        "upper": 0.11
+      }
+    },
+    {
+      "answer_correctness_ci": {
+        "confidence": 0.95,
+        "estimate": 0.21892229733851848,
+        "lower": 0.18871015140751013,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20261722,
+        "upper": 0.25047468888835145
+      },
+      "by_difficulty": {
+        "L1": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 60,
+          "task_success": 0.0
+        },
+        "L2": {
+          "answer_correctness": 0.35139136029575696,
+          "citation_recall": 0.42,
+          "count": 60,
+          "task_success": 0.13333333333333333
+        },
+        "L3": {
+          "answer_correctness": 0.27551661483508,
+          "citation_recall": 0.2515476190476191,
+          "count": 60,
+          "task_success": 0.1
+        },
+        "L4": {
+          "answer_correctness": 0.253658533118853,
+          "citation_recall": 0.2,
+          "count": 45,
+          "task_success": 0.0
+        },
+        "L5": {
+          "answer_correctness": 0.2405131785225396,
+          "citation_recall": 0.06763532763532763,
+          "count": 45,
+          "task_success": 0.044444444444444446
+        },
+        "L6": {
+          "answer_correctness": 0.19414945566142233,
+          "citation_recall": 0.5492063492063491,
+          "count": 30,
+          "task_success": 0.1
+        }
+      },
+      "by_task_family": {
+        "cross_section_reasoning": {
+          "answer_correctness": 0.27551661483508,
+          "citation_recall": 0.2515476190476191,
+          "count": 60,
+          "task_success": 0.1
+        },
+        "evidence_matrix_claim_verification": {
+          "answer_correctness": 0.2405131785225396,
+          "citation_recall": 0.06763532763532763,
+          "count": 45,
+          "task_success": 0.044444444444444446
+        },
+        "multi_paper_comparison": {
+          "answer_correctness": 0.253658533118853,
+          "citation_recall": 0.2,
+          "count": 45,
+          "task_success": 0.0
+        },
+        "robustness_cancellation": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_citation_ambiguity": {
+          "answer_correctness": 0.08280871670702179,
+          "citation_recall": 0.42857142857142855,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_clarification": {
+          "answer_correctness": 0.17296159619316728,
+          "citation_recall": 1.0,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_partial_failure": {
+          "answer_correctness": 0.3515151515151515,
+          "citation_recall": 0.4,
+          "count": 5,
+          "task_success": 0.4
+        },
+        "robustness_prompt_injection": {
+          "answer_correctness": 0.2385964912280702,
+          "citation_recall": 0.36666666666666664,
+          "count": 5,
+          "task_success": 0.2
+        },
+        "robustness_tool_failure": {
+          "answer_correctness": 0.31901477832512315,
+          "citation_recall": 0.1,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "single_paper_qa": {
+          "answer_correctness": 0.35139136029575696,
+          "citation_recall": 0.42,
+          "count": 60,
+          "task_success": 0.13333333333333333
+        },
+        "skill_tool_category": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 30,
+          "task_success": 0.0
+        },
+        "skill_tool_discipline": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 30,
+          "task_success": 0.0
+        }
+      },
+      "case_count": 300,
+      "citation_recall_ci": {
+        "confidence": 0.95,
+        "estimate": 0.4293754578754579,
+        "lower": 0.38076759259259263,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20262722,
+        "upper": 0.4798243335368335
+      },
+      "errors": {
+        "generation": 72,
+        "planning": 8,
+        "routing": 65,
+        "tool_parameters": 5,
+        "verification": 131
+      },
+      "four_b_call_rate": 1.0,
+      "input_tokens": 335367,
+      "latency_p50_ms": 4202.5,
+      "latency_p95_ms": 5750.75,
+      "local_monetary_cost": 0.0,
+      "model_calls": 300,
+      "output_tokens": 12473,
+      "overall": {
+        "answer_correctness": 0.21892229733851848,
+        "citation_recall": 0.4293754578754579,
+        "count": 300,
+        "task_success": 0.06333333333333334
+      },
+      "system_id": "b1_fixed_workflow",
+      "task_success_ci": {
+        "confidence": 0.95,
+        "estimate": 0.06333333333333334,
+        "lower": 0.03666666666666667,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20260722,
+        "upper": 0.09
+      }
+    },
+    {
+      "answer_correctness_ci": {
+        "confidence": 0.95,
+        "estimate": 0.19127997181486245,
+        "lower": 0.15972250534055762,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20261723,
+        "upper": 0.22406540678070985
+      },
+      "by_difficulty": {
+        "L1": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 60,
+          "task_success": 0.0
+        },
+        "L2": {
+          "answer_correctness": 0.36443501767794295,
+          "citation_recall": 0.4233333333333333,
+          "count": 60,
+          "task_success": 0.15
+        },
+        "L3": {
+          "answer_correctness": 0.2700029501026485,
+          "citation_recall": 0.22821428571428573,
+          "count": 60,
+          "task_success": 0.06666666666666667
+        },
+        "L4": {
+          "answer_correctness": 0.0775033807338253,
+          "citation_recall": 0.06666666666666667,
+          "count": 45,
+          "task_success": 0.0
+        },
+        "L5": {
+          "answer_correctness": 0.17316189267199258,
+          "citation_recall": 0.05537037037037037,
+          "count": 45,
+          "task_success": 0.022222222222222223
+        },
+        "L6": {
+          "answer_correctness": 0.2679258724787147,
+          "citation_recall": 0.5873015873015873,
+          "count": 30,
+          "task_success": 0.16666666666666666
+        }
+      },
+      "by_task_family": {
+        "cross_section_reasoning": {
+          "answer_correctness": 0.2700029501026485,
+          "citation_recall": 0.22821428571428573,
+          "count": 60,
+          "task_success": 0.06666666666666667
+        },
+        "evidence_matrix_claim_verification": {
+          "answer_correctness": 0.17316189267199258,
+          "citation_recall": 0.05537037037037037,
+          "count": 45,
+          "task_success": 0.022222222222222223
+        },
+        "multi_paper_comparison": {
+          "answer_correctness": 0.0775033807338253,
+          "citation_recall": 0.06666666666666667,
+          "count": 45,
+          "task_success": 0.0
+        },
+        "robustness_cancellation": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_citation_ambiguity": {
+          "answer_correctness": 0.0763720150816925,
+          "citation_recall": 0.45714285714285713,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_clarification": {
+          "answer_correctness": 0.14231163102130845,
+          "citation_recall": 1.0,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_partial_failure": {
+          "answer_correctness": 0.6506959706959707,
+          "citation_recall": 0.6,
+          "count": 5,
+          "task_success": 0.6
+        },
+        "robustness_prompt_injection": {
+          "answer_correctness": 0.41739130434782606,
+          "citation_recall": 0.16666666666666666,
+          "count": 5,
+          "task_success": 0.4
+        },
+        "robustness_tool_failure": {
+          "answer_correctness": 0.3207843137254902,
+          "citation_recall": 0.3,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "single_paper_qa": {
+          "answer_correctness": 0.36443501767794295,
+          "citation_recall": 0.4233333333333333,
+          "count": 60,
+          "task_success": 0.15
+        },
+        "skill_tool_category": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 30,
+          "task_success": 0.0
+        },
+        "skill_tool_discipline": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 30,
+          "task_success": 0.0
+        }
+      },
+      "case_count": 300,
+      "citation_recall_ci": {
+        "confidence": 0.95,
+        "estimate": 0.4073452380952381,
+        "lower": 0.35544775132275136,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20262723,
+        "upper": 0.45607721560846554
+      },
+      "errors": {
+        "generation": 46,
+        "planning": 7,
+        "retrieval": 60,
+        "routing": 60,
+        "tool_parameters": 5,
+        "verification": 103
+      },
+      "four_b_call_rate": 0.5,
+      "input_tokens": 283660,
+      "latency_p50_ms": 6984.0,
+      "latency_p95_ms": 9376.550000000001,
+      "local_monetary_cost": 0.0,
+      "model_calls": 600,
+      "output_tokens": 22190,
+      "overall": {
+        "answer_correctness": 0.19127997181486245,
+        "citation_recall": 0.4073452380952381,
+        "count": 300,
+        "task_success": 0.06333333333333334
+      },
+      "system_id": "b2_bounded_react",
+      "task_success_ci": {
+        "confidence": 0.95,
+        "estimate": 0.06333333333333334,
+        "lower": 0.03666666666666667,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20260723,
+        "upper": 0.09333333333333334
+      }
+    },
+    {
+      "answer_correctness_ci": {
+        "confidence": 0.95,
+        "estimate": 0.2153311243683674,
+        "lower": 0.1847870217710145,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20261724,
+        "upper": 0.2475942722954807
+      },
+      "by_difficulty": {
+        "L1": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 60,
+          "task_success": 0.0
+        },
+        "L2": {
+          "answer_correctness": 0.34728483750438527,
+          "citation_recall": 0.35,
+          "count": 60,
+          "task_success": 0.18333333333333332
+        },
+        "L3": {
+          "answer_correctness": 0.29114772227941665,
+          "citation_recall": 0.2507142857142857,
+          "count": 60,
+          "task_success": 0.1
+        },
+        "L4": {
+          "answer_correctness": 0.2364451126056898,
+          "citation_recall": 0.17777777777777778,
+          "count": 45,
+          "task_success": 0.0
+        },
+        "L5": {
+          "answer_correctness": 0.2651909311405344,
+          "citation_recall": 0.04306742640075974,
+          "count": 45,
+          "task_success": 0.022222222222222223
+        },
+        "L6": {
+          "answer_correctness": 0.12399205849673413,
+          "citation_recall": 0.4444444444444445,
+          "count": 30,
+          "task_success": 0.1
+        }
+      },
+      "by_task_family": {
+        "cross_section_reasoning": {
+          "answer_correctness": 0.29114772227941665,
+          "citation_recall": 0.2507142857142857,
+          "count": 60,
+          "task_success": 0.1
+        },
+        "evidence_matrix_claim_verification": {
+          "answer_correctness": 0.2651909311405344,
+          "citation_recall": 0.04306742640075974,
+          "count": 45,
+          "task_success": 0.022222222222222223
+        },
+        "multi_paper_comparison": {
+          "answer_correctness": 0.2364451126056898,
+          "citation_recall": 0.17777777777777778,
+          "count": 45,
+          "task_success": 0.0
+        },
+        "robustness_cancellation": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_citation_ambiguity": {
+          "answer_correctness": 0.0,
+          "citation_recall": 0.0,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_clarification": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_partial_failure": {
+          "answer_correctness": 0.6623626373626375,
+          "citation_recall": 0.6,
+          "count": 5,
+          "task_success": 0.6
+        },
+        "robustness_prompt_injection": {
+          "answer_correctness": 0.08158971361776737,
+          "citation_recall": 0.06666666666666667,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "robustness_tool_failure": {
+          "answer_correctness": 0.0,
+          "citation_recall": 0.0,
+          "count": 5,
+          "task_success": 0.0
+        },
+        "single_paper_qa": {
+          "answer_correctness": 0.34728483750438527,
+          "citation_recall": 0.35,
+          "count": 60,
+          "task_success": 0.18333333333333332
+        },
+        "skill_tool_category": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 30,
+          "task_success": 0.0
+        },
+        "skill_tool_discipline": {
+          "answer_correctness": 0.0,
+          "citation_recall": 1.0,
+          "count": 30,
+          "task_success": 0.0
+        }
+      },
+      "case_count": 300,
+      "citation_recall_ci": {
+        "confidence": 0.95,
+        "estimate": 0.3977140822140822,
+        "lower": 0.34489662698412693,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20262724,
+        "upper": 0.4513108465608465
+      },
+      "errors": {
+        "generation": 46,
+        "planning": 2,
+        "retrieval": 61,
+        "routing": 42,
+        "verification": 128
+      },
+      "four_b_call_rate": 1.0,
+      "input_tokens": 319860,
+      "latency_p50_ms": 7952.5,
+      "latency_p95_ms": 10502.300000000001,
+      "local_monetary_cost": 0.0,
+      "model_calls": 600,
+      "output_tokens": 19876,
+      "overall": {
+        "answer_correctness": 0.2153311243683674,
+        "citation_recall": 0.3977140822140822,
+        "count": 300,
+        "task_success": 0.07
+      },
+      "system_id": "b3_full_4b",
+      "task_success_ci": {
+        "confidence": 0.95,
+        "estimate": 0.07,
+        "lower": 0.043333333333333335,
+        "method": "percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20260724,
+        "upper": 0.1
+      }
+    }
+  ],
+  "top_actionable_failures": [
+    "verification",
+    "generation",
+    "routing"
+  ],
+  "truth_class": "offline_real_model"
+}

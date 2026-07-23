@@ -1,0 +1,16 @@
+name: paper_reader
+version: 1.0.0
+description: 读取单篇论文并输出带证据的 Paper Card。
+model_profile: paper_reader_v1
+input_contract:
+  format: object
+  schema: input.schema.json
+output_contract:
+  format: markdown
+  min_length: 8
+trigger_conditions: [阅读单篇论文, 生成 Paper Card 或总体理解]
+non_trigger_conditions: [多篇论文对比, 文献综述]
+routing_keywords: [阅读, paper card, 单篇]
+clarification_conditions: [缺少完成任务所需的论文、范围或目标]
+termination_conditions: [已返回通过结构化契约校验的结果或明确失败原因]
+acceptance_rules: [所有事实性内容保留证据或来源标识, 不得调用 Skill tools 目录以外的 Tool 或虚构论文内容]

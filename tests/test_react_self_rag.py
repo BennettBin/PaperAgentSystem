@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from agent_runtime.react_self_rag import ReActSelfRAGController
+from backend.agent_runtime.react_self_rag import ReActSelfRAGController
 
 
 class DecisionLLM:

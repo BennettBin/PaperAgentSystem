@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "render_contract": "logical page number equals rendered PDF page number",
+  "samples": [
+    {
+      "profile": "single_column",
+      "paper_id": "csl:cls_ctg:00bd798de2aaae71",
+      "path": "render_samples/single_column.pdf",
+      "page_count": 1,
+      "sha256": "8e0c1c00ca3e5b4dc7a6411a2cc0bca3564ccffd1fd1442dc064c4296e1ebe39"
+    },
+    {
+      "profile": "double_column",
+      "paper_id": "qasper:2003.12450",
+      "path": "render_samples/double_column.pdf",
+      "page_count": 7,
+      "sha256": "3d74ce8e825949c3c517dba13e9d89b0143939b530cb229bb8c90501c3f224bf"
+    },
+    {
+      "profile": "degraded_scan",
+      "paper_id": "qasper:1903.10548",
+      "path": "render_samples/degraded_scan.pdf",
+      "page_count": 8,
+      "sha256": "dbd042c724ea0b05e096200cbb6a38cb974f003e13b26129e449c379e7f022dd"
+    }
+  ]
+}

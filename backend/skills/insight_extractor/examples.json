@@ -1,0 +1,13 @@
+[
+  {
+    "input": {
+      "request": "寻找启示、趋势或新洞见",
+      "file_ids": [
+        "file-001"
+      ],
+      "conversation_id": "conversation-001",
+      "parameters": {}
+    },
+    "output": "## insight_extractor\\n\\n基于论文证据的结构化结果 [E1]。"
+  }
+]

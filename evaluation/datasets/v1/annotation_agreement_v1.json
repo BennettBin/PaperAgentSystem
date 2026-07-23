@@ -1,0 +1,252 @@
+{
+  "schema_version": "1.0",
+  "dataset_version": "paperagent-eval-v1",
+  "selection_policy": "stratified_consensus_gold",
+  "annotation_dimension": "QASPER answer type after v0.3 manual correction",
+  "sample_size": 30,
+  "sample_rate": 0.1,
+  "cohen_kappa": 1.0,
+  "annotation_pairs": [
+    {
+      "case_id": "l2-001",
+      "annotator_a_label": "yes",
+      "annotator_b_label": "yes",
+      "annotator_a_id": "9777843ab26171a2",
+      "annotator_b_id": "f06187031f85b44d",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-002",
+      "annotator_a_label": "yes",
+      "annotator_b_label": "yes",
+      "annotator_a_id": "ef6543fb53f4d0e9",
+      "annotator_b_id": "14bb1b34734e0bbe",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-003",
+      "annotator_a_label": "yes",
+      "annotator_b_label": "yes",
+      "annotator_a_id": "2ded434cf44bb645",
+      "annotator_b_id": "2bb651246263b130",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-004",
+      "annotator_a_label": "yes",
+      "annotator_b_label": "yes",
+      "annotator_a_id": "9777843ab26171a2",
+      "annotator_b_id": "83100ccc2b16a32a",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-005",
+      "annotator_a_label": "yes",
+      "annotator_b_label": "yes",
+      "annotator_a_id": "ffabfaa917930b2c",
+      "annotator_b_id": "2bb651246263b130",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-047",
+      "annotator_a_label": "yes",
+      "annotator_b_label": "yes",
+      "annotator_a_id": "2bb651246263b130",
+      "annotator_b_id": "ffabfaa917930b2c",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-056",
+      "annotator_a_label": "yes",
+      "annotator_b_label": "yes",
+      "annotator_a_id": "e1167390a112a7e4",
+      "annotator_b_id": "47af8efbfc42e286",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-006",
+      "annotator_a_label": "no",
+      "annotator_b_label": "no",
+      "annotator_a_id": "ffabfaa917930b2c",
+      "annotator_b_id": "2bb651246263b130",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-007",
+      "annotator_a_label": "no",
+      "annotator_b_label": "no",
+      "annotator_a_id": "01069c4e9a27f0d8",
+      "annotator_b_id": "7d2b9aa9185e8ef1",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-008",
+      "annotator_a_label": "no",
+      "annotator_b_label": "no",
+      "annotator_a_id": "2bb651246263b130",
+      "annotator_b_id": "ca6c312adc6583e0",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-009",
+      "annotator_a_label": "no",
+      "annotator_b_label": "no",
+      "annotator_a_id": "2ded434cf44bb645",
+      "annotator_b_id": "01069c4e9a27f0d8",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-010",
+      "annotator_a_label": "no",
+      "annotator_b_label": "no",
+      "annotator_a_id": "ffabfaa917930b2c",
+      "annotator_b_id": "2bb651246263b130",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l3-006",
+      "annotator_a_label": "no",
+      "annotator_b_label": "no",
+      "annotator_a_id": "7d2b9aa9185e8ef1",
+      "annotator_b_id": "01069c4e9a27f0d8",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l3-007",
+      "annotator_a_label": "no",
+      "annotator_b_label": "no",
+      "annotator_a_id": "2ded434cf44bb645",
+      "annotator_b_id": "ffabfaa917930b2c",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-011",
+      "annotator_a_label": "extractive",
+      "annotator_b_label": "extractive",
+      "annotator_a_id": "2bb651246263b130",
+      "annotator_b_id": "2ded434cf44bb645",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-012",
+      "annotator_a_label": "extractive",
+      "annotator_b_label": "extractive",
+      "annotator_a_id": "ffabfaa917930b2c",
+      "annotator_b_id": "2bb651246263b130",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-013",
+      "annotator_a_label": "extractive",
+      "annotator_b_label": "extractive",
+      "annotator_a_id": "3e20c46a60ba84c5",
+      "annotator_b_id": "25f90af634238f87",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-014",
+      "annotator_a_label": "extractive",
+      "annotator_b_label": "extractive",
+      "annotator_a_id": "25f90af634238f87",
+      "annotator_b_id": "14bb1b34734e0bbe",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-015",
+      "annotator_a_label": "extractive",
+      "annotator_b_label": "extractive",
+      "annotator_a_id": "ffabfaa917930b2c",
+      "annotator_b_id": "25f90af634238f87",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-021",
+      "annotator_a_label": "extractive",
+      "annotator_b_label": "extractive",
+      "annotator_a_id": "ffabfaa917930b2c",
+      "annotator_b_id": "14bb1b34734e0bbe",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-022",
+      "annotator_a_label": "extractive",
+      "annotator_b_label": "extractive",
+      "annotator_a_id": "7d2b9aa9185e8ef1",
+      "annotator_b_id": "2bb651246263b130",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-023",
+      "annotator_a_label": "extractive",
+      "annotator_b_label": "extractive",
+      "annotator_a_id": "25f90af634238f87",
+      "annotator_b_id": "14bb1b34734e0bbe",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-016",
+      "annotator_a_label": "free_form",
+      "annotator_b_label": "free_form",
+      "annotator_a_id": "2bb651246263b130",
+      "annotator_b_id": "01069c4e9a27f0d8",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-017",
+      "annotator_a_label": "free_form",
+      "annotator_b_label": "free_form",
+      "annotator_a_id": "ffabfaa917930b2c",
+      "annotator_b_id": "01069c4e9a27f0d8",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-018",
+      "annotator_a_label": "free_form",
+      "annotator_b_label": "free_form",
+      "annotator_a_id": "2ded434cf44bb645",
+      "annotator_b_id": "2bb651246263b130",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-019",
+      "annotator_a_label": "free_form",
+      "annotator_b_label": "free_form",
+      "annotator_a_id": "2bb651246263b130",
+      "annotator_b_id": "c16a90f73284c654",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-020",
+      "annotator_a_label": "free_form",
+      "annotator_b_label": "free_form",
+      "annotator_a_id": "2bb651246263b130",
+      "annotator_b_id": "ffabfaa917930b2c",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-043",
+      "annotator_a_label": "free_form",
+      "annotator_b_label": "free_form",
+      "annotator_a_id": "14bb1b34734e0bbe",
+      "annotator_b_id": "01069c4e9a27f0d8",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l2-059",
+      "annotator_a_label": "free_form",
+      "annotator_b_label": "free_form",
+      "annotator_a_id": "ffabfaa917930b2c",
+      "annotator_b_id": "2bb651246263b130",
+      "adjudication": "not_required_consensus"
+    },
+    {
+      "case_id": "l3-016",
+      "annotator_a_label": "free_form",
+      "annotator_b_label": "free_form",
+      "annotator_a_id": "ffabfaa917930b2c",
+      "annotator_b_id": "14bb1b34734e0bbe",
+      "adjudication": "not_required_consensus"
+    }
+  ],
+  "excluded_disagreements": "QASPER questions whose first two independent annotations disagree on answer type are excluded before this release; no disputed label is silently promoted."
+}

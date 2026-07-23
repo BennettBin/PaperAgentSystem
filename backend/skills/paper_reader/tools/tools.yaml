@@ -1,0 +1,21 @@
+tools:
+  - name: search_document
+    purpose: 在单篇论文内检索与当前阅读问题相关的页码证据。
+    when_to_use: 用户提出具体内容问题或 Paper Card 字段缺失时调用。
+    implementation: backend.tool_runtime.document_tools.SearchDocumentTool
+    example_input: {"query":"research question methodology results","file_ids":["file-001"],"limit":8}
+  - name: parse_document
+    purpose: 解析并索引一个已注入 Workspace PDF。
+    when_to_use: 文件尚未解析或索引版本过期时调用。
+    implementation: backend.tool_runtime.document_tools.ParseDocumentTool
+    example_input: {"workspace_entry_id":"file-001"}
+  - name: get_document_section
+    purpose: 读取指定论文的一个已索引章节。
+    when_to_use: 任务明确限定方法、结果或其他章节时调用。
+    implementation: backend.tool_runtime.document_tools.GetDocumentSectionTool
+    example_input: {"file_id":"file-001","section_title":"Methods"}
+  - name: extract_paper_card
+    purpose: 从证据段落构建结构化 Paper Card。
+    when_to_use: 完成单论文整体阅读并归一化字段时调用。
+    implementation: backend.tool_runtime.academic_tools.ExtractPaperCardTool
+    example_input: {"passages":[]}

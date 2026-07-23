@@ -4,11 +4,11 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from conversations.service import ConversationService
-from core.domain.file import File
-from core.domain.user import User, Workspace
-from infrastructure.postgres.models import Base
-from infrastructure.postgres.repositories import (
+from backend.conversations.service import ConversationService
+from backend.core.domain.file import File
+from backend.core.domain.user import User, Workspace
+from backend.infrastructure.postgres.models import Base
+from backend.infrastructure.postgres.repositories import (
     SqlAlchemyConversationRepository,
     SqlAlchemyFileRepository,
     SqlAlchemyMessageRepository,

@@ -3,9 +3,9 @@ from io import BytesIO
 import fitz
 import pytest
 
-from document_processing.ocr import OCRFallbackParser, OCRLine
-from document_processing.pdf_parser import PyMuPDFParser
-from infrastructure.fake.observability import FakeTraceWriter
+from backend.document_processing.ocr import OCRFallbackParser, OCRLine
+from backend.document_processing.pdf_parser import PyMuPDFParser
+from backend.infrastructure.fake.observability import FakeTraceWriter
 
 
 def scanned_pdf() -> bytes:

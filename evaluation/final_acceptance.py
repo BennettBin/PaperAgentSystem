@@ -12,9 +12,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from backend.rag.citations import CitationAnswerService
+from backend.rag.retrieval import RetrievalHit
 from evaluation.metadata import discover_metadata
-from rag.citations import CitationAnswerService
-from rag.retrieval import RetrievalHit
 
 
 @dataclass(frozen=True)

@@ -1,5 +1,5 @@
-from rag.citations import CitationAnswerService, ClaimEvidenceChecker
-from rag.retrieval import RetrievalHit
+from backend.rag.citations import CitationAnswerService, ClaimEvidenceChecker
+from backend.rag.retrieval import RetrievalHit
 
 
 def hit(

@@ -1,5 +1,5 @@
-from academic_tasks.drafting import AcademicDrafter
-from academic_tasks.writing_brief import (
+from backend.academic_tasks.drafting import AcademicDrafter
+from backend.academic_tasks.writing_brief import (
     SourceMaterial,
     StatementKind,
     WritingBriefBuilder,

@@ -1,0 +1,13 @@
+[
+  {
+    "input": {
+      "request": "审查研究方法或实验设计",
+      "file_ids": [
+        "file-001"
+      ],
+      "conversation_id": "conversation-001",
+      "parameters": {}
+    },
+    "output": "## methodology_reviewer\\n\\n基于论文证据的结构化结果 [E1]。"
+  }
+]

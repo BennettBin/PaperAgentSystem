@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["draft_ref","citation_refs"],"properties":{"draft_ref":{"type":"string","minLength":1},"citation_refs":{"type":"array","items":{"type":"string","minLength":1}}}}

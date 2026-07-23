@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["task_ref","paper_refs"],"properties":{"task_ref":{"type":"string","minLength":1},"paper_refs":{"type":"array","items":{"type":"string","minLength":1},"minItems":1}}}

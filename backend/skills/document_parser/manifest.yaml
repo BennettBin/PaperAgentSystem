@@ -1,0 +1,16 @@
+name: document_parser
+version: 1.0.0
+description: 把注入的 PDF 文件解析为带页码、章节与视觉材料溯源的结构。
+model_profile: development
+input_contract:
+  format: object
+  schema: input.schema.json
+output_contract:
+  format: object
+  schema: output.schema.json
+trigger_conditions: [上传文件后的解析与索引, 提取 PDF 章节、图表或算法区域]
+non_trigger_conditions: [回答论文内容问题, 接收本地文件路径]
+routing_keywords: [解析, 提取文档章节, parse, pdf 文档]
+clarification_conditions: [缺少完成任务所需的论文、范围或目标]
+termination_conditions: [已返回通过结构化契约校验的结果或明确失败原因]
+acceptance_rules: [所有事实性内容保留证据或来源标识, 不得调用 Skill tools 目录以外的 Tool 或虚构论文内容]

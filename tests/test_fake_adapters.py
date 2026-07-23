@@ -2,10 +2,10 @@ from io import BytesIO
 
 import pytest
 
-from apps.worker.fake_queue import FakeTaskQueue
-from core.domain.conversation import Conversation
-from core.domain.ids import UserId, WorkspaceId
-from infrastructure.fake.adapters import (
+from backend.apps.worker.fake_queue import FakeTaskQueue
+from backend.core.domain.conversation import Conversation
+from backend.core.domain.ids import UserId, WorkspaceId
+from backend.infrastructure.fake.adapters import (
     FakeClaimVerifier,
     FakeDocumentParser,
     FakeEventPublisher,
@@ -13,16 +13,18 @@ from infrastructure.fake.adapters import (
     FakeObjectStore,
     FakeRetriever,
     FakeSandboxExecutor,
-    FakeSkillDefinition,
-    FakeSkillRegistry,
     FakeToolDefinition,
     FakeToolRegistry,
 )
-from infrastructure.fake.bundle import FakeAdapterBundle
-from infrastructure.fake.control import FakeControl, FaultMode
-from infrastructure.fake.llm_clients import FakeEmbeddingClient, FakeLLMClient, FakeRerankerClient
-from infrastructure.fake.observability import FakeTraceWriter
-from infrastructure.fake.repositories import (
+from backend.infrastructure.fake.bundle import FakeAdapterBundle
+from backend.infrastructure.fake.control import FakeControl, FaultMode
+from backend.infrastructure.fake.llm_clients import (
+    FakeEmbeddingClient,
+    FakeLLMClient,
+    FakeRerankerClient,
+)
+from backend.infrastructure.fake.observability import FakeTraceWriter
+from backend.infrastructure.fake.repositories import (
     FakeConversationRepository,
     FakeMessageRepository,
     FakeTaskRepository,
@@ -139,23 +141,6 @@ async def test_fake_tool_registry():
 
     all_tools = await registry.list_all()
     assert len(all_tools) == 1
-
-
-@pytest.mark.asyncio
-async def test_fake_skill_registry():
-    """Test FakeSkillRegistry register and get"""
-    registry = FakeSkillRegistry()
-    skill = FakeSkillDefinition(
-        name="test_skill",
-        description="Test skill",
-        required_tools=[],
-        model_profile="development",
-    )
-    await registry.register(skill)
-
-    found = await registry.get("test_skill")
-    assert found is not None
-    assert found.name == "test_skill"
 
 
 @pytest.mark.asyncio
@@ -282,7 +267,6 @@ def test_fake_adapter_bundle_covers_stage_b_ports():
         "claim_verifier",
         "sandbox",
         "tools",
-        "skills",
         "models",
         "traces",
     }

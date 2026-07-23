@@ -1,0 +1,20 @@
+name: paper_reader_agent
+version: 1.0.0
+role: paper_reader
+description: Extracts structured paper facts and section evidence from assigned papers.
+model_profile: paper_reader_v1
+allowed_tools: [parse_document, get_document_section, search_document]
+input_schema: paper_reader.input.schema.json
+output_schema: paper_reader.output.schema.json
+budget: {max_tokens: 3000, max_steps: 6, max_tool_calls: 8, timeout_seconds: 120, max_retries: 1}
+stop_conditions: [paper_card_emitted, source_unreadable]
+failure_policy: {required: true, on_unavailable: fail, on_timeout: retry_once}
+max_depth: 1
+can_message_user: false
+can_spawn_agents: false
+example_input:
+  assignment_ref: artifact://assignment/reader-1
+  paper_refs: [workspace://ws-1/files/paper-1]
+example_output:
+  paper_card_refs: [artifact://paper_card/paper-1-v1]
+  unreadable_refs: []

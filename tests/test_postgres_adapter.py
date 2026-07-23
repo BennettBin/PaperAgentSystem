@@ -3,16 +3,16 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.orm.exc import StaleDataError
 
-from core.domain.conversation import Conversation, Message
-from core.domain.file import File
-from core.domain.task import Task
-from core.domain.user import User, Workspace
-from infrastructure.postgres.models import Base, ConversationModel
-from infrastructure.postgres.repositories import (
+from backend.core.domain.conversation import Conversation, Message
+from backend.core.domain.file import File
+from backend.core.domain.task import Task
+from backend.core.domain.user import User, Workspace
+from backend.infrastructure.postgres.models import Base, ConversationModel
+from backend.infrastructure.postgres.repositories import (
     SqlAlchemyConversationRepository,
     SqlAlchemyFileRepository,
     SqlAlchemyMessageRepository,
@@ -20,6 +20,7 @@ from infrastructure.postgres.repositories import (
     SqlAlchemyUserRepository,
     SqlAlchemyWorkspaceRepository,
 )
+from backend.infrastructure.postgres.schema import ensure_database_schema
 
 
 @pytest.fixture
@@ -111,10 +112,22 @@ def test_optimistic_lock_conflict():
 
 def test_alembic_upgrade_and_downgrade_empty_database(tmp_path):
     database = tmp_path / "migration.db"
-    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    config = Config(str(Path(__file__).resolve().parents[1] / "infrastructure" / "database" / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{database.as_posix()}")
     command.upgrade(config, "head")
     engine = create_engine(f"sqlite:///{database.as_posix()}")
     assert "users" in inspect(engine).get_table_names()
     command.downgrade(config, "base")
     assert inspect(engine).get_table_names() == ["alembic_version"]
+
+
+def test_startup_migration_repairs_old_document_chunks_table(tmp_path):
+    database = tmp_path / "old-schema.db"
+    engine = create_engine(f"sqlite:///{database.as_posix()}")
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE document_chunks (id VARCHAR PRIMARY KEY)"))
+
+    ensure_database_schema(engine)
+
+    columns = {column["name"] for column in inspect(engine).get_columns("document_chunks")}
+    assert "section_id" in columns

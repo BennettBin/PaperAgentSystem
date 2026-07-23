@@ -1,0 +1,10 @@
+{
+  "artifacts": {
+    "plan_completion/case_scores.jsonl": "63796a0d33e75d33e2b9ef214e9bb7ba39b8921d3d4d3748f05906aa3c5e9089",
+    "plan_completion_replan/case_scores.jsonl": "af89911fc816cd45d55c244f826d643b653fab01ca98cf21c4686a1ab8c6bb80",
+    "plan_v2/case_scores.jsonl": "dd0e8b1cf16df227687c967e591de656bed659cc037ffa8b0fc7fb9f4f0e6d04",
+    "report.json": "60f75eb31ed2c8f99ce3b760cd92b5eb322f3f195c8ef009097bf3db67f030b6",
+    "report.md": "53c0814f94d01a24004bf74a745e095e8047360eadcddeb64e5dba87a6ce80d4"
+  },
+  "schema_version": "1.0"
+}

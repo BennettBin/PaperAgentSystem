@@ -2,8 +2,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from infrastructure.postgres.models import Base
-from models.runtime import ModelRuntimeService
+from backend.infrastructure.postgres.models import Base
+from backend.models.runtime import ModelRuntimeService
 
 
 class FakeOllama:

@@ -42,13 +42,13 @@
 
 ## 分层示例
 
-### 1. Domain 层 (core/domain/)
+### 1. Domain 层 (`backend/core/`)
 
 ```python
 # ✅ 允许
-from core.domain.user import User, UserId
-from core.domain.conversation import Conversation, ConversationId
-from core.ports.repositories import ConversationRepository
+from backend.core.domain.user import User, UserId
+from backend.core.domain.conversation import Conversation, ConversationId
+from backend.core.ports.repositories import ConversationRepository
 
 class CreateConversationService:
     def __init__(self, repo: ConversationRepository):
@@ -65,13 +65,13 @@ from fastapi import HTTPException  # 不应该在 Domain 使用
 import os  # 直接访问环境，应该通过 Settings 注入
 ```
 
-### 2. Application 层 (apps/api/services/)
+### 2. Application 层 (`backend/apps/api/`)
 
 ```python
 # ✅ 允许
-from core.domain.conversation import Conversation, ConversationId
-from core.ports.repositories import ConversationRepository
-from core.errors import ProjectError, ErrorCode
+from backend.core.domain.conversation import Conversation, ConversationId
+from backend.core.ports.repositories import ConversationRepository
+from backend.core.errors import ProjectError, ErrorCode
 
 class ConversationApplicationService:
     def __init__(self, repo: ConversationRepository):
@@ -90,18 +90,18 @@ class ConversationApplicationService:
 
 # ❌ 禁止
 from sqlalchemy.orm import Session  # 直接使用 ORM
-from apps.api.models import ConversationModel  # 直接使用 ORM Model
+from backend.apps.api.models import ConversationModel  # 直接使用 ORM Model
 ```
 
-### 3. Infrastructure 层 (infrastructure/repositories/)
+### 3. Infrastructure 层 (`backend/infrastructure/`)
 
 ```python
 # ✅ 允许
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from core.domain.conversation import Conversation, ConversationId
-from core.ports.repositories import ConversationRepository
-from infrastructure.models import ConversationModel
+from backend.core.domain.conversation import Conversation, ConversationId
+from backend.core.ports.repositories import ConversationRepository
+from backend.infrastructure.postgres.models import ConversationModel
 
 class PostgresConversationRepository(ConversationRepository):
     def __init__(self, session: AsyncSession):
@@ -125,17 +125,17 @@ class PostgresConversationRepository(ConversationRepository):
         return model.to_domain() if model else None
 
 # ❌ 禁止
-from core.domain.services import CreateConversationService  # 不应该导入 Domain Service 的服务实现
+from backend.core.domain.services import CreateConversationService  # 不应该导入 Domain Service 的服务实现
 ```
 
-### 4. Route 层 (apps/api/routes/)
+### 4. Route 层 (`backend/apps/api/`)
 
 ```python
 # ✅ 允许
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from apps.api.services import ConversationApplicationService
-from core.errors import ProjectError, ErrorCode
+from backend.apps.api.services import ConversationApplicationService
+from backend.core.errors import ProjectError, ErrorCode
 
 class CreateConversationRequest(BaseModel):
     title: str
@@ -157,7 +157,7 @@ async def create_conversation(
         raise HTTPException(status_code=e.http_status_code, detail=e.message)
 
 # ❌ 禁止
-from core.domain.conversation import Conversation  # 直接返回 Domain 实体
+from backend.core.domain.conversation import Conversation  # 直接返回 Domain 实体
 async def create_conversation(...) -> Conversation:  # 应该返回 Response Model
     ...
 ```

@@ -1,7 +1,7 @@
 import pytest
 
-from core.errors import ErrorCode, ProjectError
-from infrastructure.sandbox import DisabledSandboxExecutor
+from backend.core.errors import ErrorCode, ProjectError
+from backend.infrastructure.sandbox import DisabledSandboxExecutor
 
 
 @pytest.mark.asyncio

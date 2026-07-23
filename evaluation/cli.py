@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 from typing import Sequence
 
+from evaluation.baselines import load_baseline_by_id
 from evaluation.builtin import built_in_evaluators
 from evaluation.metadata import discover_metadata
 from evaluation.runner import EvaluationRunner
@@ -20,6 +21,11 @@ def _parser() -> argparse.ArgumentParser:
         choices=[suite.value for suite in EvaluationSuite] + ["all"],
         default=[],
         help="Evaluation suite to run; repeat to select multiple suites",
+    )
+    parser.add_argument(
+        "--baseline",
+        default=None,
+        help="Frozen baseline ID from evaluation/baselines; records config and hash.",
     )
     parser.add_argument(
         "--output",
@@ -38,9 +44,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         if "all" in selected_values
         else [EvaluationSuite(value) for value in selected_values]
     )
+    metadata = discover_metadata(root)
+    if args.baseline:
+        baseline = load_baseline_by_id(
+            root / "evaluation" / "baselines",
+            args.baseline,
+        )
+        metadata = metadata.model_copy(
+            update={
+                "config": {
+                    **metadata.config,
+                    "baseline_id": baseline.baseline_id,
+                    "baseline_kind": baseline.kind.value,
+                    "baseline_config_hash": baseline.config_hash,
+                }
+            }
+        )
     report = EvaluationRunner(built_in_evaluators(root)).run(
         selected,
-        metadata=discover_metadata(root),
+        metadata=metadata,
     )
     output = args.output if args.output.is_absolute() else root / args.output
     report.write_json(output)

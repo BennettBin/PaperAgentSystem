@@ -1,0 +1,92 @@
+{
+  "all_gates_passed": false,
+  "gates": {
+    "claim_support_gain": true,
+    "conflict_recall_gain": false,
+    "severe_unsupported_reduction": false,
+    "six_group_matrix_complete": true,
+    "token_increase_within_limit": false
+  },
+  "limitations": [
+    "Conflict gold is unavailable in frozen L4/L5; conflict Recall and its promotion gate are unavailable.",
+    "The frozen single-Agent report has no claim-level unsupported-fact annotation, so reduction is unavailable."
+  ],
+  "matrix_complete": true,
+  "metrics": {
+    "claim_support_delta": 0.5,
+    "conflict_recall_delta": null,
+    "paired_case_count": 2,
+    "severe_unsupported_reduction": null,
+    "task_success_delta": 0.0,
+    "task_success_delta_ci": {
+      "lower": 0.0,
+      "upper": 0.0
+    },
+    "token_per_success_increase": null
+  },
+  "per_system": {
+    "critic": {
+      "claim_support_rate": 0.5,
+      "mean_latency_ms": 34912.5,
+      "mean_tokens": 7680.0,
+      "omission_rate": 0.5,
+      "task_success": 0.0
+    },
+    "evidence": {
+      "claim_support_rate": 0.5,
+      "mean_latency_ms": 24444.0,
+      "mean_tokens": 6413.0,
+      "omission_rate": 0.5,
+      "task_success": 0.0
+    },
+    "full_system": {
+      "claim_support_rate": 0.75,
+      "mean_latency_ms": 41592.0,
+      "mean_tokens": 8625.5,
+      "omission_rate": 0.25,
+      "task_success": 0.0
+    },
+    "reader_parallel": {
+      "claim_support_rate": 0.25,
+      "mean_latency_ms": 13913.5,
+      "mean_tokens": 3023.5,
+      "omission_rate": 0.75,
+      "task_success": 0.0
+    },
+    "single_agent": {
+      "claim_support_rate": 0.25,
+      "mean_latency_ms": 8562.0,
+      "mean_tokens": 1799.5,
+      "omission_rate": 0.75,
+      "task_success": 0.0
+    },
+    "verifier": {
+      "claim_support_rate": 0.5,
+      "mean_latency_ms": 41592.0,
+      "mean_tokens": 8625.5,
+      "omission_rate": 0.5,
+      "task_success": 0.0
+    }
+  },
+  "run_metadata": {
+    "case_count": 2,
+    "completed_candidate_cases": 2,
+    "gold_used_only_after_execution": true,
+    "model": "qwen3.5:4b",
+    "model_version": "sha256:2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd",
+    "role_calls_per_case": 5,
+    "same_max_token_budget": true,
+    "same_model": true,
+    "same_paper_set": true
+  },
+  "schema_version": "1.0",
+  "systems": {
+    "critic": 2,
+    "evidence": 2,
+    "full_system": 2,
+    "reader_parallel": 2,
+    "single_agent": 2,
+    "verifier": 2
+  },
+  "truth_class": "offline_real_model"
+}

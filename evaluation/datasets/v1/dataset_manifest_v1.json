@@ -1,0 +1,122 @@
+{
+  "schema_version": "1.0",
+  "dataset_version": "paperagent-eval-v1",
+  "created_at": "2026-07-21T00:00:00Z",
+  "contract_only": false,
+  "case_count": 300,
+  "split_counts": {
+    "test": 300
+  },
+  "difficulty_counts": {
+    "L1": 60,
+    "L2": 60,
+    "L3": 60,
+    "L4": 45,
+    "L5": 45,
+    "L6": 30
+  },
+  "task_family_counts": {
+    "cross_section_reasoning": 60,
+    "evidence_matrix_claim_verification": 45,
+    "multi_paper_comparison": 45,
+    "robustness_cancellation": 5,
+    "robustness_citation_ambiguity": 5,
+    "robustness_clarification": 5,
+    "robustness_partial_failure": 5,
+    "robustness_prompt_injection": 5,
+    "robustness_tool_failure": 5,
+    "single_paper_qa": 60,
+    "skill_tool_category": 30,
+    "skill_tool_discipline": 30
+  },
+  "traceable_case_rate": 1.0,
+  "cases_sha256": "afad75fa0f067d83005a0c460c8f4a599641089613b9b5a861ce196abf53e224",
+  "leakage": {
+    "paper_ids": [],
+    "conversation_ids": [],
+    "text_fingerprints": [],
+    "embedding_cluster_ids": [],
+    "paper_source_cluster_ids": []
+  },
+  "case_file": "test_cases_v1.jsonl",
+  "document_file": "documents_v1.jsonl",
+  "render_sample_manifest": "render_samples/manifest.json",
+  "render_samples": [
+    {
+      "profile": "single_column",
+      "paper_id": "csl:cls_ctg:00bd798de2aaae71",
+      "path": "render_samples/single_column.pdf",
+      "page_count": 1,
+      "sha256": "8e0c1c00ca3e5b4dc7a6411a2cc0bca3564ccffd1fd1442dc064c4296e1ebe39"
+    },
+    {
+      "profile": "double_column",
+      "paper_id": "qasper:2003.12450",
+      "path": "render_samples/double_column.pdf",
+      "page_count": 7,
+      "sha256": "3d74ce8e825949c3c517dba13e9d89b0143939b530cb229bb8c90501c3f224bf"
+    },
+    {
+      "profile": "degraded_scan",
+      "paper_id": "qasper:1903.10548",
+      "path": "render_samples/degraded_scan.pdf",
+      "page_count": 8,
+      "sha256": "dbd042c724ea0b05e096200cbb6a38cb974f003e13b26129e449c379e7f022dd"
+    }
+  ],
+  "annotation_report": "annotation_agreement_v1.json",
+  "slice_dimensions": [
+    "task_family",
+    "difficulty",
+    "language",
+    "paper_type"
+  ],
+  "coverage": {
+    "task_family": {
+      "cross_section_reasoning": 60,
+      "evidence_matrix_claim_verification": 45,
+      "multi_paper_comparison": 45,
+      "robustness_cancellation": 5,
+      "robustness_citation_ambiguity": 5,
+      "robustness_clarification": 5,
+      "robustness_partial_failure": 5,
+      "robustness_prompt_injection": 5,
+      "robustness_tool_failure": 5,
+      "single_paper_qa": 60,
+      "skill_tool_category": 30,
+      "skill_tool_discipline": 30
+    },
+    "difficulty": {
+      "L1": 60,
+      "L2": 60,
+      "L3": 60,
+      "L4": 45,
+      "L5": 45,
+      "L6": 30
+    },
+    "language": {
+      "en": 240,
+      "zh": 60
+    },
+    "paper_type": {
+      "degraded_scan": 85,
+      "double_column": 77,
+      "single_column": 138
+    }
+  },
+  "sources": {
+    "qasper": {
+      "version": "qasper-v0.3-test",
+      "uri": "https://allenai.org/data/qasper",
+      "license": "CC-BY-4.0",
+      "sha256": "72a52a41193e2838b8074f80ac074b94f956b84886c36a61c58a7df4171bdd72"
+    },
+    "csl": {
+      "version": "csl-benchmark-test-master",
+      "uri": "https://github.com/ydli-ai/CSL",
+      "license": "Apache-2.0",
+      "sha256": "d90f0e97aa70a0fd6e795d006e776ed4e8bcd229ddd570988db5ec9690807675"
+    }
+  },
+  "test_usage": "evaluation_only_no_prompt_training_or_threshold_tuning"
+}

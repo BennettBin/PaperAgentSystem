@@ -1,0 +1,2207 @@
+"""Product-facing conversation, upload and paper-QA application services."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import math
+import re
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Protocol
+from uuid import uuid4
+
+from sqlalchemy import delete, func, select
+from sqlalchemy.orm import Session, sessionmaker
+
+from backend.agent_runtime.react_self_rag import ReActSelfRAGController
+from backend.agent_runtime.unified import RuntimeRequest, UnifiedAgentRuntime
+from backend.agent_runtime.verifier import VerificationInput, VerificationStatus, Verifier
+from backend.core.errors import ErrorCode, ProjectError
+from backend.core.ports.llm_client import EmbeddingClient, LLMClient, RerankerClient
+from backend.core.ports.observability import TaskAuditLogWriter, TraceWriter
+from backend.core.ports.storage import ObjectStore, TaskQueue
+from backend.document_processing.pipeline import BasicPDFPipeline
+from backend.infrastructure.postgres.models import (
+    ConversationFileModel,
+    ConversationModel,
+    ConversationSummaryModel,
+    DocumentChunkModel,
+    DocumentSectionModel,
+    FileModel,
+    MemorySegmentModel,
+    MessageFileModel,
+    MessageModel,
+    ModelUsageModel,
+    ParsedDocumentModel,
+    QueueJobModel,
+    TaskEventModel,
+    WorkspaceEntryModel,
+    WorkspaceSearchModel,
+)
+from backend.infrastructure.sse.service import TaskEventStore
+from backend.rag.indexing import DocumentIndexer
+from backend.rag.local_models import (
+    MultilingualHashEmbeddingClient,
+    MultilingualLexicalReranker,
+    retrieval_terms,
+)
+from backend.rag.retrieval import HybridRetriever, RetrievalHit
+from backend.skills.loader import SkillToolBinding
+from backend.skills.runtime import SkillActivation, SkillRuntime
+
+LOCAL_USER_ID = "local-user"
+LOCAL_WORKSPACE_ID = "local-workspace"
+DIAGNOSTIC_EXPORT_DIR = Path("runtime/diagnostics/rag")
+TASK_AUDIT_PUBLIC_DIR = Path("runtime/logs/agent")
+LOGGER = logging.getLogger(__name__)
+
+
+class PaperAgentApplicationPort(Protocol):
+    async def create_conversation(self, title: str = "新对话") -> dict[str, Any]: ...
+
+    async def list_conversations(self, query: str = "") -> list[dict[str, Any]]: ...
+
+    async def get_conversation(self, conversation_id: str) -> dict[str, Any]: ...
+
+    async def delete_conversation(self, conversation_id: str) -> dict[str, Any]: ...
+
+    async def upload_file(
+        self,
+        conversation_id: str,
+        filename: str,
+        content_type: str,
+        data: bytes,
+    ) -> dict[str, Any]: ...
+
+    async def list_files(self) -> list[dict[str, Any]]: ...
+
+    async def get_visual_artifact(self, artifact_id: str) -> dict[str, Any]: ...
+
+    async def submit_message(
+        self, conversation_id: str, content: str, file_ids: list[str]
+    ) -> dict[str, Any]: ...
+
+    async def get_task(self, task_id: str) -> dict[str, Any]: ...
+
+    async def get_task_monitor(self, task_id: str) -> dict[str, Any]: ...
+
+    async def conversation_usage(self, conversation_id: str) -> dict[str, Any]: ...
+
+    async def debug_parse_result(self, file_id: str) -> dict[str, Any]: ...
+
+    async def debug_retrieval_preview(
+        self, conversation_id: str, question: str, file_ids: list[str]
+    ) -> dict[str, Any]: ...
+
+
+class PaperAgentApplication:
+    """Short HTTP operations. Long parsing and generation are queued for the worker."""
+
+    def __init__(
+        self,
+        sessions: sessionmaker[Session],
+        object_store: ObjectStore,
+        task_queue: TaskQueue,
+    ) -> None:
+        self._sessions = sessions
+        self._objects = object_store
+        self._queue = task_queue
+
+    async def create_conversation(self, title: str = "新对话") -> dict[str, Any]:
+        model = ConversationModel(
+            id=uuid4().hex,
+            workspace_id=LOCAL_WORKSPACE_ID,
+            user_id=LOCAL_USER_ID,
+            title=(title.strip() or "新对话")[:200],
+        )
+        with self._sessions() as session:
+            session.add(model)
+            session.commit()
+            session.refresh(model)
+            return _conversation_dict(model, 0)
+
+    async def list_conversations(self, query: str = "") -> list[dict[str, Any]]:
+        with self._sessions() as session:
+            statement = select(ConversationModel).where(
+                ConversationModel.workspace_id == LOCAL_WORKSPACE_ID,
+                ConversationModel.deleted_at.is_(None),
+            )
+            if query.strip():
+                statement = statement.where(
+                    func.lower(ConversationModel.title).like(
+                        f"%{query.strip().casefold()}%"
+                    )
+                )
+            conversations = session.scalars(
+                statement.order_by(
+                    ConversationModel.updated_at.desc(), ConversationModel.id.desc()
+                )
+            ).all()
+            count_rows = session.execute(
+                    select(
+                        MessageModel.conversation_id,
+                        func.count(MessageModel.id),
+                    )
+                    .where(
+                        MessageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        MessageModel.deleted_at.is_(None),
+                    )
+                    .group_by(MessageModel.conversation_id)
+                ).all()
+            counts: dict[str, int] = {
+                str(conversation_id): int(count)
+                for conversation_id, count in count_rows
+            }
+            return [
+                _conversation_dict(item, int(counts.get(item.id, 0)))
+                for item in conversations
+            ]
+
+    async def get_conversation(self, conversation_id: str) -> dict[str, Any]:
+        with self._sessions() as session:
+            conversation = _conversation(session, conversation_id)
+            messages = session.scalars(
+                select(MessageModel)
+                .where(
+                    MessageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    MessageModel.conversation_id == conversation_id,
+                    MessageModel.deleted_at.is_(None),
+                )
+                .order_by(MessageModel.created_at, MessageModel.id)
+            ).all()
+            files = session.scalars(
+                select(FileModel)
+                .join(
+                    ConversationFileModel,
+                    ConversationFileModel.file_id == FileModel.id,
+                )
+                .where(
+                    ConversationFileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    ConversationFileModel.conversation_id == conversation_id,
+                    ConversationFileModel.deleted_at.is_(None),
+                    FileModel.deleted_at.is_(None),
+                    FileModel.is_deleted.is_(False),
+                )
+                .order_by(FileModel.created_at)
+            ).all()
+            return {
+                **_conversation_dict(conversation, len(messages)),
+                "messages": [_message_dict(item) for item in messages],
+                "files": [_file_dict(item) for item in files],
+            }
+
+    async def delete_conversation(self, conversation_id: str) -> dict[str, Any]:
+        now = datetime.now(UTC)
+        object_keys: list[str] = []
+        with self._sessions() as session:
+            conversation = _conversation(session, conversation_id)
+            file_ids = list(
+                session.scalars(
+                    select(ConversationFileModel.file_id).where(
+                        ConversationFileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        ConversationFileModel.conversation_id == conversation_id,
+                        ConversationFileModel.deleted_at.is_(None),
+                    )
+                )
+            )
+            files = []
+            if file_ids:
+                files = list(
+                    session.scalars(
+                        select(FileModel).where(
+                            FileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                            FileModel.id.in_(file_ids),
+                            FileModel.deleted_at.is_(None),
+                        )
+                    )
+                )
+                object_keys = [file.storage_path for file in files]
+                parsed_documents = list(
+                    session.scalars(
+                        select(ParsedDocumentModel).where(
+                            ParsedDocumentModel.workspace_id == LOCAL_WORKSPACE_ID,
+                            ParsedDocumentModel.file_id.in_(file_ids),
+                        )
+                    )
+                )
+                object_keys.extend(
+                    path
+                    for document in parsed_documents
+                    for path in _visual_artifact_paths(document.metadata_json or {})
+                )
+                session.execute(
+                    delete(DocumentChunkModel).where(
+                        DocumentChunkModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        DocumentChunkModel.file_id.in_(file_ids),
+                    )
+                )
+                session.execute(
+                    delete(DocumentSectionModel).where(
+                        DocumentSectionModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        DocumentSectionModel.file_id.in_(file_ids),
+                    )
+                )
+                session.execute(
+                    delete(ParsedDocumentModel).where(
+                        ParsedDocumentModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        ParsedDocumentModel.file_id.in_(file_ids),
+                    )
+                )
+                for file in files:
+                    file.is_deleted = True
+                    file.deleted_at = now
+                    file.reference_count = 0
+                    file.metadata_json = {
+                        **(file.metadata_json or {}),
+                        "parse_status": "deleted",
+                    }
+            message_ids = list(
+                session.scalars(
+                    select(MessageModel.id).where(
+                        MessageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        MessageModel.conversation_id == conversation_id,
+                    )
+                )
+            )
+            if message_ids:
+                for message_link in session.scalars(
+                    select(MessageFileModel).where(
+                        MessageFileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        MessageFileModel.message_id.in_(message_ids),
+                        MessageFileModel.deleted_at.is_(None),
+                    )
+                ):
+                    message_link.deleted_at = now
+            for conversation_link in session.scalars(
+                select(ConversationFileModel).where(
+                    ConversationFileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    ConversationFileModel.conversation_id == conversation_id,
+                    ConversationFileModel.deleted_at.is_(None),
+                )
+            ):
+                conversation_link.deleted_at = now
+            for message in session.scalars(
+                select(MessageModel).where(
+                    MessageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    MessageModel.conversation_id == conversation_id,
+                    MessageModel.deleted_at.is_(None),
+                )
+            ):
+                message.deleted_at = now
+            session.execute(
+                delete(WorkspaceSearchModel).where(
+                    WorkspaceSearchModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    WorkspaceSearchModel.conversation_id == conversation_id,
+                )
+            )
+            session.execute(
+                delete(WorkspaceEntryModel).where(
+                    WorkspaceEntryModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    WorkspaceEntryModel.conversation_id == conversation_id,
+                )
+            )
+            session.execute(
+                delete(MemorySegmentModel).where(
+                    MemorySegmentModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    MemorySegmentModel.conversation_id == conversation_id,
+                )
+            )
+            session.execute(
+                delete(ConversationSummaryModel).where(
+                    ConversationSummaryModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    ConversationSummaryModel.conversation_id == conversation_id,
+                )
+            )
+            for usage in session.scalars(
+                select(ModelUsageModel).where(
+                    ModelUsageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    ModelUsageModel.conversation_id == conversation_id,
+                    ModelUsageModel.deleted_at.is_(None),
+                )
+            ):
+                usage.deleted_at = now
+            conversation.deleted_at = now
+            conversation.updated_at = now
+            session.commit()
+        for key in object_keys:
+            await self._objects.delete(key)
+        return {
+            "deleted": True,
+            "conversation_id": conversation_id,
+            "deleted_file_count": len(files),
+        }
+
+    async def upload_file(
+        self,
+        conversation_id: str,
+        filename: str,
+        content_type: str,
+        data: bytes,
+    ) -> dict[str, Any]:
+        if not data:
+            raise ProjectError(ErrorCode.INVALID_ARGUMENT, "上传文件不能为空")
+        if content_type != "application/pdf" and not filename.casefold().endswith(".pdf"):
+            raise ProjectError(
+                ErrorCode.UNSAFE_FILE_TYPE,
+                "当前产品问答链路仅支持 PDF 论文",
+            )
+        with self._sessions() as session:
+            _conversation(session, conversation_id)
+        checksum = hashlib.sha256(data).hexdigest()
+        with self._sessions() as session:
+            existing = session.scalar(
+                select(FileModel).where(
+                    FileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    FileModel.checksum == checksum,
+                )
+            )
+            if existing is None:
+                object_key = await self._objects.upload(
+                    f"uploads/{uuid4().hex}-{filename}",
+                    data,
+                    "application/pdf",
+                )
+                file_model = FileModel(
+                    id=uuid4().hex,
+                    workspace_id=LOCAL_WORKSPACE_ID,
+                    filename=filename,
+                    content_type="application/pdf",
+                    size_bytes=len(data),
+                    storage_path=object_key,
+                    checksum=checksum,
+                    metadata_json={"parse_status": "queued"},
+                )
+                session.add(file_model)
+            else:
+                file_model = existing
+                if file_model.deleted_at is not None or file_model.is_deleted:
+                    object_key = await self._objects.upload(
+                        f"uploads/{uuid4().hex}-{filename}",
+                        data,
+                        "application/pdf",
+                    )
+                    file_model.filename = filename
+                    file_model.content_type = "application/pdf"
+                    file_model.size_bytes = len(data)
+                    file_model.storage_path = object_key
+                    file_model.is_deleted = False
+                    file_model.deleted_at = None
+                    file_model.reference_count = 1
+                    file_model.metadata_json = {
+                        **(file_model.metadata_json or {}),
+                        "parse_status": "queued",
+                    }
+            link = session.scalar(
+                select(ConversationFileModel).where(
+                    ConversationFileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    ConversationFileModel.conversation_id == conversation_id,
+                    ConversationFileModel.file_id == file_model.id,
+                )
+            )
+            if link is None:
+                session.add(
+                    ConversationFileModel(
+                        id=uuid4().hex,
+                        workspace_id=LOCAL_WORKSPACE_ID,
+                        conversation_id=conversation_id,
+                        file_id=file_model.id,
+                        uploaded_by_user=True,
+                    )
+                )
+            elif link.deleted_at is not None:
+                link.deleted_at = None
+                link.uploaded_by_user = True
+            session.commit()
+            file_id = file_model.id
+        task_id = await self._queue.enqueue(
+            "document_parse",
+            {"file_id": file_id},
+            f"parse:{LOCAL_WORKSPACE_ID}:{file_id}:{checksum}",
+        )
+        result = _file_dict(file_model)
+        result["task_id"] = task_id
+        return result
+
+    async def list_files(self) -> list[dict[str, Any]]:
+        with self._sessions() as session:
+            files = session.scalars(
+                select(FileModel)
+                .where(
+                    FileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    FileModel.deleted_at.is_(None),
+                    FileModel.is_deleted.is_(False),
+                )
+                .order_by(FileModel.created_at.desc(), FileModel.id.desc())
+            ).all()
+            return [_file_dict(item) for item in files]
+
+    async def get_visual_artifact(self, artifact_id: str) -> dict[str, Any]:
+        with self._sessions() as session:
+            documents = session.scalars(
+                select(ParsedDocumentModel).where(
+                    ParsedDocumentModel.workspace_id == LOCAL_WORKSPACE_ID
+                )
+            )
+            artifact = next(
+                (
+                    item
+                    for document in documents
+                    for item in (document.metadata_json or {}).get(
+                        "visual_artifacts", []
+                    )
+                    if item.get("artifact_id") == artifact_id
+                ),
+                None,
+            )
+        if artifact is None or not artifact.get("storage_path"):
+            raise ProjectError(ErrorCode.NOT_FOUND, "找不到论文截图")
+        return {
+            "data": await self._objects.download(str(artifact["storage_path"])),
+            "content_type": "image/png",
+        }
+
+    async def submit_message(
+        self, conversation_id: str, content: str, file_ids: list[str]
+    ) -> dict[str, Any]:
+        clean = content.strip()
+        if not clean:
+            raise ProjectError(ErrorCode.INVALID_ARGUMENT, "消息不能为空")
+        with self._sessions() as session:
+            conversation = _conversation(session, conversation_id)
+            pending = session.scalar(
+                select(MessageModel)
+                .where(
+                    MessageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    MessageModel.conversation_id == conversation_id,
+                    MessageModel.role == "assistant",
+                    MessageModel.deleted_at.is_(None),
+                )
+                .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
+            )
+            message = MessageModel(
+                id=uuid4().hex,
+                workspace_id=LOCAL_WORKSPACE_ID,
+                conversation_id=conversation_id,
+                role="user",
+                type="text",
+                content=clean,
+                metadata_json={},
+            )
+            session.add(message)
+            for file_id in file_ids:
+                file_model = session.scalar(
+                    select(FileModel).where(
+                        FileModel.id == file_id,
+                        FileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        FileModel.deleted_at.is_(None),
+                        FileModel.is_deleted.is_(False),
+                    )
+                )
+                if file_model is None:
+                    raise ProjectError(
+                        ErrorCode.NOT_FOUND, f"找不到上传文件：{file_id}"
+                    )
+                session.add(
+                    MessageFileModel(
+                        id=uuid4().hex,
+                        workspace_id=LOCAL_WORKSPACE_ID,
+                        message_id=message.id,
+                        file_id=file_id,
+                    )
+                )
+            if conversation.title == "新对话":
+                conversation.title = clean[:40]
+            conversation.updated_at = datetime.now(UTC)
+            resume_metadata = (
+                dict(pending.metadata_json)
+                if pending is not None
+                and (pending.metadata_json or {}).get("kind") == "clarification"
+                and not (pending.metadata_json or {}).get("resolved")
+                else None
+            )
+            if pending is not None and resume_metadata is not None:
+                pending.metadata_json = {**resume_metadata, "resolved": True}
+            session.commit()
+        if resume_metadata is not None:
+            root_task_id = str(resume_metadata["root_task_id"])
+            resumed = await self._queue.resume(
+                root_task_id,
+                {
+                    "message_id": message.id,
+                    "question": str(resume_metadata["original_request"]),
+                    "clarification_answer": clean,
+                    "file_ids": list(
+                        dict.fromkeys(
+                            [
+                                *resume_metadata.get("file_ids", []),
+                                *file_ids,
+                            ]
+                        )
+                    ),
+                    "clarification_round": int(
+                        resume_metadata.get("clarification_round", 1)
+                    ),
+                },
+            )
+            if resumed:
+                return {
+                    "message": _message_dict(message),
+                    "task_id": root_task_id,
+                    "status": "queued",
+                    "resumed": True,
+                }
+        task_id = await self._queue.enqueue(
+            "main_agent",
+            {
+                "conversation_id": conversation_id,
+                "message_id": message.id,
+                "question": clean,
+                "file_ids": file_ids,
+            },
+            f"message:{message.id}",
+        )
+        return {
+            "message": _message_dict(message),
+            "task_id": task_id,
+            "status": "queued",
+        }
+
+    async def conversation_usage(self, conversation_id: str) -> dict[str, Any]:
+        with self._sessions() as session:
+            _conversation(session, conversation_id)
+            rows = session.execute(
+                select(
+                    ModelUsageModel.model_role,
+                    func.coalesce(func.sum(ModelUsageModel.input_tokens), 0),
+                    func.coalesce(func.sum(ModelUsageModel.output_tokens), 0),
+                    func.coalesce(func.sum(ModelUsageModel.total_tokens), 0),
+                )
+                .where(
+                    ModelUsageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    ModelUsageModel.conversation_id == conversation_id,
+                )
+                .group_by(ModelUsageModel.model_role)
+            ).all()
+        usage = {
+            "small": _empty_usage(),
+            "large": _empty_usage(),
+        }
+        for role, input_tokens, output_tokens, total_tokens in rows:
+            if role in usage:
+                usage[str(role)] = {
+                    "input_tokens": int(input_tokens),
+                    "output_tokens": int(output_tokens),
+                    "total_tokens": int(total_tokens),
+                }
+        usage["total"] = {
+            key: usage["small"][key] + usage["large"][key]
+            for key in ("input_tokens", "output_tokens", "total_tokens")
+        }
+        return usage
+
+    async def get_task(self, task_id: str) -> dict[str, Any]:
+        with self._sessions() as session:
+            task = session.get(QueueJobModel, task_id)
+            if task is None:
+                raise ProjectError(ErrorCode.NOT_FOUND, "任务不存在")
+            return {
+                "task_id": task.id,
+                "status": task.status,
+                "result": task.result,
+                "error": task.error,
+            }
+
+    async def get_task_monitor(self, task_id: str) -> dict[str, Any]:
+        with self._sessions() as session:
+            task = session.get(QueueJobModel, task_id)
+            if task is None:
+                raise ProjectError(ErrorCode.NOT_FOUND, "任务不存在")
+            events = session.scalars(
+                select(TaskEventModel)
+                .where(TaskEventModel.task_id == task_id)
+                .order_by(TaskEventModel.sequence, TaskEventModel.created_at)
+            ).all()
+            return {
+                "task_id": task.id,
+                "status": task.status,
+                "events": [_public_task_event(event) for event in events],
+                "log_path": (TASK_AUDIT_PUBLIC_DIR / f"{task.id}.jsonl").as_posix(),
+            }
+
+    async def debug_parse_result(self, file_id: str) -> dict[str, Any]:
+        with self._sessions() as session:
+            file_model = _file(session, file_id)
+            document = session.scalar(
+                select(ParsedDocumentModel)
+                .where(
+                    ParsedDocumentModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    ParsedDocumentModel.file_id == file_id,
+                )
+                .order_by(ParsedDocumentModel.created_at.desc())
+            )
+            sections = session.scalars(
+                select(DocumentSectionModel)
+                .where(
+                    DocumentSectionModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    DocumentSectionModel.file_id == file_id,
+                )
+                .order_by(DocumentSectionModel.ordinal, DocumentSectionModel.id)
+            ).all()
+            chunks = session.scalars(
+                select(DocumentChunkModel)
+                .where(
+                    DocumentChunkModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    DocumentChunkModel.file_id == file_id,
+                    DocumentChunkModel.level == "child",
+                )
+                .order_by(
+                    DocumentChunkModel.page_start,
+                    DocumentChunkModel.section_id,
+                    DocumentChunkModel.chunk_index_in_section,
+                    DocumentChunkModel.id,
+                )
+            ).all()
+            payload: dict[str, Any] = {
+                "file": _file_dict(file_model),
+                "parsed_document": _parsed_document_debug_dict(document)
+                if document is not None
+                else None,
+                "sections": [_section_debug_dict(section) for section in sections],
+                "chunks": [_chunk_debug_dict(chunk) for chunk in chunks],
+            }
+        _export_diagnostic(
+            f"parse_{file_id}",
+            payload,
+            _parse_result_markdown(payload),
+        )
+        return payload
+
+    async def debug_retrieval_preview(
+        self, conversation_id: str, question: str, file_ids: list[str]
+    ) -> dict[str, Any]:
+        clean_question = question.strip()
+        if not clean_question:
+            raise ProjectError(ErrorCode.INVALID_ARGUMENT, "检索问题不能为空")
+        with self._sessions() as session:
+            _conversation(session, conversation_id)
+            linked_file_ids = set(
+                session.scalars(
+                    select(ConversationFileModel.file_id).where(
+                        ConversationFileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        ConversationFileModel.conversation_id == conversation_id,
+                        ConversationFileModel.deleted_at.is_(None),
+                    )
+                )
+            )
+            selected_file_ids = set(file_ids) if file_ids else linked_file_ids
+            if not selected_file_ids:
+                raise ProjectError(ErrorCode.INVALID_ARGUMENT, "当前会话没有可检索文件")
+            if not selected_file_ids <= linked_file_ids:
+                raise ProjectError(ErrorCode.NOT_FOUND, "存在不属于当前会话的文件")
+            models = HybridRetriever._load_filtered(
+                session, LOCAL_WORKSPACE_ID, selected_file_ids
+            )
+
+        parsed_section_hint = _guess_section_hint(clean_question)
+        section_models = _section_scoped_models(models, parsed_section_hint)
+        scoped_models = section_models or models
+        query_text = f"{clean_question} {parsed_section_hint or ''}".strip()
+        query_vector = _pad_debug(await MultilingualHashEmbeddingClient().embed(query_text))
+
+        exact_rank = _rank_exact(query_text, scoped_models, 30)
+        vector_rank = _rank_vector(query_vector, scoped_models, 30)
+        bm25_rank = _rank_bm25(query_text, scoped_models, 30)
+        merged_models, merged_scores = _merge_rankings(
+            [exact_rank, vector_rank, bm25_rank], 30
+        )
+        reranker = MultilingualLexicalReranker()
+        reranked_indexes = await reranker.rerank(
+            clean_question,
+            [
+                f"{' / '.join(model.section_path or [])}\n{model.text}"
+                for model in merged_models
+            ],
+            top_k=min(8, len(merged_models)),
+        )
+        reranked_models = [merged_models[index] for index, _score in reranked_indexes]
+        reranked_scores = {
+            merged_models[index].id: merged_scores.get(merged_models[index].id, 0.0)
+            + score
+            for index, score in reranked_indexes
+        }
+        payload = {
+            "conversation_id": conversation_id,
+            "question": clean_question,
+            "file_ids": sorted(selected_file_ids),
+            "parsed_section_hint": parsed_section_hint,
+            "exact_match_hits": _debug_hits(exact_rank, "exact"),
+            "section_hits": _debug_hits(section_models[:30], "section"),
+            "vector_hits": _debug_hits(vector_rank, "vector"),
+            "bm25_hits": _debug_hits(bm25_rank, "bm25"),
+            "merged_hits": _debug_hits(
+                merged_models, "merged", scores=merged_scores
+            ),
+            "reranked_hits": _debug_hits(
+                reranked_models, "rerank", scores=reranked_scores
+            ),
+            "final_context_sent_to_llm": _debug_hits(
+                reranked_models, "final", scores=reranked_scores
+            ),
+        }
+        _export_diagnostic(
+            f"retrieval_{conversation_id}_{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}",
+            payload,
+            _retrieval_preview_markdown(payload),
+        )
+        return payload
+
+
+class PaperAgentProcessor:
+    """Worker-side PDF parsing, retrieval and evidence-grounded model invocation."""
+
+    def __init__(
+        self,
+        sessions: sessionmaker[Session],
+        object_store: ObjectStore,
+        embeddings: EmbeddingClient,
+        reranker: RerankerClient,
+        llm: LLMClient,
+        events: TaskEventStore | None = None,
+        decision_llm: LLMClient | None = None,
+        trace_writer: TraceWriter | None = None,
+        audit_log_writer: TaskAuditLogWriter | None = None,
+        unified_runtime: UnifiedAgentRuntime | None = None,
+        skill_runtime: SkillRuntime | None = None,
+    ) -> None:
+        self._sessions = sessions
+        self._objects = object_store
+        self._parser = BasicPDFPipeline()
+        self._indexer = DocumentIndexer(
+            sessions, embeddings, embedding_model="multilingual-hash-v1"
+        )
+        self._retriever = HybridRetriever(sessions, embeddings, reranker)
+        self._llm = llm
+        self._decision_llm = decision_llm or llm
+        self._react = ReActSelfRAGController(self._decision_llm)
+        self._events = events
+        self._traces = trace_writer
+        self._audit_logs = audit_log_writer
+        self._verifier = Verifier()
+        self._unified_runtime = unified_runtime
+        self._skill_runtime = skill_runtime
+
+    async def parse(self, payload: dict[str, Any]) -> dict[str, Any]:
+        file_id = str(payload["file_id"])
+        task_id = str(payload.get("_task_id", ""))
+        self._event(task_id, "step_started", "开始解析 PDF", {"file_id": file_id})
+        skill_activation = await self._activate_skill(
+            "解析上传的 PDF 文档",
+            [file_id],
+            None,
+            task_id,
+            requested_skill="document_parser",
+        )
+        parse_tool = await self._start_skill_tool(
+            skill_activation,
+            "parse_document",
+            {"workspace_entry_id": file_id},
+            task_id,
+        )
+        uploaded_artifact_paths: list[str] = []
+        previous_artifacts: dict[str, str] = {}
+        reused_artifact_paths: set[str] = set()
+        try:
+            with self._sessions() as session:
+                file_model = _file(session, file_id)
+                storage_path = file_model.storage_path
+                filename = file_model.filename
+                checksum = file_model.checksum
+                previous_documents = session.scalars(
+                    select(ParsedDocumentModel).where(
+                        ParsedDocumentModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        ParsedDocumentModel.file_id == file_id,
+                    )
+                )
+                previous_artifacts = {
+                    str(item.get("artifact_id")): str(item.get("storage_path"))
+                    for previous in previous_documents
+                    for item in (previous.metadata_json or {}).get(
+                        "visual_artifacts", []
+                    )
+                    if item.get("artifact_id") and item.get("storage_path")
+                }
+            self._audit(
+                task_id,
+                "object.download",
+                component="object_store",
+                status="started",
+                details={
+                    "file_id": file_id,
+                    "filename": filename,
+                    "storage_path": storage_path,
+                },
+            )
+            reindex_required = not self._indexer.is_current(
+                LOCAL_WORKSPACE_ID,
+                file_id,
+                expected_checksum=checksum,
+            )
+            data = await self._objects.download(storage_path)
+            self._audit(
+                task_id,
+                "object.download",
+                component="object_store",
+                status="completed",
+                details={"file_id": file_id, "storage_path": storage_path},
+            )
+            document = await self._parser.parse(data, filename, trace_id=task_id)
+            stored_artifacts = []
+            for artifact in document.visual_artifacts:
+                artifact_id = f"{file_id}-{artifact.artifact_id}"
+                stored_path = previous_artifacts.get(artifact_id, "")
+                if stored_path and await self._objects.exists(stored_path):
+                    reused_artifact_paths.add(stored_path)
+                else:
+                    stored_path = await self._objects.upload(
+                        f"artifacts/pdf-visuals/{artifact_id}.png",
+                        artifact.image_png,
+                        "image/png",
+                    )
+                    uploaded_artifact_paths.append(stored_path)
+                    self._audit(
+                        task_id,
+                        "object.upload",
+                        component="object_store",
+                        status="completed",
+                        details={
+                            "file_id": file_id,
+                            "artifact_id": artifact_id,
+                            "storage_path": stored_path,
+                        },
+                    )
+                stored_artifacts.append(
+                    artifact.model_copy(
+                        update={
+                            "artifact_id": artifact_id,
+                            "storage_path": stored_path,
+                        }
+                    )
+                )
+            document = document.model_copy(
+                update={"visual_artifacts": stored_artifacts}
+            )
+            chunks = await self._indexer.index(
+                LOCAL_WORKSPACE_ID, file_id, data, document
+            )
+            for old_path in set(previous_artifacts.values()) - reused_artifact_paths:
+                await self._objects.delete(old_path)
+            with self._sessions() as session:
+                file_model = _file(session, file_id)
+                file_model.metadata_json = {
+                    **(file_model.metadata_json or {}),
+                    "parse_status": "parsed",
+                    "page_count": document.page_count,
+                    "quality_score": document.quality.score,
+                    "chunk_count": len(chunks),
+                    "visual_artifact_count": len(document.visual_artifacts),
+                    "page_layouts": [page.layout for page in document.pages],
+                }
+                session.commit()
+            self._event(
+                task_id,
+                "tool_completed",
+                "PDF 解析和索引完成",
+                {"file_id": file_id, "chunk_count": len(chunks)},
+            )
+            await self._trace(
+                task_id,
+                "document.index",
+                {
+                    "file_id": file_id,
+                    "chunk_count": len(chunks),
+                    "reindexed": reindex_required,
+                },
+            )
+            result = {
+                "status": "parsed",
+                "file_id": file_id,
+                "chunks": len(chunks),
+                "visual_artifacts": len(document.visual_artifacts),
+            }
+            await self._complete_skill_tool(
+                parse_tool,
+                {
+                    "document_id": chunks[0].document_id if chunks else file_id,
+                    "file_id": file_id,
+                    "page_count": document.page_count,
+                    "section_titles": [section.title for section in document.sections],
+                    "quality_score": document.quality.score,
+                    "warnings": document.quality.warnings,
+                },
+                task_id,
+            )
+            await self._complete_skill(
+                skill_activation,
+                task_id,
+                {
+                    "file_id": file_id,
+                    "page_count": document.page_count,
+                    "section_count": len(document.sections),
+                    "chunk_count": result["chunks"],
+                    "visual_artifact_count": result["visual_artifacts"],
+                },
+            )
+            return result
+        except Exception:
+            for path in uploaded_artifact_paths:
+                await self._objects.delete(path)
+            with self._sessions() as session:
+                failed_file = session.get(FileModel, file_id)
+                if failed_file is not None:
+                    failed_file.metadata_json = {
+                        **(failed_file.metadata_json or {}),
+                        "parse_status": "failed",
+                    }
+                    session.commit()
+            raise
+
+    async def answer(self, payload: dict[str, Any]) -> dict[str, Any]:
+        task_id = str(payload.get("_task_id", ""))
+        conversation_id = str(payload["conversation_id"])
+        question = str(payload["question"])
+        clarification_answer = str(payload.get("clarification_answer", "")).strip()
+        file_ids = [str(value) for value in payload.get("file_ids", [])]
+        history = _related_conversation_context(
+            self._sessions,
+            conversation_id,
+            question,
+            exclude_message_id=str(payload.get("message_id", "")),
+        )
+        self._event(task_id, "task_started", "任务开始", {})
+        if not file_ids:
+            with self._sessions() as session:
+                file_ids = list(
+                    session.scalars(
+                        select(ConversationFileModel.file_id).where(
+                            ConversationFileModel.workspace_id == LOCAL_WORKSPACE_ID,
+                            ConversationFileModel.conversation_id == conversation_id,
+                            ConversationFileModel.deleted_at.is_(None),
+                        )
+                    )
+                )
+        runtime_mode = "legacy_safe"
+        if self._unified_runtime is not None:
+            runtime_execution = await self._unified_runtime.execute(
+                RuntimeRequest(
+                    task_id=task_id or "unpersisted-task",
+                    question=question,
+                    file_ids=file_ids,
+                    workspace_id=LOCAL_WORKSPACE_ID,
+                    conversation_id=conversation_id,
+                )
+            )
+            runtime_mode = runtime_execution.decision.mode.value
+            await self._trace(
+                task_id,
+                "runtime.route",
+                {
+                    "mode": runtime_mode,
+                    "fallback_reason": runtime_execution.decision.fallback_reason,
+                    "model_route": runtime_execution.decision.model_route,
+                    "cascade_status": runtime_execution.decision.cascade_status,
+                },
+            )
+        self._event(
+            task_id,
+            "step_started",
+            "小模型进行问题判断",
+            {"stage": "intent_routing", "model_role": "small"},
+        )
+        decision = await self._react.decide(
+            question,
+            has_files=bool(file_ids),
+            clarification_answer=clarification_answer or None,
+            conversation_context=history["text"],
+        )
+        retrieval_query = str(
+            history.get("retrieval_query")
+            or decision.search_query
+            or question
+        )
+        self._record_usage(
+            conversation_id, task_id, "small", self._decision_llm
+        )
+        action = decision.action
+        if action == "clarify" and int(payload.get("clarification_round", 0)) >= 2:
+            action = "retrieve" if file_ids else "answer"
+        self._event(
+            task_id,
+            "step_completed",
+            "小模型完成问题判断",
+            {"action": action, "section_hint": decision.section_hint},
+        )
+        await self._trace(
+            task_id,
+            "agent.react",
+            {
+                "action": action,
+                "has_files": bool(file_ids),
+                "has_section_hint": bool(decision.section_hint),
+            },
+        )
+        if action == "clarify":
+            return self._ask_clarification(
+                conversation_id,
+                task_id,
+                question,
+                file_ids,
+                decision.clarification_question or "请补充具体需求。",
+                int(payload.get("clarification_round", 0)) + 1,
+            )
+        if action == "answer":
+            self._event(
+                task_id,
+                "step_started",
+                "大模型进行回答生成",
+                {"stage": "answer_generation", "model_role": "large"},
+            )
+            answer = await self._generate_substantive_answer(
+                f"相关历史问答：\n{history['text'] or '无'}\n\n"
+                f"用户问题：{question}\n用户补充：{clarification_answer or '无'}",
+                system_prompt="你是论文助手。回答一般问题时简洁、诚实，不虚构论文事实。",
+                max_tokens=1024,
+                temperature=0.2,
+            )
+            self._record_usage(conversation_id, task_id, "large", self._llm)
+            message_id = self._save_answer(
+                conversation_id,
+                task_id,
+                answer,
+                [],
+                {
+                    "used": False,
+                    "decision": "answer",
+                    "runtime_mode": runtime_mode,
+                    "history_used": bool(history["source_message_ids"]),
+                    "history_source_message_ids": history["source_message_ids"],
+                },
+            )
+            self._event(
+                task_id,
+                "task_completed",
+                "回答生成完成",
+                {"message_id": message_id},
+            )
+            return {"status": "completed", "message_id": message_id, "answer": answer}
+        if not file_ids:
+            return self._ask_clarification(
+                conversation_id,
+                task_id,
+                question,
+                file_ids,
+                "请上传或选择要检索的论文。",
+                int(payload.get("clarification_round", 0)) + 1,
+            )
+        skill_activation = await self._activate_skill(
+            question,
+            file_ids,
+            conversation_id,
+            task_id,
+        )
+        for file_id in file_ids:
+            with self._sessions() as session:
+                checksum = _file(session, file_id).checksum
+            if not self._indexer.is_current(
+                LOCAL_WORKSPACE_ID,
+                file_id,
+                expected_checksum=checksum,
+            ):
+                await self.parse({"_task_id": task_id, "file_id": file_id})
+        self._event(
+            task_id,
+            "step_started",
+            "执行论文问答 RAG 流程",
+            {"stage": "paper_qa_rag", "file_ids": file_ids},
+        )
+        self._event(
+            task_id,
+            "tool_started",
+            "检索论文证据",
+            {"file_ids": file_ids, "file_count": len(set(file_ids))},
+        )
+        search_tool = await self._start_skill_tool(
+            skill_activation,
+            "search_document",
+            {"query": retrieval_query, "file_ids": file_ids, "limit": 8},
+            task_id,
+        )
+        self._audit(
+            task_id,
+            "document_index.read",
+            component="hybrid_retriever",
+            status="started",
+            details={"file_ids": file_ids, "file_count": len(set(file_ids))},
+        )
+        section_result = await self._retriever.search_section(
+            question,
+            workspace_id=LOCAL_WORKSPACE_ID,
+            file_ids=set(file_ids),
+            limit=20,
+        )
+        explicit_section = section_result.resolution.reference.kind != "none"
+        if explicit_section and section_result.resolution.status != "resolved":
+            reference = section_result.resolution.reference
+            label = reference.number or reference.title or reference.raw_text or "该章节"
+            clarification_question = (
+                section_result.resolution.clarification_question
+                or f"未找到指定章节 {label}，请确认章节编号、标题或目标论文。"
+            )
+            return self._ask_clarification(
+                conversation_id,
+                task_id,
+                question,
+                file_ids,
+                clarification_question,
+                int(payload.get("clarification_round", 0)) + 1,
+            )
+        if explicit_section:
+            hits = list(section_result.hits)
+            retrieval_metadata: dict[str, Any] = {
+                "retrieval_mode": f"section_{section_result.mode}",
+                "selected_section_id": (
+                    section_result.resolution.selected.section_id
+                    if section_result.resolution.selected is not None
+                    else None
+                ),
+                "scope_section_ids": list(section_result.scope_section_ids),
+                "section_match_kind": section_result.resolution.match_kind,
+                "section_context_truncated": section_result.truncated,
+            }
+        else:
+            hits = await self._retriever.search(
+                retrieval_query,
+                workspace_id=LOCAL_WORKSPACE_ID,
+                file_ids=set(file_ids),
+                limit=8,
+            )
+            retrieval_metadata = {"retrieval_mode": "ordinary_rag"}
+        if not hits:
+            raise ProjectError(
+                ErrorCode.INSUFFICIENT_EVIDENCE,
+                "论文中没有检索到相关证据",
+            )
+        await self._complete_skill_tool(
+            search_tool,
+            {
+                "hits": [
+                    {
+                        "chunk_id": hit.chunk_id,
+                        "file_id": hit.file_id,
+                        "text": hit.text,
+                        "section_path": list(hit.section_path),
+                        "page_start": hit.page_start,
+                        "page_end": hit.page_end,
+                        "bbox": list(hit.bbox),
+                        "score": hit.score,
+                    }
+                    for hit in hits
+                ]
+            },
+            task_id,
+        )
+        self._event(
+            task_id,
+            "tool_completed",
+            "论文证据检索完成",
+            {
+                "evidence_count": len(hits),
+                "retrieval_mode": retrieval_metadata["retrieval_mode"],
+            },
+        )
+        await self._trace(
+            task_id,
+            "rag.retrieve",
+            {
+                "file_count": len(set(file_ids)),
+                "evidence_count": len(hits),
+                "retrieval_mode": retrieval_metadata["retrieval_mode"],
+                "selected_section_id": retrieval_metadata.get(
+                    "selected_section_id"
+                ),
+                "section_context_truncated": retrieval_metadata.get(
+                    "section_context_truncated", False
+                ),
+            },
+        )
+        visual_candidates = _visual_artifacts_for_hits(
+            self._sessions, hits
+        )
+        prompt = _answer_prompt(
+            question,
+            hits,
+            clarification_answer,
+            conversation_context=history["text"],
+            visual_artifacts=visual_candidates,
+            skill_instructions=(
+                skill_activation.skill.instructions if skill_activation else ""
+            ),
+        )
+        self._event(
+            task_id,
+            "step_started",
+            "大模型进行回答生成",
+            {"evidence_count": len(hits)},
+        )
+        answer = await self._generate_substantive_answer(
+            prompt,
+            system_prompt=(
+                "你是论文问答助手。只能依据提供的证据回答；不得补造。"
+                "每个事实后使用证据标签 [E1]、[E2]。证据不足时明确说明。"
+            ),
+            max_tokens=2048,
+            temperature=0.1,
+        )
+        self._record_usage(conversation_id, task_id, "large", self._llm)
+        self._event(
+            task_id,
+            "step_started",
+            "Verifier 进行回答检验",
+            {"stage": "answer_verification", "evidence_count": len(hits)},
+        )
+        verification = self._verifier.verify(
+            VerificationInput(
+                output={"answer": answer},
+                required_fields={"answer"},
+                valid_citation_ids={f"E{index}" for index in range(1, len(hits) + 1)},
+            )
+        )
+        verification_passed = verification.status == VerificationStatus.PASSED
+        self._event(
+            task_id,
+            "verification_completed" if verification_passed else "verification_failed",
+            "Verifier 回答检验完成" if verification_passed else "Verifier 回答检验失败",
+            {"evidence_count": len(hits)},
+        )
+        await self._trace(
+            task_id,
+            "verification.complete",
+            {
+                "passed": verification_passed,
+                "issue_codes": [issue.code for issue in verification.issues],
+                "evidence_count": len(hits),
+            },
+        )
+        if not verification_passed:
+            raise ProjectError(
+                ErrorCode.GENERATION_FAILED,
+                "模型回答包含无效引用，未保存该回答",
+                {"issue_codes": [issue.code for issue in verification.issues]},
+            )
+        await self._complete_skill(
+            skill_activation,
+            task_id,
+            answer,
+        )
+        message_id = self._save_answer(
+            conversation_id,
+            task_id,
+            answer,
+            hits,
+            {
+                "used": True,
+                "decision": "retrieve",
+                "runtime_mode": runtime_mode,
+                "query": retrieval_query,
+                "section_hint": decision.section_hint,
+                "history_used": bool(history["source_message_ids"]),
+                "history_source_message_ids": history["source_message_ids"],
+                **retrieval_metadata,
+            },
+            visual_artifacts=_visual_artifacts_mentioned(
+                question, answer, visual_candidates
+            ),
+        )
+        self._event(
+            task_id,
+            "task_completed",
+            "回答生成完成",
+            {"message_id": message_id},
+        )
+        await self._trace(
+            task_id,
+            "task.completed",
+            {
+                "message_id": message_id,
+                "evidence_count": len(hits),
+                "retrieval_mode": retrieval_metadata["retrieval_mode"],
+            },
+        )
+        return {
+            "status": "completed",
+            "message_id": message_id,
+            "answer": answer,
+        }
+
+    async def _activate_skill(
+        self,
+        request: str,
+        file_ids: list[str],
+        conversation_id: str | None,
+        task_id: str,
+        *,
+        requested_skill: str | None = None,
+    ) -> SkillActivation | None:
+        if self._skill_runtime is None:
+            return None
+        activation = await self._skill_runtime.activate(
+            request,
+            {
+                "request": request,
+                "file_ids": file_ids,
+                "conversation_id": conversation_id,
+                "parameters": {},
+            },
+            task_id or "unpersisted-task",
+            requested_skill=requested_skill,
+        )
+        self._event(
+            task_id,
+            "skill_selected",
+            f"调用 {activation.skill.name} Skill",
+            {
+                "skill_name": activation.skill.name,
+                "skill_version": activation.skill.version,
+                "model_profile": activation.skill.model_profile,
+                "used_fallback": activation.selection.used_fallback,
+            },
+        )
+        return activation
+
+    async def _start_skill_tool(
+        self,
+        activation: SkillActivation | None,
+        tool_name: str,
+        arguments: dict[str, Any],
+        task_id: str,
+    ) -> SkillToolBinding | None:
+        if activation is None or self._skill_runtime is None:
+            return None
+        return await self._skill_runtime.start_tool(
+            activation, tool_name, arguments, task_id or "unpersisted-task"
+        )
+
+    async def _complete_skill_tool(
+        self,
+        binding: SkillToolBinding | None,
+        output: dict[str, Any],
+        task_id: str,
+    ) -> None:
+        if binding is None or self._skill_runtime is None:
+            return
+        await self._skill_runtime.complete_tool(
+            binding, output, task_id or "unpersisted-task"
+        )
+
+    async def _complete_skill(
+        self,
+        activation: SkillActivation | None,
+        task_id: str,
+        output: Any,
+    ) -> None:
+        if activation is None or self._skill_runtime is None:
+            return
+        await self._skill_runtime.complete(
+            activation,
+            output,
+            task_id or "unpersisted-task",
+        )
+
+    async def _generate_substantive_answer(
+        self,
+        prompt: str,
+        *,
+        system_prompt: str,
+        max_tokens: int,
+        temperature: float,
+    ) -> str:
+        answer = await self._llm.generate(
+            prompt,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        if _is_substantive_answer(answer):
+            return answer
+        retry_prompt = (
+            f"{prompt}\n\n"
+            "上一次回答过短，不能满足用户需求。请用中文完整回答，至少 3 句话；"
+            "如果使用证据，请保留 [E1] 这类证据标签。"
+        )
+        answer = await self._llm.generate(
+            retry_prompt,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+        if not _is_substantive_answer(answer):
+            raise ProjectError(
+                ErrorCode.GENERATION_FAILED,
+                "模型返回内容过短，未生成有效回答",
+            )
+        return answer
+
+    def _ask_clarification(
+        self,
+        conversation_id: str,
+        task_id: str,
+        original_request: str,
+        file_ids: list[str],
+        question: str,
+        round_count: int,
+    ) -> dict[str, Any]:
+        if round_count > 2:
+            question = "信息仍不完整。请明确论文、章节和希望得到的结果。"
+        with self._sessions() as session:
+            message = MessageModel(
+                id=uuid4().hex,
+                workspace_id=LOCAL_WORKSPACE_ID,
+                conversation_id=conversation_id,
+                role="assistant",
+                type="clarification",
+                content=question,
+                metadata_json={
+                    "kind": "clarification",
+                    "root_task_id": task_id,
+                    "original_request": original_request,
+                    "file_ids": file_ids,
+                    "clarification_round": round_count,
+                    "resolved": False,
+                },
+            )
+            session.add(message)
+            session.commit()
+        return {
+            "status": "waiting_user",
+            "message_id": message.id,
+            "question": question,
+        }
+
+    def _save_answer(
+        self,
+        conversation_id: str,
+        task_id: str,
+        answer: str,
+        hits: list[RetrievalHit],
+        rag: dict[str, Any],
+        visual_artifacts: list[dict[str, Any]] | None = None,
+    ) -> str:
+        with self._sessions() as session:
+            message = MessageModel(
+                id=uuid4().hex,
+                workspace_id=LOCAL_WORKSPACE_ID,
+                conversation_id=conversation_id,
+                role="assistant",
+                type="text",
+                content=answer,
+                metadata_json={
+                    "task_id": task_id,
+                    "rag": rag,
+                    "evidence": [
+                        _hit_dict(index, hit) for index, hit in enumerate(hits, 1)
+                    ],
+                    "visual_artifacts": visual_artifacts or [],
+                },
+            )
+            session.add(message)
+            conversation = _conversation(session, conversation_id)
+            conversation.updated_at = datetime.now(UTC)
+            session.commit()
+            return message.id
+
+    def _record_usage(
+        self,
+        conversation_id: str,
+        task_id: str,
+        role: str,
+        client: LLMClient,
+    ) -> None:
+        usage = getattr(client, "last_usage", None)
+        if usage is None or int(getattr(usage, "total_tokens", 0)) <= 0:
+            return
+        with self._sessions() as session:
+            session.add(
+                ModelUsageModel(
+                    id=uuid4().hex,
+                    workspace_id=LOCAL_WORKSPACE_ID,
+                    conversation_id=conversation_id,
+                    task_id=task_id,
+                    model_role=role,
+                    model_name=str(getattr(client, "last_model_name", "unknown")),
+                    input_tokens=int(usage.input_tokens),
+                    output_tokens=int(usage.output_tokens),
+                    total_tokens=int(usage.total_tokens),
+                )
+            )
+            session.commit()
+
+    def _event(
+        self, task_id: str, event_type: str, title: str, data: dict[str, Any]
+    ) -> None:
+        if self._events is not None and task_id:
+            self._events.append(task_id, event_type, title, data)
+        self._audit(
+            task_id,
+            event_type,
+            component="agent_progress",
+            status="recorded",
+            details={"event_type": event_type, "title": title, **data},
+        )
+
+    def _audit(
+        self,
+        task_id: str,
+        action: str,
+        *,
+        component: str,
+        status: str,
+        details: dict[str, Any],
+    ) -> None:
+        if self._audit_logs is None or not task_id:
+            return
+        try:
+            self._audit_logs.append(
+                task_id,
+                action,
+                component=component,
+                status=status,
+                details=details,
+            )
+        except OSError:
+            LOGGER.warning("Unable to append task audit log for task %s", task_id)
+
+    async def _trace(
+        self,
+        task_id: str,
+        span_name: str,
+        data: dict[str, Any],
+    ) -> None:
+        if self._traces is None or not task_id:
+            return
+        await self._traces.write_trace(
+            task_id,
+            span_name,
+            {"task_id": task_id, **data},
+        )
+
+
+def _conversation(session: Session, conversation_id: str) -> ConversationModel:
+    model = session.scalar(
+        select(ConversationModel).where(
+            ConversationModel.id == conversation_id,
+            ConversationModel.workspace_id == LOCAL_WORKSPACE_ID,
+            ConversationModel.deleted_at.is_(None),
+        )
+    )
+    if model is None:
+        raise ProjectError(ErrorCode.NOT_FOUND, "会话不存在")
+    return model
+
+
+def _public_task_event(event: TaskEventModel) -> dict[str, Any]:
+    event_type = event.event_type
+    title = event.title
+    data = dict(event.data or {})
+    if event_type == "skill_selected" and data.get("skill_name") == "paper_qa":
+        event_type = "step_started"
+        title = "执行论文问答 RAG 流程"
+        data.pop("skill_name", None)
+        data["stage"] = "paper_qa_rag"
+    return {
+        "event_id": event.event_id,
+        "task_id": event.task_id,
+        "sequence": event.sequence,
+        "type": event_type,
+        "title": title,
+        "data": data,
+        "created_at": event.created_at.isoformat(),
+    }
+
+
+def _file(session: Session, file_id: str) -> FileModel:
+    model = session.scalar(
+        select(FileModel).where(
+            FileModel.id == file_id,
+            FileModel.workspace_id == LOCAL_WORKSPACE_ID,
+            FileModel.deleted_at.is_(None),
+            FileModel.is_deleted.is_(False),
+        )
+    )
+    if model is None:
+        raise ProjectError(ErrorCode.NOT_FOUND, "文件不存在")
+    return model
+
+
+def _conversation_dict(model: ConversationModel, message_count: int) -> dict[str, Any]:
+    return {
+        "id": model.id,
+        "title": model.title,
+        "created_at": model.created_at.isoformat(),
+        "updated_at": model.updated_at.isoformat(),
+        "message_count": message_count,
+    }
+
+
+def _message_dict(model: MessageModel) -> dict[str, Any]:
+    return {
+        "id": model.id,
+        "role": model.role,
+        "content": model.content,
+        "created_at": model.created_at.isoformat(),
+        "metadata": model.metadata_json or {},
+    }
+
+
+def _file_dict(model: FileModel) -> dict[str, Any]:
+    return {
+        "id": model.id,
+        "name": model.filename,
+        "content_type": model.content_type,
+        "size_bytes": model.size_bytes,
+        "created_at": model.created_at.isoformat(),
+        "parse_status": (model.metadata_json or {}).get("parse_status", "queued"),
+    }
+
+
+def _answer_prompt(
+    question: str,
+    hits: list[RetrievalHit],
+    clarification_answer: str = "",
+    *,
+    conversation_context: str = "",
+    visual_artifacts: list[dict[str, Any]] | None = None,
+    skill_instructions: str = "",
+) -> str:
+    evidence = "\n\n".join(
+        f"[E{index}] 文件 {hit.file_id}，第 {hit.page_start} 页，"
+        f"章节 {' / '.join(hit.section_path)}：\n{hit.text}"
+        for index, hit in enumerate(hits, 1)
+    )
+    visuals = "\n".join(
+        f"- {item['label']}（{item['kind']}，第 {item['page']} 页，"
+        f"章节 {' / '.join(item['section']) or '未识别'}）：{item['caption'] or '无标题文字'}"
+        for item in (visual_artifacts or [])
+    )
+    return (
+        f"已激活 Skill 指令：\n{skill_instructions or '无'}\n\n"
+        f"与当前问题相关的历史问答：\n{conversation_context or '无'}\n\n"
+        f"用户问题：{question}\n"
+        f"用户补充：{clarification_answer or '无'}\n\n"
+        f"可用论文证据：\n{evidence}\n\n请生成中文回答。"
+        f"\n\n可用视觉材料：\n{visuals or '无'}\n"
+        "如果回答提到图、表或算法，请使用其准确标签；界面会自动附上对应截图。"
+    )
+
+
+def _related_conversation_context(
+    sessions: sessionmaker[Session],
+    conversation_id: str,
+    question: str,
+    *,
+    exclude_message_id: str = "",
+    max_messages: int = 8,
+    max_characters: int = 3600,
+) -> dict[str, Any]:
+    with sessions() as session:
+        messages = list(
+            session.scalars(
+                select(MessageModel)
+                .where(
+                    MessageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    MessageModel.conversation_id == conversation_id,
+                    MessageModel.deleted_at.is_(None),
+                    MessageModel.id != exclude_message_id,
+                )
+                .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
+                .limit(24)
+            )
+        )
+    messages.reverse()
+    if not messages:
+        return {
+            "text": "",
+            "source_message_ids": [],
+            "reason": "no_history",
+            "retrieval_query": "",
+        }
+    question_terms = set(retrieval_terms(question))
+    follow_up = bool(
+        re.search(
+            r"(?:刚才|之前|前面|上面|上述|这个|那个|它|其|该|继续|接着|进一步|"
+            r"为什么|还有|再说|展开|详细一点|列举|举例|逐一|逐个|分别说明|"
+            r"具体有哪些|都有哪些|what about|continue|previous)",
+            question,
+            re.IGNORECASE,
+        )
+    )
+    scored: list[tuple[float, MessageModel]] = []
+    for message in messages:
+        terms = set(retrieval_terms(message.content))
+        overlap = len(question_terms & terms) / max(1, len(question_terms))
+        scored.append((overlap, message))
+    max_overlap = max((score for score, _ in scored), default=0.0)
+    if not follow_up and max_overlap < 0.18:
+        return {
+            "text": "",
+            "source_message_ids": [],
+            "reason": "independent_turn",
+            "retrieval_query": "",
+        }
+    selected_ids = {
+        message.id for score, message in scored if score >= 0.12
+    }
+    if follow_up:
+        selected_ids.update(message.id for message in messages[-4:])
+    selected = [message for message in messages if message.id in selected_ids][
+        -max_messages:
+    ]
+    lines: list[str] = []
+    source_ids: list[str] = []
+    used = 0
+    for message in reversed(selected):
+        role = "用户" if message.role == "user" else "助手"
+        line = f"{role}：{' '.join(message.content.split())}"
+        if used + len(line) > max_characters and lines:
+            break
+        lines.append(line)
+        source_ids.append(message.id)
+        used += len(line)
+    lines.reverse()
+    source_ids.reverse()
+    prior_user = next(
+        (message for message in reversed(selected) if message.role == "user"),
+        None,
+    )
+    retrieval_query = ""
+    if follow_up and prior_user is not None:
+        prior_question = " ".join(prior_user.content.split())
+        retrieval_query = f"{prior_question}\n追问：{question}"[:1200]
+    return {
+        "text": "\n".join(lines),
+        "source_message_ids": source_ids,
+        "reason": "follow_up" if follow_up else "topic_overlap",
+        "retrieval_query": retrieval_query,
+    }
+
+
+def _visual_artifact_paths(metadata: dict[str, Any]) -> list[str]:
+    return [
+        str(item["storage_path"])
+        for item in metadata.get("visual_artifacts", [])
+        if item.get("storage_path")
+    ]
+
+
+def _visual_artifacts_for_hits(
+    sessions: sessionmaker[Session], hits: list[RetrievalHit]
+) -> list[dict[str, Any]]:
+    file_ids = {hit.file_id for hit in hits}
+    if not file_ids:
+        return []
+    with sessions() as session:
+        documents = list(
+            session.scalars(
+                select(ParsedDocumentModel).where(
+                    ParsedDocumentModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    ParsedDocumentModel.file_id.in_(file_ids),
+                )
+            )
+        )
+    hit_pages = {
+        (hit.file_id, page)
+        for hit in hits
+        for page in range(hit.page_start, hit.page_end + 1)
+    }
+    result: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for document in documents:
+        for item in (document.metadata_json or {}).get("visual_artifacts", []):
+            artifact_id = str(item.get("artifact_id", ""))
+            if (
+                not artifact_id
+                or artifact_id in seen
+                or (document.file_id, int(item.get("page_number", 0))) not in hit_pages
+            ):
+                continue
+            seen.add(artifact_id)
+            result.append(
+                {
+                    "id": artifact_id,
+                    "kind": str(item.get("kind", "figure")),
+                    "label": str(item.get("label", "Visual")),
+                    "caption": str(item.get("caption", "")),
+                    "file_id": document.file_id,
+                    "page": int(item.get("page_number", 1)),
+                    "section": list(item.get("section_path", [])),
+                    "bbox": list(item.get("bbox", {}).values())
+                    if isinstance(item.get("bbox"), dict)
+                    else list(item.get("bbox", [])),
+                    "image_url": f"/api/v1/visual-artifacts/{artifact_id}/image",
+                }
+            )
+    return result
+
+
+def _visual_artifacts_mentioned(
+    question: str, answer: str, candidates: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    combined = f"{question}\n{answer}".casefold()
+    kind_terms = {
+        "figure": ("figure", "fig.", "图", "示意图"),
+        "table": ("table", "表", "表格"),
+        "algorithm": ("algorithm", "算法", "伪代码"),
+    }
+    selected = []
+    for item in candidates:
+        label = str(item.get("label", "")).casefold()
+        terms = kind_terms.get(str(item.get("kind")), ())
+        if (label and label in combined) or any(term in combined for term in terms):
+            selected.append(item)
+    return selected[:6]
+
+
+def _is_substantive_answer(answer: str) -> bool:
+    compact = "".join(answer.split())
+    return len(compact) >= 12
+
+
+def _hit_dict(index: int, hit: RetrievalHit) -> dict[str, Any]:
+    return {
+        "id": f"E{index}",
+        "file_id": hit.file_id,
+        "page": hit.page_start,
+        "section": list(hit.section_path),
+        "quote": hit.text[:800],
+        "bbox": list(hit.bbox),
+    }
+
+
+def _parsed_document_debug_dict(model: ParsedDocumentModel) -> dict[str, Any]:
+    return {
+        "id": model.id,
+        "file_id": model.file_id,
+        "parser_name": model.parser_name,
+        "parser_version": model.parser_version,
+        "page_count": model.page_count,
+        "quality_score": model.quality_score,
+        "metadata": model.metadata_json or {},
+    }
+
+
+def _section_debug_dict(model: DocumentSectionModel) -> dict[str, Any]:
+    return {
+        "id": model.id,
+        "section_id": model.section_id,
+        "number": model.number,
+        "title": model.title,
+        "level": model.level,
+        "parent_section_id": model.parent_section_id,
+        "section_path": list(model.section_path or []),
+        "ordinal": model.ordinal,
+        "page_start": model.page_start,
+        "page_end": model.page_end,
+        "block_ids": list(model.block_ids or []),
+        "descendant_block_ids": list(model.descendant_block_ids or []),
+    }
+
+
+def _chunk_debug_dict(model: DocumentChunkModel) -> dict[str, Any]:
+    return {
+        "chunk_id": model.id,
+        "file_id": model.file_id,
+        "section_id": model.section_id,
+        "section_title": model.section_title,
+        "section_path": list(model.section_path or []),
+        "page_start": model.page_start,
+        "page_end": model.page_end,
+        "chunk_index": model.chunk_index_in_section,
+        "chunk_index_in_section": model.chunk_index_in_section,
+        "source_block_ids": list(model.source_block_ids or []),
+        "text": model.text,
+    }
+
+
+def _debug_hits(
+    models: list[DocumentChunkModel],
+    retriever: str,
+    *,
+    scores: dict[str, float] | None = None,
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "chunk_id": model.id,
+            "file_id": model.file_id,
+            "section_title": model.section_title,
+            "section_path": list(model.section_path or []),
+            "page_start": model.page_start,
+            "page_end": model.page_end,
+            "score": round(
+                float(scores[model.id]) if scores and model.id in scores else 1 / rank,
+                6,
+            ),
+            "retriever": retriever,
+            "chunk_index": model.chunk_index_in_section,
+            "chunk_index_in_section": model.chunk_index_in_section,
+            "text": model.text[:1000],
+        }
+        for rank, model in enumerate(models, start=1)
+    ]
+
+
+def _guess_section_hint(question: str) -> str | None:
+    lettered = re.search(r"\b[A-Z]\.\s*([A-Za-z][A-Za-z0-9 _:/-]{2,80})", question)
+    if lettered:
+        candidate = re.split(r"[\u4e00-\u9fff?？,，。]", lettered.group(1))[0]
+        return candidate.strip(" .:-") or None
+    quoted = re.search(r"[“\"']([^”\"']{2,80})[”\"']", question)
+    if quoted:
+        return quoted.group(1).strip() or None
+    section_word = re.search(
+        r"([A-Za-z][A-Za-z0-9 _:/-]{2,80})\s*(?:section|章节|这一节|这节)",
+        question,
+        re.I,
+    )
+    if section_word:
+        return section_word.group(1).strip(" .:-") or None
+    aliases = ["方法", "实验", "结果", "讨论", "结论", "引言", "摘要"]
+    return next((alias for alias in aliases if alias in question), None)
+
+
+def _section_scoped_models(
+    models: list[DocumentChunkModel], section_hint: str | None
+) -> list[DocumentChunkModel]:
+    if not section_hint:
+        return []
+    hint_terms = set(retrieval_terms(section_hint))
+    if not hint_terms:
+        return []
+    matched = [
+        model
+        for model in models
+        if hint_terms
+        & set(
+            retrieval_terms(
+                " ".join([*(model.section_path or []), model.section_title or ""])
+            )
+        )
+    ]
+    return sorted(
+        matched,
+        key=lambda model: (
+            model.page_start,
+            model.section_id or "",
+            model.chunk_index_in_section,
+            model.id,
+        ),
+    )
+
+
+def _rank_exact(
+    query: str, models: list[DocumentChunkModel], limit: int
+) -> list[DocumentChunkModel]:
+    terms = [term for term in retrieval_terms(query) if len(term) > 1]
+    if not terms:
+        return []
+    scored = [
+        (
+            sum((model.searchable_text or model.text).casefold().count(term) for term in terms),
+            model,
+        )
+        for model in models
+    ]
+    return [
+        model
+        for score, model in sorted(scored, key=lambda item: (-item[0], item[1].id))
+        if score > 0
+    ][:limit]
+
+
+def _rank_vector(
+    query_vector: list[float], models: list[DocumentChunkModel], limit: int
+) -> list[DocumentChunkModel]:
+    scored = [(_cosine_debug(query_vector, list(model.embedding)), model) for model in models]
+    return [
+        model
+        for score, model in sorted(scored, key=lambda item: (-item[0], item[1].id))
+        if score > 0
+    ][:limit]
+
+
+def _rank_bm25(
+    query: str, models: list[DocumentChunkModel], limit: int
+) -> list[DocumentChunkModel]:
+    query_terms = retrieval_terms(query)
+    if not query_terms:
+        return []
+    corpus_terms = [retrieval_terms(model.searchable_text or model.text) for model in models]
+    document_count = max(1, len(corpus_terms))
+    document_frequencies = {
+        term: sum(1 for terms in corpus_terms if term in set(terms))
+        for term in set(query_terms)
+    }
+    average_length = sum(len(terms) for terms in corpus_terms) / document_count
+    scored = [
+        (
+            _bm25_debug_score(
+                query_terms,
+                corpus_terms[index],
+                document_frequencies,
+                document_count,
+                average_length,
+            ),
+            model,
+        )
+        for index, model in enumerate(models)
+    ]
+    return [
+        model
+        for score, model in sorted(scored, key=lambda item: (-item[0], item[1].id))
+        if score > 0
+    ][:limit]
+
+
+def _bm25_debug_score(
+    query_terms: list[str],
+    document_terms: list[str],
+    document_frequencies: dict[str, int],
+    document_count: int,
+    average_length: float,
+) -> float:
+    k1 = 1.5
+    b = 0.75
+    length = max(1, len(document_terms))
+    score = 0.0
+    for term in query_terms:
+        frequency = document_terms.count(term)
+        if frequency == 0:
+            continue
+        idf = math.log(
+            1
+            + (document_count - document_frequencies.get(term, 0) + 0.5)
+            / (document_frequencies.get(term, 0) + 0.5)
+        )
+        denominator = frequency + k1 * (1 - b + b * length / max(1.0, average_length))
+        score += idf * (frequency * (k1 + 1)) / denominator
+    return score
+
+
+def _merge_rankings(
+    rankings: list[list[DocumentChunkModel]], limit: int
+) -> tuple[list[DocumentChunkModel], dict[str, float]]:
+    scores: dict[str, float] = {}
+    by_id: dict[str, DocumentChunkModel] = {}
+    for ranking in rankings:
+        for rank, model in enumerate(ranking, start=1):
+            by_id[model.id] = model
+            scores[model.id] = scores.get(model.id, 0.0) + 1 / (60 + rank)
+    chunk_ids = sorted(scores, key=lambda chunk_id: (-scores[chunk_id], chunk_id))[:limit]
+    return [by_id[chunk_id] for chunk_id in chunk_ids], scores
+
+
+def _cosine_debug(left: list[float], right: list[float]) -> float:
+    import math
+
+    size = max(len(left), len(right))
+    if not size:
+        return 0.0
+    a = left + [0.0] * (size - len(left))
+    b = right + [0.0] * (size - len(right))
+    denominator = math.sqrt(sum(value * value for value in a)) * math.sqrt(
+        sum(value * value for value in b)
+    )
+    return 0.0 if denominator == 0 else sum(x * y for x, y in zip(a, b)) / denominator
+
+
+def _pad_debug(vector: list[float], dimension: int = 1024) -> list[float]:
+    return (vector + [0.0] * dimension)[:dimension]
+
+
+def _export_diagnostic(name: str, payload: dict[str, Any], markdown: str) -> None:
+    DIAGNOSTIC_EXPORT_DIR.mkdir(parents=True, exist_ok=True)
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", name)[:120]
+    (DIAGNOSTIC_EXPORT_DIR / f"{safe_name}.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (DIAGNOSTIC_EXPORT_DIR / f"{safe_name}.md").write_text(markdown, encoding="utf-8")
+
+
+def _parse_result_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        f"# Parse Diagnostics: {payload['file']['name']}",
+        "",
+        "## Sections",
+    ]
+    for section in payload["sections"]:
+        indent = "  " * max(0, int(section["level"]) - 1)
+        lines.append(
+            f"- {indent}{section['number'] or ''} {section['title']} "
+            f"(pages {section['page_start']}-{section['page_end']})"
+        )
+    lines.extend(["", "## Chunks"])
+    for chunk in payload["chunks"]:
+        lines.extend(
+            [
+                f"### {chunk['chunk_id']}",
+                f"- Section: {' / '.join(chunk['section_path'])}",
+                f"- Pages: {chunk['page_start']}-{chunk['page_end']}",
+                f"- Index: {chunk['chunk_index_in_section']}",
+                "",
+                chunk["text"][:2000],
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def _retrieval_preview_markdown(payload: dict[str, Any]) -> str:
+    lines = [
+        f"# Retrieval Diagnostics: {payload['question']}",
+        "",
+        f"- Conversation: {payload['conversation_id']}",
+        f"- Section Hint: {payload['parsed_section_hint'] or 'None'}",
+        "",
+    ]
+    stages = [
+        ("Exact", "exact_match_hits"),
+        ("Section", "section_hits"),
+        ("Vector", "vector_hits"),
+        ("BM25", "bm25_hits"),
+        ("Merged", "merged_hits"),
+        ("Reranked", "reranked_hits"),
+        ("Final Context Sent To LLM", "final_context_sent_to_llm"),
+    ]
+    for title, key in stages:
+        lines.append(f"## {title}")
+        hits = payload[key]
+        if not hits:
+            lines.extend(["No hits.", ""])
+            continue
+        for hit in hits:
+            lines.extend(
+                [
+                    f"### {hit['chunk_id']} ({hit['retriever']}, score={hit['score']})",
+                    f"- File: {hit['file_id']}",
+                    f"- Section: {' / '.join(hit['section_path'])}",
+                    f"- Pages: {hit['page_start']}-{hit['page_end']}",
+                    "",
+                    hit["text"][:1000],
+                    "",
+                ]
+            )
+    return "\n".join(lines)
+
+
+def _empty_usage() -> dict[str, int]:
+    return {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}

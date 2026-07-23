@@ -1,0 +1,16 @@
+name: methodology_reviewer
+version: 1.0.0
+description: 审查论文报告的方法、实验设计及缺失信息，不补造细节。
+model_profile: development
+input_contract:
+  format: object
+  schema: input.schema.json
+output_contract:
+  format: markdown
+  min_length: 8
+trigger_conditions: [审查研究方法或实验设计, 评价方法报告是否充分]
+non_trigger_conditions: [比较多篇论文, 仅提取摘要]
+routing_keywords: [审查研究方法, 评价实验方法, methodology]
+clarification_conditions: [缺少完成任务所需的论文、范围或目标]
+termination_conditions: [已返回通过结构化契约校验的结果或明确失败原因]
+acceptance_rules: [所有事实性内容保留证据或来源标识, 不得调用 Skill tools 目录以外的 Tool 或虚构论文内容]

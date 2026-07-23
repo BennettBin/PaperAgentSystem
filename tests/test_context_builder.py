@@ -1,4 +1,4 @@
-from agent_runtime.context_builder import ContextBuilder, ContextInput, ContextSource
+from backend.agent_runtime.context_builder import ContextBuilder, ContextInput, ContextSource
 
 
 def test_context_contains_required_sections_and_traceable_sources() -> None:

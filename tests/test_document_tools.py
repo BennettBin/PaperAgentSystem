@@ -5,21 +5,21 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from document_processing.pipeline import BasicPDFPipeline
-from infrastructure.fake.adapters import FakeObjectStore
-from infrastructure.fake.observability import FakeTraceWriter
-from infrastructure.postgres.models import Base
-from rag.indexing import DocumentIndexer
-from rag.retrieval import HybridRetriever
-from tool_runtime import (
+from backend.document_processing.pipeline import BasicPDFPipeline
+from backend.infrastructure.fake.adapters import FakeObjectStore
+from backend.infrastructure.fake.observability import FakeTraceWriter
+from backend.infrastructure.postgres.models import Base
+from backend.rag.indexing import DocumentIndexer
+from backend.rag.retrieval import HybridRetriever
+from backend.tool_runtime import (
     InMemoryDataRefStore,
     InMemoryIdempotencyStore,
     ToolContext,
     ToolRegistry,
     ToolRuntime,
 )
-from tool_runtime.document_tools import register_document_tools
-from workspace.service import WorkspaceService
+from backend.tool_runtime.document_tools import register_document_tools
+from backend.workspace.service import WorkspaceService
 
 
 def pdf() -> bytes:

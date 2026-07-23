@@ -3,9 +3,9 @@ import asyncio
 import pytest
 from pydantic import BaseModel, Field
 
-from core.errors import ErrorCode, ProjectError
-from infrastructure.fake.observability import FakeTraceWriter
-from tool_runtime import (
+from backend.core.errors import ErrorCode, ProjectError
+from backend.infrastructure.fake.observability import FakeTraceWriter
+from backend.tool_runtime import (
     InMemoryDataRefStore,
     InMemoryIdempotencyStore,
     ToolContext,
@@ -82,13 +82,14 @@ def context(**overrides) -> ToolContext:
 
 @pytest.mark.asyncio
 async def test_invalid_arguments_do_not_execute_tool() -> None:
-    tool, service, _, _ = runtime()
+    tool, service, traces, _ = runtime()
 
     with pytest.raises(ProjectError) as exc:
         await service.invoke("echo", {"text": ""}, context(), "idem-1")
 
     assert exc.value.code is ErrorCode.INVALID_ARGUMENT
     assert tool.calls == 0
+    assert traces.traces[-1]["data"]["parameters_valid"] is False
 
 
 @pytest.mark.asyncio
@@ -146,6 +147,7 @@ async def test_retry_idempotency_and_trace() -> None:
     assert second.idempotency_replay
     assert traces.traces[-1]["span_name"] == "tool.invoke"
     assert traces.traces[-1]["data"]["tool_name"] == "echo"
+    assert traces.traces[-1]["data"]["parameters_valid"] is True
 
 
 @pytest.mark.asyncio

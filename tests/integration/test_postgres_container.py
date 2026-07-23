@@ -9,8 +9,8 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from testcontainers.postgres import PostgresContainer
 
-from infrastructure.postgres.models import DocumentChunkModel, ParsedDocumentModel
-from rag.retrieval import HybridRetriever
+from backend.infrastructure.postgres.models import DocumentChunkModel, ParsedDocumentModel
+from backend.rag.retrieval import HybridRetriever
 
 
 class IntegrationEmbeddings:
@@ -48,7 +48,7 @@ def test_postgres_empty_database_migration_upgrade_downgrade():
     root = Path(__file__).resolve().parents[2]
     with PostgresContainer("pgvector/pgvector:pg16") as postgres:
         url = postgres.get_connection_url().replace("postgresql+psycopg2", "postgresql+psycopg")
-        config = Config(str(root / "alembic.ini"))
+        config = Config(str(root / "infrastructure" / "database" / "alembic.ini"))
         config.set_main_option("sqlalchemy.url", url)
 
         command.upgrade(config, "head")

@@ -65,7 +65,7 @@ def test_cli_runs_selected_evaluations_with_one_command(tmp_path: Path) -> None:
     assert exit_code == 0
     assert [item["suite"] for item in payload["results"]] == ["contract", "security"]
     assert payload["metadata"]["commit"]
-    assert payload["metadata"]["config"]["registry"] == "models/registry.yaml"
+    assert payload["metadata"]["config"]["registry"] == "backend/models/registry.yaml"
     assert payload["metadata"]["profiles"]
     assert payload["metadata"]["skills"]
     assert payload["metadata"]["datasets"]

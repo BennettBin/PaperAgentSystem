@@ -29,27 +29,27 @@ def _repository_check(
 def built_in_evaluators(root: Path) -> dict[EvaluationSuite, Callable[[], EvaluationResult]]:
     requirements = {
         EvaluationSuite.CONTRACT: (
-            "core/ports",
+            "backend/core/ports",
             "tests/test_fake_adapters.py",
         ),
         EvaluationSuite.COMPONENT: (
-            "agent_runtime",
-            "tests/test_agent_runtime.py",
+            "backend/agent_runtime",
+            "tests/test_p01_unified_runtime.py",
         ),
         EvaluationSuite.TRAJECTORY: (
-            "agent_runtime/state_machine.py",
-            "observability/tracing.py",
+            "backend/agent_runtime/unified.py",
+            "backend/observability/tracing.py",
         ),
         EvaluationSuite.DOMAIN: (
-            "academic_tasks",
+            "backend/academic_tasks",
             "tests/test_academic_drafting.py",
         ),
         EvaluationSuite.E2E: (
-            "apps/api/main.py",
+            "backend/apps/api/main.py",
             "tests/test_api_app.py",
         ),
         EvaluationSuite.SECURITY: (
-            "security/guard.py",
+            "backend/security/guard.py",
             "tests/test_security_hardening.py",
         ),
         EvaluationSuite.PERFORMANCE: (

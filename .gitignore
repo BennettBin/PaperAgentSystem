@@ -29,6 +29,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+!frontend/src/lib/
+!frontend/src/lib/**
 parts/
 sdist/
 var/
@@ -104,6 +106,7 @@ logs/
 # Observability
 traces/
 *.trace.json
+runtime/logs/agent/
 
 # Secrets & Keys
 .env
@@ -143,3 +146,8 @@ dump.rdb
 tmp/
 temp/
 *.tmp
+runtime/scratch/l02_sources/
+
+runtime/diagnostics/rag/*.json
+runtime/diagnostics/rag/*.md
+runtime/scratch/

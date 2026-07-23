@@ -1,0 +1,13 @@
+[
+  {
+    "input": {
+      "request": "综合多篇文献",
+      "file_ids": [
+        "file-001"
+      ],
+      "conversation_id": "conversation-001",
+      "parameters": {}
+    },
+    "output": "## literature_synthesizer\\n\\n基于论文证据的结构化结果 [E1]。"
+  }
+]

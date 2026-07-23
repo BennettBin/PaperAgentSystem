@@ -2,7 +2,7 @@ from pathlib import Path
 
 import yaml
 
-from deploy.service_runtime import deployment_status
+from infrastructure.docker.service_runtime import deployment_status
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_SERVICES = {
@@ -20,7 +20,7 @@ REQUIRED_SERVICES = {
 
 
 def test_compose_defines_all_services_with_health_checks() -> None:
-    payload = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
+    payload = yaml.safe_load((ROOT / "infrastructure" / "docker" / "compose.yaml").read_text(encoding="utf-8"))
     services = payload["services"]
 
     assert REQUIRED_SERVICES <= services.keys()
@@ -42,8 +42,25 @@ def test_model_services_expose_explicit_unavailable_degradation() -> None:
 def test_readme_contains_fresh_environment_startup_command() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "docker compose up --build" in readme
-    assert "docker compose ps" in readme
+    assert "docker compose -f infrastructure/docker/compose.yaml up --build" in readme
+    assert "docker compose -f infrastructure/docker/compose.yaml ps" in readme
+
+
+def test_web_image_builds_rewrites_with_compose_api_address() -> None:
+    dockerfile = (ROOT / "infrastructure" / "docker" / "Dockerfile.web").read_text(encoding="utf-8")
+    payload = yaml.safe_load((ROOT / "infrastructure" / "docker" / "compose.yaml").read_text(encoding="utf-8"))
+    web = payload["services"]["web"]
+
+    build_command = "RUN npm run build"
+    assert "ARG API_INTERNAL_URL=http://api:8000" in dockerfile
+    assert "ENV API_INTERNAL_URL=$API_INTERNAL_URL" in dockerfile
+    assert dockerfile.index("ENV API_INTERNAL_URL=$API_INTERNAL_URL") < dockerfile.index(
+        build_command
+    )
+    assert web["build"]["args"]["API_INTERNAL_URL"] == web["environment"][
+        "API_INTERNAL_URL"
+    ]
+    assert "/api/v1/conversations" in web["healthcheck"]["test"][-1]
 
 
 def test_docker_build_context_never_contains_local_environment_files() -> None:

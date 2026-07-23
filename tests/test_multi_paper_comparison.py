@@ -1,6 +1,6 @@
-from academic_tasks.comparison import MultiPaperComparator, PaperCardRecord
-from subagents.manager import ChildStatus, ChildTask, SubAgentBatchResult
-from subagents.paper_reader import PaperCard, PaperEvidence
+from backend.academic_tasks.comparison import MultiPaperComparator, PaperCardRecord
+from backend.subagents.manager import ChildStatus, ChildTask, SubAgentBatchResult
+from backend.subagents.paper_reader import PaperCard, PaperEvidence
 
 
 def card(index: int) -> PaperCard:

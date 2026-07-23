@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "dataset_version": "evaluation-v1-contract",
+  "contract_only": true,
+  "case_count": 0,
+  "case_file": null,
+  "schema": "evaluation/datasets/schema.py",
+  "source_policy": "authorized-public-owned-licensed-or-explicit-private-consent",
+  "test_usage": "evaluation_only",
+  "note": "L01 freezes contracts only. L02 must populate and audit the fixed real evaluation set."
+}

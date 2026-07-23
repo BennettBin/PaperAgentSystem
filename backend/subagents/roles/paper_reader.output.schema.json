@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["paper_card_refs","unreadable_refs"],"properties":{"paper_card_refs":{"type":"array","items":{"type":"string","minLength":1}},"unreadable_refs":{"type":"array","items":{"type":"string","minLength":1}}}}

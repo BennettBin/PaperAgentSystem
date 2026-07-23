@@ -2,8 +2,8 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from infrastructure.postgres.models import Base
-from observability.tracing import SqlAlchemyTraceWriter, TaskTraceService
+from backend.infrastructure.postgres.models import Base
+from backend.observability.tracing import SqlAlchemyTraceWriter, TaskTraceService
 
 
 @pytest.fixture

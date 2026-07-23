@@ -1,16 +1,16 @@
 import pytest
 
-from academic_tasks.paper_analysis import EvidencePassage
-from academic_tasks.writing_brief import StatementKind
-from infrastructure.fake.observability import FakeTraceWriter
-from tool_runtime import (
+from backend.academic_tasks.paper_analysis import EvidencePassage
+from backend.academic_tasks.writing_brief import StatementKind
+from backend.infrastructure.fake.observability import FakeTraceWriter
+from backend.tool_runtime import (
     InMemoryDataRefStore,
     InMemoryIdempotencyStore,
     ToolContext,
     ToolRegistry,
     ToolRuntime,
 )
-from tool_runtime.academic_tools import register_academic_tools
+from backend.tool_runtime.academic_tools import register_academic_tools
 
 
 @pytest.mark.asyncio

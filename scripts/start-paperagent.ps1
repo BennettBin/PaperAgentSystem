@@ -1,5 +1,6 @@
 [CmdletBinding()]
 param(
+    [switch]$Build,
     [switch]$NoBuild,
     [switch]$WithModels,
     [switch]$NoBrowser,
@@ -68,12 +69,12 @@ if (-not (Test-Path -LiteralPath ".env")) {
     Write-Host "Created .env from .env.example" -ForegroundColor DarkGray
 }
 
-$composeArguments = @("compose")
+$composeArguments = @("compose", "-f", "infrastructure/docker/compose.yaml")
 if ($WithModels) {
     $composeArguments += @("--profile", "models")
 }
 $composeArguments += @("up", "-d")
-if (-not $NoBuild) {
+if ($Build -and -not $NoBuild) {
     $composeArguments += "--build"
 }
 

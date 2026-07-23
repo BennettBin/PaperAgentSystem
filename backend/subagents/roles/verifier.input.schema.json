@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["draft_ref","evidence_bundle_ref"],"properties":{"draft_ref":{"type":"string","minLength":1},"evidence_bundle_ref":{"type":"string","minLength":1}}}

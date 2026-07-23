@@ -1,13 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from agent_runtime.planner import (
+from backend.agent_runtime.planner import (
     ExecutionPlan,
     Planner,
     PlanStep,
     RegistrySnapshot,
 )
-from core.errors import ErrorCode, ProjectError
+from backend.core.errors import ErrorCode, ProjectError
 
 
 def registry() -> RegistrySnapshot:

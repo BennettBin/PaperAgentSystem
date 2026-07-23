@@ -4,10 +4,10 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from core.errors import ProjectError
-from infrastructure.fake.adapters import FakeObjectStore
-from infrastructure.postgres.models import Base
-from workspace.service import WorkspaceService
+from backend.core.errors import ProjectError
+from backend.infrastructure.fake.adapters import FakeObjectStore
+from backend.infrastructure.postgres.models import Base
+from backend.workspace.service import WorkspaceService
 
 
 @pytest.fixture

@@ -1,4 +1,4 @@
-from academic_tasks.rewriting import AcademicRewriter, RewriteMode
+from backend.academic_tasks.rewriting import AcademicRewriter, RewriteMode
 
 SOURCE = (
     "我们发现 Model-X 在 Dataset-A 上达到 95.5% [C1]。 "

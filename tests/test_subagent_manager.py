@@ -4,16 +4,16 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from infrastructure.fake.observability import FakeTraceWriter
-from infrastructure.postgres.models import Base
-from subagents.manager import (
+from backend.infrastructure.fake.observability import FakeTraceWriter
+from backend.infrastructure.postgres.models import Base
+from backend.subagents.manager import (
     CeleryGroupScheduler,
     ChildStatus,
     InMemorySubAgentStore,
     SqlAlchemySubAgentStore,
     SubAgentManager,
 )
-from subagents.paper_reader import PaperReaderAgent
+from backend.subagents.paper_reader import PaperReaderAgent
 
 
 def card(title: str) -> dict:
@@ -141,9 +141,9 @@ def test_celery_group_scheduler_builds_subagent_group(monkeypatch) -> None:
             calls.append((name, kwargs["file_id"], queue))
             return kwargs
 
-    monkeypatch.setattr("subagents.manager.group", lambda signatures: Group())
+    monkeypatch.setattr("backend.subagents.manager.group", lambda signatures: Group())
     scheduler = CeleryGroupScheduler(App())
-    from subagents.manager import ChildTask
+    from backend.subagents.manager import ChildTask
 
     group_id = scheduler.enqueue(
         [

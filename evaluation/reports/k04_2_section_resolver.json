@@ -1,0 +1,48 @@
+{
+  "work_package": "K04.2",
+  "generated_at": "2026-06-22",
+  "benchmark": {
+    "name": "fixed-section-resolver-v1",
+    "query_count": 100,
+    "composition": {
+      "number": 20,
+      "title": 20,
+      "alias": 30,
+      "fuzzy": 20,
+      "unresolved": 5,
+      "ambiguous": 5
+    }
+  },
+  "configuration": {
+    "alias_version": "section-aliases-v1",
+    "fuzzy_threshold": 0.92,
+    "ambiguity_margin": 0.06,
+    "selection_rule": "highest tested threshold preserving all benchmark positives and all negative rejections"
+  },
+  "metrics": {
+    "top1": 1.0,
+    "number_exact": 1.0,
+    "title_top1": 1.0,
+    "alias_top1": 1.0,
+    "fuzzy_top1": 1.0,
+    "false_forced_match": 0.0,
+    "unresolved_rejection": 1.0,
+    "ambiguity_clarification": 1.0
+  },
+  "threshold_comparison": {
+    "0.92": {
+      "fuzzy_top1": 1.0,
+      "false_forced_match": 0.0,
+      "unresolved_rejection": 1.0
+    },
+    "0.94": {
+      "fuzzy_top1": 0.9,
+      "false_forced_match": 0.0,
+      "unresolved_rejection": 1.0
+    }
+  },
+  "limitations": [
+    "This deterministic benchmark validates resolver behavior, not PDF parser quality.",
+    "The final K04 real-paper benchmark and end-to-end section retrieval evaluation remain pending."
+  ]
+}

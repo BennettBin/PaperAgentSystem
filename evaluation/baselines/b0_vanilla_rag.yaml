@@ -1,0 +1,26 @@
+schema_version: "1.0"
+baseline_id: b0_vanilla_rag
+label: B0 Vanilla RAG
+kind: vanilla_rag
+frozen: true
+description: One hybrid retrieval pass followed by a direct 4B evidence-grounded answer.
+execution:
+  answer_profile: evaluation
+  decision_profile: null
+  routing: none
+  planning: none
+  retrieval: hybrid
+  verification: citation_ids
+  multi_agent: false
+  max_steps: 2
+  max_replans: 0
+retrieval:
+  pipeline: [exact, vector, bm25, rrf, rerank]
+  candidate_limit: 30
+  final_limit: 8
+  section_resolution: false
+prompt_versions:
+  answer: product-rag-answer-v1
+allowed_truth_classes: [unit_fake, integration_real, offline_real_model, human_review]
+effect_metric_truth_classes: [integration_real, offline_real_model, human_review]
+effect_metrics_require_real_model: true

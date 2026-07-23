@@ -1,0 +1,50 @@
+{
+  "all_gates_passed": false,
+  "best_old_baseline": "fixed_workflow",
+  "case_score_count": 900,
+  "gates": {
+    "fault_recovery_improves_15pp": false,
+    "five_group_matrix_complete": true,
+    "invalid_tool_call_rate_reduces_25pct": false,
+    "l3_l5_success_improves_8pp": false,
+    "token_per_success_increase_lte_15pct": false,
+    "zero_loops_and_unauthorized_calls": true
+  },
+  "metrics": {
+    "best_old_invalid_tool_call_rate": 0.0,
+    "best_old_l3_l5_task_success": 0.05333333333333334,
+    "best_old_recovery_rate": 0.0,
+    "best_old_tokens_per_success": 23208.0,
+    "candidate_invalid_tool_call_rate": 0.0,
+    "candidate_l3_l5_task_success": 0.06666666666666667,
+    "candidate_recovery_rate": 0.0,
+    "candidate_tokens_per_success": 41437.71428571428,
+    "invalid_tool_call_rate_reduction": 0.0,
+    "recovery_rate_delta": 0.0,
+    "task_success_delta": 0.013333333333333329,
+    "task_success_delta_ci95": {
+      "confidence": 0.95,
+      "estimate": 0.013333333333333329,
+      "lower": -0.03333333333333333,
+      "method": "paired_percentile_bootstrap",
+      "samples": 2000,
+      "seed": 20260721,
+      "upper": 0.060000000000000005
+    },
+    "token_per_success_increase": 0.7854926872507016
+  },
+  "run_metadata": {
+    "frozen_old_scores": "D:\\vscode\\Projects\\PaperAgentSystem\\evaluation\\reports\\l05_baselines_v1\\case_scores.jsonl",
+    "gold_used_only_after_execution": true,
+    "same_model_retriever_answer_prompt": true
+  },
+  "schema_version": "1.0",
+  "systems_present": [
+    "current_react",
+    "fixed_workflow",
+    "plan_completion",
+    "plan_completion_replan",
+    "plan_v2"
+  ],
+  "truth_class": "offline_real_model"
+}

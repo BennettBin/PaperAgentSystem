@@ -1,4 +1,4 @@
-from agent_runtime.verifier import (
+from backend.agent_runtime.verifier import (
     Claim,
     VerificationInput,
     VerificationStatus,

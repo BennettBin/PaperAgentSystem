@@ -1,5 +1,5 @@
-from academic_tasks.literature_review import LiteratureReviewService, ReviewClaim
-from academic_tasks.writing_brief import (
+from backend.academic_tasks.literature_review import LiteratureReviewService, ReviewClaim
+from backend.academic_tasks.writing_brief import (
     EvidenceMapItem,
     SourceMaterial,
     StatementKind,

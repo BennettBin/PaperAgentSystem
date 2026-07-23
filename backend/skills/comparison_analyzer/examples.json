@@ -1,0 +1,13 @@
+[
+  {
+    "input": {
+      "request": "比较多篇论文的方法、数据或结果",
+      "file_ids": [
+        "file-001"
+      ],
+      "conversation_id": "conversation-001",
+      "parameters": {}
+    },
+    "output": "| 论文 | 方法 |\\n|---|---|\\n| Paper A | 方法描述 [E1] |"
+  }
+]

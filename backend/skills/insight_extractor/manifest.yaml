@@ -1,0 +1,16 @@
+name: insight_extractor
+version: 1.0.0
+description: 提炼由论文证据支持的洞见，并区分事实与推断。
+model_profile: development
+input_contract:
+  format: object
+  schema: input.schema.json
+output_contract:
+  format: markdown
+  min_length: 8
+trigger_conditions: [寻找启示、趋势或新洞见, 基于证据形成谨慎推断]
+non_trigger_conditions: [复述论文摘要, 无证据的头脑风暴]
+routing_keywords: [洞见, 启示, insight]
+clarification_conditions: [缺少完成任务所需的论文、范围或目标]
+termination_conditions: [已返回通过结构化契约校验的结果或明确失败原因]
+acceptance_rules: [所有事实性内容保留证据或来源标识, 不得调用 Skill tools 目录以外的 Tool 或虚构论文内容]

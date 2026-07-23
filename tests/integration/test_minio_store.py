@@ -7,9 +7,9 @@ from sqlalchemy.orm import sessionmaker
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
 
-from core.errors import ProjectError
-from infrastructure.minio.object_store import MinioObjectStore
-from infrastructure.postgres.models import Base, ObjectBlobModel
+from backend.core.errors import ProjectError
+from backend.infrastructure.minio.object_store import MinioObjectStore
+from backend.infrastructure.postgres.models import Base, ObjectBlobModel
 
 pytestmark = pytest.mark.integration
 

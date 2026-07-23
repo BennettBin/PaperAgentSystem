@@ -1,0 +1,20 @@
+name: verifier_agent
+version: 1.0.0
+role: verifier
+description: Independently verifies final claims, citations, and completion criteria.
+model_profile: verifier_v1
+allowed_tools: [verify_claim, verify_citations]
+input_schema: verifier.input.schema.json
+output_schema: verifier.output.schema.json
+budget: {max_tokens: 2500, max_steps: 5, max_tool_calls: 8, timeout_seconds: 90, max_retries: 1}
+stop_conditions: [verification_report_emitted, terminal_failure_recorded]
+failure_policy: {required: true, on_unavailable: fail, on_timeout: retry_once}
+max_depth: 1
+can_message_user: false
+can_spawn_agents: false
+example_input:
+  draft_ref: artifact://draft/draft-1
+  evidence_bundle_ref: artifact://evidence/bundle-1
+example_output:
+  verification_ref: artifact://verification/report-1
+  status: passed

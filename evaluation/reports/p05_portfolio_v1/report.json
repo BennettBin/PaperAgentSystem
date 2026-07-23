@@ -1,0 +1,44 @@
+{
+  "work_package": "P05",
+  "status": "completed",
+  "recorded_at": "2026-07-22",
+  "deliverables": [
+    "README.md",
+    "evaluation/reports/p05_demo_v1/demo.json",
+    "evaluation/reports/p05_demo_v1/demo.md",
+    "docs/DEMO_RUNBOOK.md",
+    "docs/adr/0011-evidence-gated-agent-promotion.md",
+    "evaluation/reports/p04_final_v1/report.json",
+    "docs/MODEL_CARD.md",
+    "evaluation/datasets/DATASET_CARD.md",
+    "docs/FAILURE_POSTMORTEMS.md",
+    "docs/INTERVIEW_GUIDE.md",
+    "docs/RESUME_PROJECT.md"
+  ],
+  "acceptance": {
+    "offline_one_command_demo": "python -m evaluation.p05_demo",
+    "demo_has_plan_change": true,
+    "demo_has_agent_roles": true,
+    "demo_has_citation_pages": true,
+    "demo_has_token_and_latency": true,
+    "all_numbers_reference_versioned_reports": true,
+    "admin_dashboard_separate": true,
+    "public_rows_private_or_hidden_fields": 0
+  },
+  "verification": {
+    "p01_p05_targeted_tests": "54 passed",
+    "full_pytest": "425 passed",
+    "full_pytest_warnings": 7,
+    "ruff": "passed",
+    "mypy": "passed",
+    "frontend_tests": "18 passed",
+    "typescript": "passed",
+    "next_production_build": "passed",
+    "compose_fresh_services_healthy": 8
+  },
+  "limitations": [
+    "The repository contains a timed recording runbook and reproducible offline demo, not a prerecorded human-narrated video binary.",
+    "Planner/Multi-Agent remain experimental NO-GO paths.",
+    "SFT/Cascade remain unavailable because Stage O was skipped."
+  ]
+}

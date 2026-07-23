@@ -1,0 +1,41 @@
+{
+  "work_package": "P03",
+  "status": "completed",
+  "recorded_at": "2026-07-22",
+  "sources": [
+    "evaluation/reports/l05_baselines_v1/baseline_report.json",
+    "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+    "evaluation/reports/n05_multi_agent_ablation_v1/report.json",
+    "evaluation/reports/n05_multi_agent_ablation_v1/case_scores.jsonl"
+  ],
+  "rows": {
+    "l05_b3_full_4b": 300,
+    "n05_single_agent": 90,
+    "n05_full_system": 90,
+    "total": 480
+  },
+  "capabilities": {
+    "filters": ["task_family", "difficulty", "language", "model", "error_category", "system_id"],
+    "metrics": ["task_success", "claim_support", "total_tokens", "four_b_call_rate", "p95_latency_ms", "cost_per_success"],
+    "paired_95_ci": true,
+    "metric_case_id_drilldown": true,
+    "public_structured_case_detail": true,
+    "admin_token_required": true,
+    "ordinary_conversation_entrypoint": false
+  },
+  "verification": {
+    "python_tests": "15 passed",
+    "typescript": "passed",
+    "next_build": "passed",
+    "primary_300_row_p95_gate": "less than 2 seconds",
+    "l05_source_metric_parity": true,
+    "n05_claim_support_parity": true,
+    "ruff": "passed",
+    "mypy": "passed"
+  },
+  "limitations": [
+    "L05 has no Claim Support denominator, so that metric is explicitly N/A for L05 rather than relabeling Citation Recall.",
+    "Real Claim Support and paired comparison come from the frozen N05 90-case systems.",
+    "L05 public replay artifacts expose evaluation-result summaries but not hidden reasoning or paper text."
+  ]
+}

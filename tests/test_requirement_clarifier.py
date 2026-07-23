@@ -1,12 +1,12 @@
 import pytest
 
-from agent_runtime.requirement_clarifier import (
+from backend.agent_runtime.requirement_clarifier import (
     ClarificationContext,
     RequirementClarifier,
     RequirementInput,
 )
-from core.domain.enums import RequirementCheckStatus
-from core.domain.ids import TaskId
+from backend.core.domain.enums import RequirementCheckStatus
+from backend.core.domain.ids import TaskId
 
 
 class RecordingRetriever:

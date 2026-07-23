@@ -1,0 +1,5058 @@
+{
+  "schema_version": "1.0",
+  "report_version": "p04-final-v1",
+  "systems": {
+    "b0_vanilla_rag": {
+      "system_id": "b0_vanilla_rag",
+      "sample_count": 300,
+      "metrics": {
+        "task_success": {
+          "value": 0.08,
+          "numerator": 24.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.08,
+            "lower": 0.05,
+            "upper": 0.11,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260721
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "answer_correctness": {
+          "value": 0.24367594268269901,
+          "numerator": 73.1027828048097,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.24367594268269901,
+            "lower": 0.21470611035733636,
+            "upper": 0.2762611483238243,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260726
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "citation_recall": {
+          "value": 0.4527751322751323,
+          "numerator": 135.83253968253968,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.4527751322751323,
+            "lower": 0.3986348544973545,
+            "upper": 0.5058863756613756,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260722
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "mean_total_tokens": {
+          "value": 1488.2866666666666,
+          "numerator": 446486.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "tokens",
+          "confidence_interval": {
+            "estimate": 1488.2866666666666,
+            "lower": 1404.8796666666667,
+            "upper": 1564.6615,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260723
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "four_b_call_rate": {
+          "value": 1.0,
+          "numerator": 300.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 1.0,
+            "lower": 1.0,
+            "upper": 1.0,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260724
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "p95_latency_ms": {
+          "value": 6032.35,
+          "numerator": null,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "milliseconds",
+          "confidence_interval": {
+            "estimate": 6032.35,
+            "lower": 5796.0,
+            "upper": 6545.85,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260725
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "cost_per_success": {
+          "value": 0.0,
+          "numerator": 0.0,
+          "denominator": 24,
+          "sample_count": 300,
+          "unit": "local_monetary_cost_per_success",
+          "confidence_interval": {
+            "estimate": 0.0,
+            "lower": 0.0,
+            "upper": 0.0,
+            "confidence": 0.95,
+            "method": "exact_local_zero",
+            "samples": 1,
+            "seed": 0
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        }
+      },
+      "slices": {
+        "difficulty": {
+          "L1": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 60.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L2": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.2,
+                "numerator": 12.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2,
+                  "lower": 0.1,
+                  "upper": 0.30874999999999964,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.4748809523809524,
+                "numerator": 28.492857142857144,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4748809523809524,
+                  "lower": 0.36097023809523815,
+                  "upper": 0.601220238095238,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L3": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.06666666666666667,
+                "numerator": 4.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06666666666666667,
+                  "lower": 0.007916666666666839,
+                  "upper": 0.13333333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260732
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.28043650793650793,
+                "numerator": 16.826190476190476,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.28043650793650793,
+                  "lower": 0.1973313492063492,
+                  "upper": 0.35703373015873013,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260752
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L4": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.044444444444444446,
+                "numerator": 2.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.044444444444444446,
+                  "lower": 0.0,
+                  "upper": 0.1111111111111111,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260733
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2111111111111111,
+                "numerator": 9.5,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2111111111111111,
+                  "lower": 0.13333333333333333,
+                  "upper": 0.3,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260753
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L5": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.08888888888888889,
+                "numerator": 4.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.08888888888888889,
+                  "lower": 0.022222222222222223,
+                  "upper": 0.17777777777777778,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260734
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.10453262786596121,
+                "numerator": 4.703968253968254,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.10453262786596121,
+                  "lower": 0.0629431216931217,
+                  "upper": 0.14981349206349204,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260754
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L6": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.06666666666666667,
+                "numerator": 2.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06666666666666667,
+                  "lower": 0.0,
+                  "upper": 0.16666666666666666,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260735
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.5436507936507937,
+                "numerator": 16.30952380952381,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.5436507936507937,
+                  "lower": 0.37331349206349207,
+                  "upper": 0.711111111111111,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260755
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        },
+        "task_family": {
+          "cross_section_reasoning": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.06666666666666667,
+                "numerator": 4.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06666666666666667,
+                  "lower": 0.016666666666666666,
+                  "upper": 0.13333333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.28043650793650793,
+                "numerator": 16.826190476190476,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.28043650793650793,
+                  "lower": 0.19467261904761904,
+                  "upper": 0.3732073412698413,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "evidence_matrix_claim_verification": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.08888888888888889,
+                "numerator": 4.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.08888888888888889,
+                  "lower": 0.022222222222222223,
+                  "upper": 0.17777777777777778,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.10453262786596121,
+                "numerator": 4.703968253968254,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.10453262786596121,
+                  "lower": 0.06245061728395061,
+                  "upper": 0.15406834215167547,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "multi_paper_comparison": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.044444444444444446,
+                "numerator": 2.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.044444444444444446,
+                  "lower": 0.0,
+                  "upper": 0.1111111111111111,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260732
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2111111111111111,
+                "numerator": 9.5,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2111111111111111,
+                  "lower": 0.14444444444444443,
+                  "upper": 0.28361111111111087,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260752
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_cancellation": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260733
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 5.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260753
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_citation_ambiguity": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260734
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.42857142857142855,
+                "numerator": 2.142857142857143,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.42857142857142855,
+                  "lower": 0.02857142857142857,
+                  "upper": 0.8285714285714286,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260754
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_clarification": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260735
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 5.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260755
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_partial_failure": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.4,
+                "numerator": 2.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4,
+                  "lower": 0.0,
+                  "upper": 0.8,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260736
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.4,
+                "numerator": 2.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4,
+                  "lower": 0.0,
+                  "upper": 0.8,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260756
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_prompt_injection": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260737
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2333333333333333,
+                "numerator": 1.1666666666666665,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2333333333333333,
+                  "lower": 0.0,
+                  "upper": 0.5,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260757
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_tool_failure": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260738
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2,
+                "numerator": 1.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2,
+                  "lower": 0.0,
+                  "upper": 0.6,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260758
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "single_paper_qa": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.2,
+                "numerator": 12.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2,
+                  "lower": 0.1,
+                  "upper": 0.31666666666666665,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260739
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.4748809523809524,
+                "numerator": 28.492857142857144,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4748809523809524,
+                  "lower": 0.3365416666666667,
+                  "upper": 0.5842083333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260759
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "skill_tool_category": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260740
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 30.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260760
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "skill_tool_discipline": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260741
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 30.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260761
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        },
+        "language": {
+          "en": {
+            "sample_count": 240,
+            "metrics": {
+              "task_success": {
+                "value": 0.1,
+                "numerator": 24.0,
+                "denominator": 240,
+                "sample_count": 240,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.06447916666666671,
+                  "upper": 0.1375,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.3159689153439153,
+                "numerator": 75.83253968253968,
+                "denominator": 240,
+                "sample_count": 240,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.3159689153439153,
+                  "lower": 0.26210722552910054,
+                  "upper": 0.3639615575396825,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "zh": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 60.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        }
+      },
+      "reused_from": null,
+      "truth_class": "offline_real_model"
+    },
+    "b1_fixed_workflow": {
+      "system_id": "b1_fixed_workflow",
+      "sample_count": 300,
+      "metrics": {
+        "task_success": {
+          "value": 0.06333333333333334,
+          "numerator": 19.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.06333333333333334,
+            "lower": 0.04,
+            "upper": 0.09,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260721
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "answer_correctness": {
+          "value": 0.21892229733851848,
+          "numerator": 65.67668920155555,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.21892229733851848,
+            "lower": 0.19014563712879287,
+            "upper": 0.25119109890274344,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260726
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "citation_recall": {
+          "value": 0.4293754578754579,
+          "numerator": 128.81263736263736,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.4293754578754579,
+            "lower": 0.3808412901912902,
+            "upper": 0.4813700142450142,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260722
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "mean_total_tokens": {
+          "value": 1159.4666666666667,
+          "numerator": 347840.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "tokens",
+          "confidence_interval": {
+            "estimate": 1159.4666666666667,
+            "lower": 1087.5835833333333,
+            "upper": 1237.98025,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260723
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "four_b_call_rate": {
+          "value": 1.0,
+          "numerator": 300.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 1.0,
+            "lower": 1.0,
+            "upper": 1.0,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260724
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "p95_latency_ms": {
+          "value": 5750.75,
+          "numerator": null,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "milliseconds",
+          "confidence_interval": {
+            "estimate": 5750.75,
+            "lower": 5480.196250000001,
+            "upper": 6054.770000000001,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260725
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "cost_per_success": {
+          "value": 0.0,
+          "numerator": 0.0,
+          "denominator": 19,
+          "sample_count": 300,
+          "unit": "local_monetary_cost_per_success",
+          "confidence_interval": {
+            "estimate": 0.0,
+            "lower": 0.0,
+            "upper": 0.0,
+            "confidence": 0.95,
+            "method": "exact_local_zero",
+            "samples": 1,
+            "seed": 0
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        }
+      },
+      "slices": {
+        "difficulty": {
+          "L1": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 60.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L2": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.13333333333333333,
+                "numerator": 8.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.13333333333333333,
+                  "lower": 0.06666666666666667,
+                  "upper": 0.23333333333333334,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.42,
+                "numerator": 25.2,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.42,
+                  "lower": 0.2916666666666667,
+                  "upper": 0.5533333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L3": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.1,
+                "numerator": 6.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.03333333333333333,
+                  "upper": 0.16666666666666666,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260732
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2515476190476191,
+                "numerator": 15.092857142857143,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2515476190476191,
+                  "lower": 0.17984292328042328,
+                  "upper": 0.3298356481481481,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260752
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L4": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260733
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2,
+                "numerator": 9.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2,
+                  "lower": 0.12222222222222222,
+                  "upper": 0.28888888888888886,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260753
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L5": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.044444444444444446,
+                "numerator": 2.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.044444444444444446,
+                  "lower": 0.0,
+                  "upper": 0.1111111111111111,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260734
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.06763532763532763,
+                "numerator": 3.0435897435897434,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06763532763532763,
+                  "lower": 0.03422720797720798,
+                  "upper": 0.10380056980056979,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260754
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L6": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.1,
+                "numerator": 3.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.0,
+                  "upper": 0.23333333333333334,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260735
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.5492063492063491,
+                "numerator": 16.476190476190474,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.5492063492063491,
+                  "lower": 0.3962896825396826,
+                  "upper": 0.7166666666666667,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260755
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        },
+        "task_family": {
+          "cross_section_reasoning": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.1,
+                "numerator": 6.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.03333333333333333,
+                  "upper": 0.16666666666666666,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2515476190476191,
+                "numerator": 15.092857142857143,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2515476190476191,
+                  "lower": 0.17292625661375663,
+                  "upper": 0.3355902777777778,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "evidence_matrix_claim_verification": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.044444444444444446,
+                "numerator": 2.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.044444444444444446,
+                  "lower": 0.0,
+                  "upper": 0.1111111111111111,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.06763532763532763,
+                "numerator": 3.0435897435897434,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06763532763532763,
+                  "lower": 0.031724358974358983,
+                  "upper": 0.10525569800569799,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "multi_paper_comparison": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260732
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2,
+                "numerator": 9.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2,
+                  "lower": 0.12222222222222222,
+                  "upper": 0.28888888888888886,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260752
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_cancellation": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260733
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 5.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260753
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_citation_ambiguity": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260734
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.42857142857142855,
+                "numerator": 2.142857142857143,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.42857142857142855,
+                  "lower": 0.02857142857142857,
+                  "upper": 0.8285714285714286,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260754
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_clarification": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260735
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 5.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260755
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_partial_failure": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.4,
+                "numerator": 2.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4,
+                  "lower": 0.0,
+                  "upper": 0.8,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260736
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.4,
+                "numerator": 2.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4,
+                  "lower": 0.0,
+                  "upper": 0.8,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260756
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_prompt_injection": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.2,
+                "numerator": 1.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2,
+                  "lower": 0.0,
+                  "upper": 0.6,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260737
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.36666666666666664,
+                "numerator": 1.8333333333333333,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.36666666666666664,
+                  "lower": 0.06666666666666667,
+                  "upper": 0.7,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260757
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_tool_failure": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260738
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.1,
+                "numerator": 0.5,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.0,
+                  "upper": 0.3,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260758
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "single_paper_qa": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.13333333333333333,
+                "numerator": 8.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.13333333333333333,
+                  "lower": 0.06666666666666667,
+                  "upper": 0.21666666666666667,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260739
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.42,
+                "numerator": 25.2,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.42,
+                  "lower": 0.2898333333333334,
+                  "upper": 0.5325,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260759
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "skill_tool_category": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260740
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 30.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260760
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "skill_tool_discipline": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260741
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 30.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260761
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        },
+        "language": {
+          "en": {
+            "sample_count": 240,
+            "metrics": {
+              "task_success": {
+                "value": 0.07916666666666666,
+                "numerator": 19.0,
+                "denominator": 240,
+                "sample_count": 240,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.07916666666666666,
+                  "lower": 0.04583333333333333,
+                  "upper": 0.1125,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.28671932234432235,
+                "numerator": 68.81263736263736,
+                "denominator": 240,
+                "sample_count": 240,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.28671932234432235,
+                  "lower": 0.2387362382987383,
+                  "upper": 0.3350563759157509,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "zh": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 60.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        }
+      },
+      "reused_from": null,
+      "truth_class": "offline_real_model"
+    },
+    "b2_bounded_react": {
+      "system_id": "b2_bounded_react",
+      "sample_count": 300,
+      "metrics": {
+        "task_success": {
+          "value": 0.06333333333333334,
+          "numerator": 19.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.06333333333333334,
+            "lower": 0.03666666666666667,
+            "upper": 0.09174999999999993,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260721
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "answer_correctness": {
+          "value": 0.19127997181486245,
+          "numerator": 57.38399154445873,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.19127997181486245,
+            "lower": 0.16286743791052502,
+            "upper": 0.22592266577721526,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260726
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "citation_recall": {
+          "value": 0.4073452380952381,
+          "numerator": 122.20357142857142,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.4073452380952381,
+            "lower": 0.3543285383597884,
+            "upper": 0.45682589285714287,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260722
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "mean_total_tokens": {
+          "value": 1019.5,
+          "numerator": 305850.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "tokens",
+          "confidence_interval": {
+            "estimate": 1019.5,
+            "lower": 953.8400833333334,
+            "upper": 1090.613,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260723
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "four_b_call_rate": {
+          "value": 0.5,
+          "numerator": 150.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.5,
+            "lower": 0.5,
+            "upper": 0.5,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260724
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "p95_latency_ms": {
+          "value": 9376.550000000001,
+          "numerator": null,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "milliseconds",
+          "confidence_interval": {
+            "estimate": 9376.550000000001,
+            "lower": 8945.800000000001,
+            "upper": 9983.800000000003,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260725
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "cost_per_success": {
+          "value": 0.0,
+          "numerator": 0.0,
+          "denominator": 19,
+          "sample_count": 300,
+          "unit": "local_monetary_cost_per_success",
+          "confidence_interval": {
+            "estimate": 0.0,
+            "lower": 0.0,
+            "upper": 0.0,
+            "confidence": 0.95,
+            "method": "exact_local_zero",
+            "samples": 1,
+            "seed": 0
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        }
+      },
+      "slices": {
+        "difficulty": {
+          "L1": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 60.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L2": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.15,
+                "numerator": 9.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.15,
+                  "lower": 0.06666666666666667,
+                  "upper": 0.25,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.4233333333333333,
+                "numerator": 25.4,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4233333333333333,
+                  "lower": 0.3087291666666667,
+                  "upper": 0.5599374999999996,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L3": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.06666666666666667,
+                "numerator": 4.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06666666666666667,
+                  "lower": 0.016666666666666666,
+                  "upper": 0.13333333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260732
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.22821428571428573,
+                "numerator": 13.692857142857143,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.22821428571428573,
+                  "lower": 0.15955456349206354,
+                  "upper": 0.30619444444444444,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260752
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L4": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260733
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.06666666666666667,
+                "numerator": 3.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06666666666666667,
+                  "lower": 0.011111111111111112,
+                  "upper": 0.13333333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260753
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L5": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.022222222222222223,
+                "numerator": 1.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.022222222222222223,
+                  "lower": 0.0,
+                  "upper": 0.06666666666666667,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260734
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.05537037037037037,
+                "numerator": 2.4916666666666667,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.05537037037037037,
+                  "lower": 0.028481481481481496,
+                  "upper": 0.08880092592592592,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260754
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L6": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.16666666666666666,
+                "numerator": 5.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.16666666666666666,
+                  "lower": 0.04916666666666701,
+                  "upper": 0.3174999999999992,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260735
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.5873015873015873,
+                "numerator": 17.61904761904762,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.5873015873015873,
+                  "lower": 0.423015873015873,
+                  "upper": 0.75,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260755
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        },
+        "task_family": {
+          "cross_section_reasoning": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.06666666666666667,
+                "numerator": 4.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06666666666666667,
+                  "lower": 0.016666666666666666,
+                  "upper": 0.13333333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.22821428571428573,
+                "numerator": 13.692857142857143,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.22821428571428573,
+                  "lower": 0.14880324074074075,
+                  "upper": 0.31890277777777776,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "evidence_matrix_claim_verification": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.022222222222222223,
+                "numerator": 1.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.022222222222222223,
+                  "lower": 0.0,
+                  "upper": 0.06666666666666667,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.05537037037037037,
+                "numerator": 2.4916666666666667,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.05537037037037037,
+                  "lower": 0.023888888888888887,
+                  "upper": 0.0939861111111111,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "multi_paper_comparison": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260732
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.06666666666666667,
+                "numerator": 3.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06666666666666667,
+                  "lower": 0.016388888888889005,
+                  "upper": 0.13333333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260752
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_cancellation": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260733
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 5.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260753
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_citation_ambiguity": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260734
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.45714285714285713,
+                "numerator": 2.2857142857142856,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.45714285714285713,
+                  "lower": 0.05714285714285714,
+                  "upper": 0.8571428571428571,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260754
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_clarification": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260735
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 5.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260755
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_partial_failure": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.6,
+                "numerator": 3.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.6,
+                  "lower": 0.2,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260736
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.6,
+                "numerator": 3.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.6,
+                  "lower": 0.2,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260756
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_prompt_injection": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.4,
+                "numerator": 2.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4,
+                  "lower": 0.0,
+                  "upper": 0.8,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260737
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.16666666666666666,
+                "numerator": 0.8333333333333333,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.16666666666666666,
+                  "lower": 0.0,
+                  "upper": 0.36666666666666664,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260757
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_tool_failure": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260738
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.3,
+                "numerator": 1.5,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.3,
+                  "lower": 0.0,
+                  "upper": 0.7,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260758
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "single_paper_qa": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.15,
+                "numerator": 9.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.15,
+                  "lower": 0.06666666666666667,
+                  "upper": 0.25,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260739
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.4233333333333333,
+                "numerator": 25.4,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4233333333333333,
+                  "lower": 0.30666666666666664,
+                  "upper": 0.5350416666666665,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260759
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "skill_tool_category": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260740
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 30.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260760
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "skill_tool_discipline": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260741
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 30.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260761
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        },
+        "language": {
+          "en": {
+            "sample_count": 240,
+            "metrics": {
+              "task_success": {
+                "value": 0.07916666666666666,
+                "numerator": 19.0,
+                "denominator": 240,
+                "sample_count": 240,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.07916666666666666,
+                  "lower": 0.05,
+                  "upper": 0.1125,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2591815476190476,
+                "numerator": 62.20357142857143,
+                "denominator": 240,
+                "sample_count": 240,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2591815476190476,
+                  "lower": 0.21051682374338623,
+                  "upper": 0.3075816798941799,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "zh": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 60.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        }
+      },
+      "reused_from": null,
+      "truth_class": "offline_real_model"
+    },
+    "b3_full_4b": {
+      "system_id": "b3_full_4b",
+      "sample_count": 300,
+      "metrics": {
+        "task_success": {
+          "value": 0.07,
+          "numerator": 21.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.07,
+            "lower": 0.04666666666666667,
+            "upper": 0.09666666666666666,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260721
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "answer_correctness": {
+          "value": 0.2153311243683674,
+          "numerator": 64.59933731051022,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.2153311243683674,
+            "lower": 0.18807841075024773,
+            "upper": 0.24791768399109912,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260726
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "citation_recall": {
+          "value": 0.3977140822140822,
+          "numerator": 119.31422466422467,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.3977140822140822,
+            "lower": 0.3442982295482296,
+            "upper": 0.4519213217338217,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260722
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "mean_total_tokens": {
+          "value": 1132.4533333333334,
+          "numerator": 339736.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "tokens",
+          "confidence_interval": {
+            "estimate": 1132.4533333333334,
+            "lower": 1047.2869166666667,
+            "upper": 1208.6025833333333,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260723
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "four_b_call_rate": {
+          "value": 1.0,
+          "numerator": 300.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 1.0,
+            "lower": 1.0,
+            "upper": 1.0,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260724
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "p95_latency_ms": {
+          "value": 10502.300000000001,
+          "numerator": null,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "milliseconds",
+          "confidence_interval": {
+            "estimate": 10502.300000000001,
+            "lower": 10026.183750000004,
+            "upper": 10861.2,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260725
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "cost_per_success": {
+          "value": 0.0,
+          "numerator": 0.0,
+          "denominator": 21,
+          "sample_count": 300,
+          "unit": "local_monetary_cost_per_success",
+          "confidence_interval": {
+            "estimate": 0.0,
+            "lower": 0.0,
+            "upper": 0.0,
+            "confidence": 0.95,
+            "method": "exact_local_zero",
+            "samples": 1,
+            "seed": 0
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        }
+      },
+      "slices": {
+        "difficulty": {
+          "L1": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 60.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L2": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.18333333333333332,
+                "numerator": 11.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.18333333333333332,
+                  "lower": 0.1,
+                  "upper": 0.2833333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.35,
+                "numerator": 21.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.35,
+                  "lower": 0.2361458333333334,
+                  "upper": 0.46254166666666663,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L3": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.1,
+                "numerator": 6.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.03333333333333333,
+                  "upper": 0.18333333333333332,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260732
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2507142857142857,
+                "numerator": 15.042857142857143,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2507142857142857,
+                  "lower": 0.17803637566137567,
+                  "upper": 0.3294629629629629,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260752
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L4": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260733
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.17777777777777778,
+                "numerator": 8.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.17777777777777778,
+                  "lower": 0.1,
+                  "upper": 0.26666666666666666,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260753
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L5": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.022222222222222223,
+                "numerator": 1.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.022222222222222223,
+                  "lower": 0.0,
+                  "upper": 0.06666666666666667,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260734
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.04306742640075974,
+                "numerator": 1.938034188034188,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.04306742640075974,
+                  "lower": 0.01688509021842356,
+                  "upper": 0.07098765432098765,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260754
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L6": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.1,
+                "numerator": 3.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.0,
+                  "upper": 0.2,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260735
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.4444444444444445,
+                "numerator": 13.333333333333334,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4444444444444445,
+                  "lower": 0.2777777777777778,
+                  "upper": 0.611111111111111,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260755
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        },
+        "task_family": {
+          "cross_section_reasoning": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.1,
+                "numerator": 6.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.03333333333333333,
+                  "upper": 0.18333333333333332,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2507142857142857,
+                "numerator": 15.042857142857143,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2507142857142857,
+                  "lower": 0.16781150793650795,
+                  "upper": 0.3485892857142857,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "evidence_matrix_claim_verification": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.022222222222222223,
+                "numerator": 1.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.022222222222222223,
+                  "lower": 0.0,
+                  "upper": 0.06666666666666667,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.04306742640075974,
+                "numerator": 1.938034188034188,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.04306742640075974,
+                  "lower": 0.014905033238366573,
+                  "upper": 0.07524097815764481,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "multi_paper_comparison": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260732
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.17777777777777778,
+                "numerator": 8.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.17777777777777778,
+                  "lower": 0.1,
+                  "upper": 0.26666666666666666,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260752
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_cancellation": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260733
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 5.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260753
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_citation_ambiguity": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260734
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260754
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_clarification": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260735
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 5.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260755
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_partial_failure": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.6,
+                "numerator": 3.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.6,
+                  "lower": 0.2,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260736
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.6,
+                "numerator": 3.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.6,
+                  "lower": 0.2,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260756
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_prompt_injection": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260737
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.06666666666666667,
+                "numerator": 0.3333333333333333,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06666666666666667,
+                  "lower": 0.0,
+                  "upper": 0.2,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260757
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_tool_failure": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260738
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260758
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "single_paper_qa": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.18333333333333332,
+                "numerator": 11.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.18333333333333332,
+                  "lower": 0.1,
+                  "upper": 0.2833333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260739
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.35,
+                "numerator": 21.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.35,
+                  "lower": 0.23745833333333335,
+                  "upper": 0.46504166666666663,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260759
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "skill_tool_category": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260740
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 30.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260760
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "skill_tool_discipline": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260741
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 30.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260761
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        },
+        "language": {
+          "en": {
+            "sample_count": 240,
+            "metrics": {
+              "task_success": {
+                "value": 0.0875,
+                "numerator": 21.0,
+                "denominator": 240,
+                "sample_count": 240,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0875,
+                  "lower": 0.051979166666666715,
+                  "upper": 0.12083333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.24714260276760278,
+                "numerator": 59.31422466422467,
+                "denominator": 240,
+                "sample_count": 240,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.24714260276760278,
+                  "lower": 0.198302573005698,
+                  "upper": 0.2934808137464387,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "zh": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 60.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        }
+      },
+      "reused_from": null,
+      "truth_class": "offline_real_model"
+    },
+    "production_safe_path": {
+      "system_id": "production_safe_path",
+      "sample_count": 300,
+      "metrics": {
+        "task_success": {
+          "value": 0.06333333333333334,
+          "numerator": 19.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.06333333333333334,
+            "lower": 0.04,
+            "upper": 0.09,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260721
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "answer_correctness": {
+          "value": 0.21892229733851848,
+          "numerator": 65.67668920155555,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.21892229733851848,
+            "lower": 0.19014563712879287,
+            "upper": 0.25119109890274344,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260726
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "citation_recall": {
+          "value": 0.4293754578754579,
+          "numerator": 128.81263736263736,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 0.4293754578754579,
+            "lower": 0.3808412901912902,
+            "upper": 0.4813700142450142,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260722
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "mean_total_tokens": {
+          "value": 1159.4666666666667,
+          "numerator": 347840.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "tokens",
+          "confidence_interval": {
+            "estimate": 1159.4666666666667,
+            "lower": 1087.5835833333333,
+            "upper": 1237.98025,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260723
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "four_b_call_rate": {
+          "value": 1.0,
+          "numerator": 300.0,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "ratio",
+          "confidence_interval": {
+            "estimate": 1.0,
+            "lower": 1.0,
+            "upper": 1.0,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260724
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "p95_latency_ms": {
+          "value": 5750.75,
+          "numerator": null,
+          "denominator": 300,
+          "sample_count": 300,
+          "unit": "milliseconds",
+          "confidence_interval": {
+            "estimate": 5750.75,
+            "lower": 5480.196250000001,
+            "upper": 6054.770000000001,
+            "confidence": 0.95,
+            "method": "percentile_bootstrap",
+            "samples": 500,
+            "seed": 20260725
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        },
+        "cost_per_success": {
+          "value": 0.0,
+          "numerator": 0.0,
+          "denominator": 19,
+          "sample_count": 300,
+          "unit": "local_monetary_cost_per_success",
+          "confidence_interval": {
+            "estimate": 0.0,
+            "lower": 0.0,
+            "upper": 0.0,
+            "confidence": 0.95,
+            "method": "exact_local_zero",
+            "samples": 1,
+            "seed": 0
+          },
+          "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+          "unavailable_reason": null
+        }
+      },
+      "slices": {
+        "difficulty": {
+          "L1": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 60.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L2": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.13333333333333333,
+                "numerator": 8.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.13333333333333333,
+                  "lower": 0.06666666666666667,
+                  "upper": 0.23333333333333334,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.42,
+                "numerator": 25.2,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.42,
+                  "lower": 0.2916666666666667,
+                  "upper": 0.5533333333333333,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L3": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.1,
+                "numerator": 6.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.03333333333333333,
+                  "upper": 0.16666666666666666,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260732
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2515476190476191,
+                "numerator": 15.092857142857143,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2515476190476191,
+                  "lower": 0.17984292328042328,
+                  "upper": 0.3298356481481481,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260752
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L4": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260733
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2,
+                "numerator": 9.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2,
+                  "lower": 0.12222222222222222,
+                  "upper": 0.28888888888888886,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260753
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L5": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.044444444444444446,
+                "numerator": 2.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.044444444444444446,
+                  "lower": 0.0,
+                  "upper": 0.1111111111111111,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260734
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.06763532763532763,
+                "numerator": 3.0435897435897434,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06763532763532763,
+                  "lower": 0.03422720797720798,
+                  "upper": 0.10380056980056979,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260754
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "L6": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.1,
+                "numerator": 3.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.0,
+                  "upper": 0.23333333333333334,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260735
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.5492063492063491,
+                "numerator": 16.476190476190474,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.5492063492063491,
+                  "lower": 0.3962896825396826,
+                  "upper": 0.7166666666666667,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260755
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        },
+        "task_family": {
+          "cross_section_reasoning": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.1,
+                "numerator": 6.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.03333333333333333,
+                  "upper": 0.16666666666666666,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2515476190476191,
+                "numerator": 15.092857142857143,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2515476190476191,
+                  "lower": 0.17292625661375663,
+                  "upper": 0.3355902777777778,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "evidence_matrix_claim_verification": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.044444444444444446,
+                "numerator": 2.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.044444444444444446,
+                  "lower": 0.0,
+                  "upper": 0.1111111111111111,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.06763532763532763,
+                "numerator": 3.0435897435897434,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.06763532763532763,
+                  "lower": 0.031724358974358983,
+                  "upper": 0.10525569800569799,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "multi_paper_comparison": {
+            "sample_count": 45,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260732
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.2,
+                "numerator": 9.0,
+                "denominator": 45,
+                "sample_count": 45,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2,
+                  "lower": 0.12222222222222222,
+                  "upper": 0.28888888888888886,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260752
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_cancellation": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260733
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 5.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260753
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_citation_ambiguity": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260734
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.42857142857142855,
+                "numerator": 2.142857142857143,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.42857142857142855,
+                  "lower": 0.02857142857142857,
+                  "upper": 0.8285714285714286,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260754
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_clarification": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260735
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 5.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260755
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_partial_failure": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.4,
+                "numerator": 2.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4,
+                  "lower": 0.0,
+                  "upper": 0.8,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260736
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.4,
+                "numerator": 2.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.4,
+                  "lower": 0.0,
+                  "upper": 0.8,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260756
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_prompt_injection": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.2,
+                "numerator": 1.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.2,
+                  "lower": 0.0,
+                  "upper": 0.6,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260737
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.36666666666666664,
+                "numerator": 1.8333333333333333,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.36666666666666664,
+                  "lower": 0.06666666666666667,
+                  "upper": 0.7,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260757
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "robustness_tool_failure": {
+            "sample_count": 5,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260738
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.1,
+                "numerator": 0.5,
+                "denominator": 5,
+                "sample_count": 5,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.1,
+                  "lower": 0.0,
+                  "upper": 0.3,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260758
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "single_paper_qa": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.13333333333333333,
+                "numerator": 8.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.13333333333333333,
+                  "lower": 0.06666666666666667,
+                  "upper": 0.21666666666666667,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260739
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.42,
+                "numerator": 25.2,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.42,
+                  "lower": 0.2898333333333334,
+                  "upper": 0.5325,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260759
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "skill_tool_category": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260740
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 30.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260760
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "skill_tool_discipline": {
+            "sample_count": 30,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260741
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 30.0,
+                "denominator": 30,
+                "sample_count": 30,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260761
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        },
+        "language": {
+          "en": {
+            "sample_count": 240,
+            "metrics": {
+              "task_success": {
+                "value": 0.07916666666666666,
+                "numerator": 19.0,
+                "denominator": 240,
+                "sample_count": 240,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.07916666666666666,
+                  "lower": 0.04583333333333333,
+                  "upper": 0.1125,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260730
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 0.28671932234432235,
+                "numerator": 68.81263736263736,
+                "denominator": 240,
+                "sample_count": 240,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.28671932234432235,
+                  "lower": 0.2387362382987383,
+                  "upper": 0.3350563759157509,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260750
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          },
+          "zh": {
+            "sample_count": 60,
+            "metrics": {
+              "task_success": {
+                "value": 0.0,
+                "numerator": 0.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 0.0,
+                  "lower": 0.0,
+                  "upper": 0.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260731
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              },
+              "citation_recall": {
+                "value": 1.0,
+                "numerator": 60.0,
+                "denominator": 60,
+                "sample_count": 60,
+                "unit": "ratio",
+                "confidence_interval": {
+                  "estimate": 1.0,
+                  "lower": 1.0,
+                  "upper": 1.0,
+                  "confidence": 0.95,
+                  "method": "percentile_bootstrap",
+                  "samples": 500,
+                  "seed": 20260751
+                },
+                "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl",
+                "unavailable_reason": null
+              }
+            }
+          }
+        }
+      },
+      "reused_from": "b1_fixed_workflow",
+      "truth_class": "offline_real_model"
+    }
+  },
+  "ablations": {
+    "planner": {
+      "name": "planner",
+      "decision": "no_go",
+      "sample_count": 180,
+      "primary_metric": {
+        "value": 0.013333333333333329,
+        "numerator": null,
+        "denominator": 180,
+        "sample_count": 180,
+        "unit": "paired_task_success_delta",
+        "confidence_interval": {
+          "estimate": 0.013333333333333329,
+          "lower": -0.03333333333333333,
+          "upper": 0.060000000000000005,
+          "confidence": 0.95,
+          "method": "paired_percentile_bootstrap",
+          "samples": 2000,
+          "seed": 20260721
+        },
+        "source_artifact": "evaluation/reports/m06_planner_ablation_v1/report.json",
+        "unavailable_reason": null
+      },
+      "source_artifact": "evaluation/reports/m06_planner_ablation_v1/report.json",
+      "unavailable_reason": null
+    },
+    "multi_agent": {
+      "name": "multi_agent",
+      "decision": "no_go",
+      "sample_count": 90,
+      "primary_metric": {
+        "value": -0.011111111111111112,
+        "numerator": null,
+        "denominator": 90,
+        "sample_count": 90,
+        "unit": "paired_task_success_delta",
+        "confidence_interval": {
+          "estimate": -0.011111111111111112,
+          "lower": -0.03333333333333333,
+          "upper": 0.0,
+          "confidence": 0.95,
+          "method": "paired_percentile_bootstrap",
+          "samples": 2000,
+          "seed": 20260722
+        },
+        "source_artifact": "evaluation/reports/n05_multi_agent_ablation_v1/report.json",
+        "unavailable_reason": null
+      },
+      "source_artifact": "evaluation/reports/n05_multi_agent_ablation_v1/report.json",
+      "unavailable_reason": null
+    },
+    "sft": {
+      "name": "sft",
+      "decision": "unavailable",
+      "sample_count": 0,
+      "primary_metric": null,
+      "source_artifact": null,
+      "unavailable_reason": "Stage O was explicitly skipped by the user; no effect estimate exists."
+    },
+    "cascade": {
+      "name": "cascade",
+      "decision": "unavailable",
+      "sample_count": 0,
+      "primary_metric": null,
+      "source_artifact": null,
+      "unavailable_reason": "Stage O was explicitly skipped by the user; no effect estimate exists."
+    }
+  },
+  "comparisons_to_b0": [
+    {
+      "answer_correctness_delta": {
+        "confidence": 0.95,
+        "estimate": -0.024753645344180536,
+        "lower": -0.04875263932072526,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20264721,
+        "upper": -0.0011953414942141587
+      },
+      "baseline_id": "b0_vanilla_rag",
+      "candidate_id": "b1_fixed_workflow",
+      "citation_recall_delta": {
+        "confidence": 0.95,
+        "estimate": -0.023399674399674386,
+        "lower": -0.054376923076923024,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20265721,
+        "upper": 0.006268050468050483
+      },
+      "paired_case_count": 300,
+      "task_success_delta": {
+        "confidence": 0.95,
+        "estimate": -0.016666666666666663,
+        "lower": -0.043333333333333335,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20263721,
+        "upper": 0.006666666666666675
+      }
+    },
+    {
+      "answer_correctness_delta": {
+        "confidence": 0.95,
+        "estimate": -0.05239597086783657,
+        "lower": -0.08058735833346058,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20264722,
+        "upper": -0.025054194924053953
+      },
+      "baseline_id": "b0_vanilla_rag",
+      "candidate_id": "b2_bounded_react",
+      "citation_recall_delta": {
+        "confidence": 0.95,
+        "estimate": -0.04542989417989418,
+        "lower": -0.0746122354497354,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20265722,
+        "upper": -0.015078273809523826
+      },
+      "paired_case_count": 300,
+      "task_success_delta": {
+        "confidence": 0.95,
+        "estimate": -0.016666666666666663,
+        "lower": -0.04333333333333334,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20263722,
+        "upper": 0.010000000000000009
+      }
+    },
+    {
+      "answer_correctness_delta": {
+        "confidence": 0.95,
+        "estimate": -0.02834481831433161,
+        "lower": -0.058289578596765354,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20264723,
+        "upper": 0.0007298208682922823
+      },
+      "baseline_id": "b0_vanilla_rag",
+      "candidate_id": "b3_full_4b",
+      "citation_recall_delta": {
+        "confidence": 0.95,
+        "estimate": -0.055061050061050054,
+        "lower": -0.09051905270655262,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20265723,
+        "upper": -0.020171164021164027
+      },
+      "paired_case_count": 300,
+      "task_success_delta": {
+        "confidence": 0.95,
+        "estimate": -0.009999999999999995,
+        "lower": -0.043333333333333335,
+        "method": "paired_percentile_bootstrap",
+        "samples": 2000,
+        "seed": 20263723,
+        "upper": 0.02333333333333333
+      }
+    }
+  ],
+  "human_audit": {
+    "sample_count": 30,
+    "population": 300,
+    "sample_rate": 0.1,
+    "scope": "dataset_answer_type_gold_not_final_output",
+    "agreement": 1.0,
+    "source_artifact": "evaluation/datasets/v1/annotation_agreement_v1.json"
+  },
+  "failures": [
+    {
+      "category": "verification",
+      "count": 481,
+      "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl"
+    },
+    {
+      "category": "generation",
+      "count": 243,
+      "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl"
+    },
+    {
+      "category": "routing",
+      "count": 232,
+      "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl"
+    },
+    {
+      "category": "retrieval",
+      "count": 121,
+      "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl"
+    },
+    {
+      "category": "planning",
+      "count": 25,
+      "source_artifact": "evaluation/reports/l05_baselines_v1/case_scores.jsonl"
+    }
+  ],
+  "limitations": [
+    "All B0-B3 Task Success confidence intervals overlap; no baseline beats B0 significantly.",
+    "Planner and Multi-Agent are effect No-Go and remain non-default.",
+    "SFT and Cascade are unavailable because Stage O was explicitly skipped.",
+    "The 10% human audit validates dataset answer-type Gold, not final generated outputs.",
+    "Local monetary cost is zero-valued accounting and excludes electricity/hardware amortization."
+  ],
+  "reproducibility": {
+    "dataset_version": "paperagent-eval-v1",
+    "commit": "9f72d7b937040d4d9c956a604f5fc93561594a5c",
+    "hardware": {
+      "cpu": "Intel Core i7-14700HX",
+      "cpu_cores": 20,
+      "cpu_logical_processors": 28,
+      "ram_bytes": 16944848896,
+      "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+      "gpu_vram_mib": 8188,
+      "nvidia_driver": "577.00"
+    },
+    "models": [
+      {
+        "serving_model": "qwen3:1.7b",
+        "ollama_id": "8f68893c685c",
+        "size": "1.4 GB",
+        "role": "development/small decision profile"
+      },
+      {
+        "serving_model": "qwen3.5:4b",
+        "ollama_id": "2a654d98e6fb",
+        "size": "3.4 GB",
+        "role": "evaluation/production answer profile"
+      }
+    ],
+    "commands": [
+      "python -m evaluation.l05_cli --help",
+      "python -m evaluation.m06_cli --help",
+      "python -m evaluation.n05_cli --help",
+      "python -m evaluation.p04_final_report"
+    ],
+    "source_manifest": "evaluation/reports/l05_baselines_v1/frozen_manifest.json"
+  }
+}

@@ -120,7 +120,7 @@
 - Agent Runtime 只调用 Model Profile。
 - 不在 Skill、子 Agent 或业务代码中硬编码权重路径。
 - 系统必须在没有 SFT/RL Adapter 时使用基础 1.7B/4B 运行。
-- 所有模型文件统一位于 `models/` 逻辑目录。
+- 所有模型文件统一位于 `backend/models/` 逻辑目录。
 - 大权重不提交 Git；提交 Manifest、Profile 和评测报告。
 - 训练代码独立位于 `training/`。
 - 用户私有会话默认不得进入训练数据。
@@ -211,7 +211,7 @@
 
 ## 16. 过程记录
 
-- 每次完成一次任务后，都必须在“D:\vscode\Projects\PaperAgentSystem\develop_guide\process_log.md”按照如下格式记录本次更新的事项：
+- 每次完成一次任务后，都必须在“D:\vscode\Projects\PaperAgentSystem\docs\development\process_log.md”按照如下格式记录本次更新的事项：
   示例：
   “- Time: `2026-05-18 10:12`
     - Step: Add system default PPT rebuild utility script.
@@ -219,5 +219,5 @@
     - Verification: Script path exists and matches target directory; architecture document updated to include the new script.
     - Open Issues: None.”
 
-- 每次更新后，都必须同步更新“D:\vscode\Projects\PaperAgentSystem\develop_guide\02-产品架构文档.md”中发生修改的部分。
+- 每次更新后，都必须同步更新“D:\vscode\Projects\PaperAgentSystem\docs\development\02-产品架构文档.md”中发生修改的部分。
 - 每次完成任务后，都必须更新“README.md”中对应的部分。如果是收低完成，则按照Github上高收藏项目写一份这个项目的介绍。

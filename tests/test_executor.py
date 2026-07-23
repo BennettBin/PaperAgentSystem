@@ -2,15 +2,28 @@ import asyncio
 
 import pytest
 
-from agent_runtime.executor import (
+from backend.agent_runtime.executor import (
     ExecutionBudget,
     ExecutionStatus,
     InMemoryExecutionStore,
     PlanExecutor,
 )
-from agent_runtime.planner import ExecutionPlan, PlanStep
-from core.errors import ErrorCode, ProjectError
-from core.ports.tools import Tool, ToolRegistry
+from backend.agent_runtime.planner import ExecutionPlan, PlanStep
+from backend.core.errors import ErrorCode, ProjectError
+
+
+class FunctionToolInvoker:
+    def __init__(self) -> None:
+        self.functions = {}
+
+    def register(self, name, function) -> None:
+        self.functions[name] = function
+
+    def has(self, name: str) -> bool:
+        return name in self.functions
+
+    async def invoke(self, name: str, arguments: dict):
+        return await self.functions[name](**arguments)
 
 
 def plan(tool_name: str = "echo") -> ExecutionPlan:
@@ -36,8 +49,8 @@ async def test_executor_persists_each_step_and_is_idempotent() -> None:
         calls += 1
         return {"value": value}
 
-    registry = ToolRegistry()
-    registry.register(Tool("echo", "echo", [], echo))
+    registry = FunctionToolInvoker()
+    registry.register("echo", echo)
     store = InMemoryExecutionStore()
     executor = PlanExecutor(registry, store)
 
@@ -62,8 +75,8 @@ async def test_executor_persists_each_step_and_is_idempotent() -> None:
 
 @pytest.mark.asyncio
 async def test_executor_checks_cancellation_before_action() -> None:
-    registry = ToolRegistry()
-    registry.register(Tool("echo", "echo", [], lambda: None))
+    registry = FunctionToolInvoker()
+    registry.register("echo", lambda: None)
     executor = PlanExecutor(registry, InMemoryExecutionStore())
 
     result = await executor.execute(
@@ -83,8 +96,8 @@ async def test_executor_times_out_and_points_to_failed_step() -> None:
     async def slow() -> None:
         await asyncio.sleep(0.1)
 
-    registry = ToolRegistry()
-    registry.register(Tool("slow", "slow", [], slow))
+    registry = FunctionToolInvoker()
+    registry.register("slow", slow)
     executor = PlanExecutor(registry, InMemoryExecutionStore())
 
     result = await executor.execute(
@@ -101,17 +114,17 @@ async def test_executor_times_out_and_points_to_failed_step() -> None:
 
 @pytest.mark.asyncio
 async def test_executor_enforces_step_budget_and_registry() -> None:
-    executor = PlanExecutor(ToolRegistry(), InMemoryExecutionStore())
+    executor = PlanExecutor(FunctionToolInvoker(), InMemoryExecutionStore())
     with pytest.raises(ProjectError) as missing:
         await executor.execute("task-4", plan("missing"), {}, ExecutionBudget(max_steps=2))
     assert missing.value.code is ErrorCode.TOOL_NOT_FOUND
 
-    registry = ToolRegistry()
+    registry = FunctionToolInvoker()
 
     async def echo() -> str:
         return "ok"
 
-    registry.register(Tool("echo", "echo", [], echo))
+    registry.register("echo", echo)
     with pytest.raises(ProjectError) as budget:
         await PlanExecutor(registry, InMemoryExecutionStore()).execute(
             "task-5", plan(), {}, ExecutionBudget(max_steps=0)
@@ -142,7 +155,7 @@ async def test_executor_enforces_token_and_subagent_budgets() -> None:
         ],
     )
     executor = PlanExecutor(
-        ToolRegistry(),
+        FunctionToolInvoker(),
         InMemoryExecutionStore(),
         subagent_invoker=subagent,
     )
