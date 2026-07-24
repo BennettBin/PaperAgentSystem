@@ -72,13 +72,20 @@ class ShortTermMemoryService:
             if len(messages) < self.message_threshold and token_count < self.token_threshold:
                 return None
             source_ids = [message.id for message in messages]
-            existing = session.scalar(
+            existing_segments = session.scalars(
                 select(MemorySegmentModel).where(
                     MemorySegmentModel.workspace_id == str(workspace_id),
                     MemorySegmentModel.conversation_id == str(conversation_id),
-                    MemorySegmentModel.source_message_ids == source_ids,
                     MemorySegmentModel.invalidated_at.is_(None),
                 )
+            )
+            existing = next(
+                (
+                    segment
+                    for segment in existing_segments
+                    if segment.source_message_ids == source_ids
+                ),
+                None,
             )
             if existing is not None:
                 return existing.id

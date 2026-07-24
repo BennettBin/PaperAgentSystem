@@ -37,8 +37,17 @@ class LongTermMemoryService:
 
     async def summarize_conversation(
         self, workspace_id: str, conversation_id: str
-    ) -> str:
+    ) -> str | None:
         with self.session_factory() as session:
+            conversation = session.scalar(
+                select(ConversationModel).where(
+                    ConversationModel.id == conversation_id,
+                    ConversationModel.workspace_id == workspace_id,
+                    ConversationModel.deleted_at.is_(None),
+                )
+            )
+            if conversation is None:
+                return None
             messages = list(
                 session.scalars(
                     select(MessageModel)
@@ -50,6 +59,8 @@ class LongTermMemoryService:
                     .order_by(MessageModel.created_at)
                 )
             )
+            if not messages:
+                return None
             summary = " | ".join(message.content for message in messages)
             embedding = await self.embeddings.embed(summary)
             model = session.get(ConversationSummaryModel, conversation_id)
@@ -108,19 +119,28 @@ class LongTermMemoryService:
             return model.id
 
     async def search(
-        self, workspace_id: str, query: str, top_k: int = 5
+        self,
+        workspace_id: str,
+        query: str,
+        top_k: int = 5,
+        *,
+        exclude_conversation_id: str | None = None,
     ) -> list[LongTermRecall]:
         terms = set(_terms(query))
         embedding = await self.embeddings.embed(query)
         candidates: list[LongTermRecall] = []
         with self.session_factory() as session:
-            summaries = session.scalars(
-                select(ConversationSummaryModel).where(
-                    ConversationSummaryModel.workspace_id == workspace_id,
-                    ConversationSummaryModel.invalidated_at.is_(None),
-                    ConversationSummaryModel.deleted_at.is_(None),
-                )
+            summary_query = select(ConversationSummaryModel).where(
+                ConversationSummaryModel.workspace_id == workspace_id,
+                ConversationSummaryModel.invalidated_at.is_(None),
+                ConversationSummaryModel.deleted_at.is_(None),
             )
+            if exclude_conversation_id:
+                summary_query = summary_query.where(
+                    ConversationSummaryModel.conversation_id
+                    != exclude_conversation_id
+                )
+            summaries = session.scalars(summary_query)
             for conversation_summary in summaries:
                 score = _score(
                     terms,

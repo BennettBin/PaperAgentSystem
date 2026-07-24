@@ -29,6 +29,11 @@ from backend.infrastructure.postgres.database import Database
 from backend.infrastructure.postgres.schema import ensure_database_schema
 from backend.infrastructure.redis.queue import RedisTaskQueue
 from backend.infrastructure.sse.service import TaskEventStore
+from backend.memory import (
+    ConversationMemoryCoordinator,
+    LongTermMemoryService,
+    ShortTermMemoryService,
+)
 from backend.models.runtime import (
     ModelRuntimeService,
     OllamaRuntime,
@@ -42,6 +47,29 @@ from backend.rag.local_models import (
 )
 from backend.skills.loader import SkillManifestLoader, SkillRegistry
 from backend.skills.runtime import SkillRuntime
+
+
+def register_worker_handlers(
+    queue: RedisTaskQueue,
+    processor: PaperAgentProcessor,
+    memory_coordinator: ConversationMemoryCoordinator,
+) -> None:
+    """Register every production task handled by the default Worker."""
+    queue.register_handler(
+        "document_parse", lambda payload: asyncio.run(processor.parse(payload))
+    )
+    queue.register_handler(
+        "main_agent", lambda payload: asyncio.run(processor.answer(payload))
+    )
+    queue.register_handler(
+        "memory_summary",
+        lambda payload: asyncio.run(
+            memory_coordinator.summarize(
+                str(payload["workspace_id"]),
+                str(payload["conversation_id"]),
+            )
+        ),
+    )
 
 
 class _HealthHandler(BaseHTTPRequestHandler):
@@ -143,10 +171,23 @@ def main() -> None:
         SkillSelector(skill_registry, fallback_skill="paper_reader"),
         skill_registry,
     )
+    embeddings = MultilingualHashEmbeddingClient()
+    short_term_memory = ShortTermMemoryService(
+        database.session_factory,
+        embeddings,
+    )
+    long_term_memory = LongTermMemoryService(
+        database.session_factory,
+        embeddings,
+    )
+    memory_coordinator = ConversationMemoryCoordinator(
+        short_term_memory,
+        long_term_memory,
+    )
     processor = PaperAgentProcessor(
         database.session_factory,
         object_store,
-        MultilingualHashEmbeddingClient(),
+        embeddings,
         MultilingualLexicalReranker(),
         llm,
         events,
@@ -155,12 +196,14 @@ def main() -> None:
         audit_log_writer=audit_logs,
         unified_runtime=unified_runtime,
         skill_runtime=skill_runtime,
+        short_term_memory=short_term_memory,
+        long_term_memory=long_term_memory,
+        memory_task_queue=queue,
     )
-    queue.register_handler(
-        "document_parse", lambda payload: asyncio.run(processor.parse(payload))
-    )
-    queue.register_handler(
-        "main_agent", lambda payload: asyncio.run(processor.answer(payload))
+    register_worker_handlers(
+        queue,
+        processor,
+        memory_coordinator,
     )
     threading.Thread(target=_serve_health, daemon=True).start()
     queue.recover_stale()

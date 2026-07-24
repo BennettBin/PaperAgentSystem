@@ -1,13 +1,9 @@
 import pytest
 
 from backend.apps.worker.fake_queue import FakeTaskQueue
-from backend.apps.worker.handler_registry import HandlerRegistry
-from backend.apps.worker.main import create_worker
 from backend.apps.worker.tasks import (
     CancellationToken,
-    DocumentParseTask,
     MainAgentTask,
-    MemorySummaryTask,
     RetryPolicy,
     SubAgentTask,
     TaskStatus,
@@ -124,69 +120,6 @@ async def test_fake_queue_failure():
     await queue.execute(task_id)
 
     assert await queue.get_status(task_id) == TaskStatus.FAILED
-
-
-@pytest.mark.asyncio
-async def test_handler_registry():
-    registry = HandlerRegistry()
-
-    def handler(task):
-        return {"processed": True}
-
-    registry.register(TaskType.MAIN_AGENT, handler)
-    assert registry.get(TaskType.MAIN_AGENT) is not None
-
-    task = MainAgentTask(
-        task_id=TaskId.generate(),
-        workspace_id=WorkspaceId.generate(),
-        payload={},
-        idempotency_key="key1",
-    )
-    result = registry.handle(task)
-    assert result["processed"] is True
-
-
-@pytest.mark.asyncio
-async def test_create_worker():
-    queue, registry = create_worker()
-    assert queue is not None
-    assert registry is not None
-    handlers = registry.list_handlers()
-    assert TaskType.MAIN_AGENT.value in handlers
-    assert TaskType.SUB_AGENT.value in handlers
-    assert TaskType.DOCUMENT_PARSE.value in handlers
-    assert TaskType.MEMORY_SUMMARY.value in handlers
-
-
-@pytest.mark.asyncio
-async def test_multiple_task_types():
-    queue, registry = create_worker()
-
-    tasks = [
-        MainAgentTask(
-            task_id=TaskId.generate(),
-            workspace_id=WorkspaceId.generate(),
-            payload={"input": "test1"},
-            idempotency_key="key1",
-        ),
-        DocumentParseTask(
-            task_id=TaskId.generate(),
-            workspace_id=WorkspaceId.generate(),
-            payload={"input": "test2"},
-            idempotency_key="key2",
-        ),
-        MemorySummaryTask(
-            task_id=TaskId.generate(),
-            workspace_id=WorkspaceId.generate(),
-            payload={"input": "test3"},
-            idempotency_key="key3",
-        ),
-    ]
-
-    for task in tasks:
-        task_id = await queue.enqueue(task)
-        await queue.execute(task_id)
-        assert await queue.get_status(task_id) == TaskStatus.COMPLETED
 
 
 @pytest.mark.asyncio

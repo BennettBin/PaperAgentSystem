@@ -21,13 +21,20 @@ from backend.infrastructure.postgres.models import (
     Base,
     ConversationFileModel,
     ConversationModel,
+    ConversationSummaryModel,
     DocumentChunkModel,
     DocumentSectionModel,
     FileModel,
+    MemorySegmentModel,
     MessageModel,
     ParsedDocumentModel,
     UserModel,
     WorkspaceModel,
+)
+from backend.memory import (
+    ConversationMemoryCoordinator,
+    LongTermMemoryService,
+    ShortTermMemoryService,
 )
 from backend.rag.indexing import CURRENT_INDEX_VERSION, CURRENT_SECTION_SCHEMA_VERSION
 from backend.skills.loader import SkillManifestLoader, SkillRegistry
@@ -209,6 +216,18 @@ class ComparisonLLM(RecordingLLM):
         )
 
 
+class MemoryAnswerLLM(RecordingLLM):
+    async def generate(self, prompt: str, **_kwargs) -> str:
+        self.prompt = prompt
+        return "我已根据可追溯的历史原始消息回答该问题。"
+
+    async def generate_with_schema(self, prompt: str, **_kwargs) -> str:
+        return (
+            '{"action":"answer","search_query":null,'
+            '"section_hint":null,"clarification_question":null}'
+        )
+
+
 def _skill_runtime() -> SkillRuntime:
     registry = SkillRegistry(FakeTraceWriter())
     registry.load_all(
@@ -247,6 +266,192 @@ def product_database(tmp_path):
         )
         session.commit()
     return factory
+
+
+@pytest.mark.asyncio
+async def test_answer_recalls_short_term_memory_and_schedules_summary(
+    product_database,
+) -> None:
+    with product_database() as session:
+        session.add(
+            MessageModel(
+                id="old-memory-message",
+                workspace_id="local-workspace",
+                conversation_id="conversation-1",
+                role="user",
+                type="text",
+                content="memorytoken42 对应的是早期讨论的评测约束。",
+                metadata_json={},
+            )
+        )
+        for index in range(30):
+            session.add(
+                MessageModel(
+                    id=f"filler-{index}",
+                    workspace_id="local-workspace",
+                    conversation_id="conversation-1",
+                    role="assistant" if index % 2 else "user",
+                    type="text",
+                    content=f"无关的近期占位消息 {index}",
+                    metadata_json={},
+                )
+            )
+        session.commit()
+    embeddings = FakeEmbeddingClient()
+    short_memory = ShortTermMemoryService(
+        product_database,
+        embeddings,
+        message_threshold=8,
+    )
+    long_memory = LongTermMemoryService(product_database, embeddings)
+    coordinator = ConversationMemoryCoordinator(short_memory, long_memory)
+    await coordinator.summarize("local-workspace", "conversation-1")
+    queue = FakeTaskQueue()
+    llm = MemoryAnswerLLM()
+    processor = PaperAgentProcessor(
+        product_database,
+        FakeObjectStore(),
+        embeddings,
+        FakeRerankerClient(),
+        llm,
+        short_term_memory=short_memory,
+        long_term_memory=long_memory,
+        memory_task_queue=queue,
+    )
+
+    result = await processor.answer(
+        {
+            "_task_id": "memory-answer-task",
+            "conversation_id": "conversation-1",
+            "question": "memorytoken42 指的是什么？",
+            "file_ids": [],
+        }
+    )
+
+    assert result["status"] == "completed"
+    assert "memorytoken42 对应的是早期讨论" in llm.prompt
+    assert any(
+        task.task_type == "memory_summary" for task in queue.tasks.values()
+    )
+    with product_database() as session:
+        answer = session.scalars(
+            select(MessageModel)
+            .where(MessageModel.role == "assistant")
+            .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
+        ).first()
+        assert answer is not None
+        rag = answer.metadata_json["rag"]
+        assert rag["short_term_memory_used"] is True
+        assert "old-memory-message" in rag["history_source_message_ids"]
+
+
+@pytest.mark.asyncio
+async def test_explicit_historical_question_recalls_another_conversation(
+    product_database,
+) -> None:
+    with product_database() as session:
+        session.add(
+            ConversationModel(
+                id="conversation-2",
+                workspace_id="local-workspace",
+                user_id="local-user",
+                title="Earlier research",
+            )
+        )
+        session.add(
+            MessageModel(
+                id="cross-conversation-message",
+                workspace_id="local-workspace",
+                conversation_id="conversation-2",
+                role="user",
+                type="text",
+                content="crosssession77 是以前会话确定的消融实验代号。",
+                metadata_json={},
+            )
+        )
+        session.commit()
+    embeddings = FakeEmbeddingClient()
+    short_memory = ShortTermMemoryService(product_database, embeddings)
+    long_memory = LongTermMemoryService(product_database, embeddings)
+    coordinator = ConversationMemoryCoordinator(short_memory, long_memory)
+    await coordinator.summarize("local-workspace", "conversation-2")
+    llm = MemoryAnswerLLM()
+    processor = PaperAgentProcessor(
+        product_database,
+        FakeObjectStore(),
+        embeddings,
+        FakeRerankerClient(),
+        llm,
+        short_term_memory=short_memory,
+        long_term_memory=long_memory,
+    )
+
+    result = await processor.answer(
+        {
+            "_task_id": "long-memory-task",
+            "conversation_id": "conversation-1",
+            "question": "以前其他会话中说的 crosssession77 是什么？",
+            "file_ids": [],
+        }
+    )
+
+    assert result["status"] == "completed"
+    assert "crosssession77 是以前会话确定" in llm.prompt
+    with product_database() as session:
+        answer = session.scalars(
+            select(MessageModel)
+            .where(
+                MessageModel.conversation_id == "conversation-1",
+                MessageModel.role == "assistant",
+            )
+            .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
+        ).first()
+        assert answer is not None
+        rag = answer.metadata_json["rag"]
+        assert rag["long_term_memory_used"] is True
+        assert rag["memory_conversation_ids"] == ["conversation-2"]
+        assert "cross-conversation-message" in rag["history_source_message_ids"]
+
+
+@pytest.mark.asyncio
+async def test_memory_summary_coordinator_persists_both_memory_levels(
+    product_database,
+) -> None:
+    with product_database() as session:
+        for index in range(8):
+            session.add(
+                MessageModel(
+                    id=f"summary-source-{index}",
+                    workspace_id="local-workspace",
+                    conversation_id="conversation-1",
+                    role="user" if index % 2 == 0 else "assistant",
+                    type="text",
+                    content=f"摘要来源消息 {index}",
+                    metadata_json={},
+                )
+            )
+        session.commit()
+    embeddings = FakeEmbeddingClient()
+    coordinator = ConversationMemoryCoordinator(
+        ShortTermMemoryService(
+            product_database,
+            embeddings,
+            message_threshold=8,
+        ),
+        LongTermMemoryService(product_database, embeddings),
+    )
+
+    result = await coordinator.summarize(
+        "local-workspace",
+        "conversation-1",
+    )
+
+    assert result["status"] == "completed"
+    assert result["short_term_segment_id"]
+    assert result["long_term_summary_id"] == "conversation-1"
+    with product_database() as session:
+        assert session.query(MemorySegmentModel).count() == 1
+        assert session.query(ConversationSummaryModel).count() == 1
 
 
 @pytest.mark.asyncio

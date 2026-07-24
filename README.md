@@ -17,7 +17,7 @@ PaperAgentSystem 将版式感知 PDF 解析、混合检索、对话记忆、结�
 - **图表与算法证据**：独立裁剪图片、表格和算法区域，保存章节、页码、边界框和来源关系；回答引用相关内容时展示对应截图。
 - **证据优先 RAG**：组合精确匹配、章节检索、向量检索、BM25、RRF 和重排，生成带页码与证据片段的回答。
 - **可区分的多论文对比**：对比任务按文件分别保留证据配额，提示上下文使用论文文件名标识来源，避免全局 Top-K 被单篇论文占满或把两篇论文混为一篇。
-- **多轮会话记忆**：根据指代、省略式追问和主题相关性选择历史消息，避免机械拼接全部上下文。
+- **多轮会话记忆**：回答完成后异步更新短期 `MemorySegment` 与长期 `ConversationSummary`；当前会话按相关性回读原始消息，只有用户明确引用历史会话时才扩大到跨会话检索。
 - **结构化 Skill/Tool 链路**：Skill 通过 Manifest 声明触发规则、输入输出契约和可调用 Tool，运行时统一执行参数校验、权限控制和结果检查。
 - **答案核验**：对 Claim、数字、引用和证据关系进行验证；证据不足时明确说明限制。
 - **任务进度监控**：实时展示问题判断、Skill 激活、证据检索、回答生成和 Verifier 核验等公开阶段。
@@ -212,6 +212,8 @@ Tool 参数与返回结果由 Pydantic 模型校验，非法调用会被拒绝�
 | 长期记忆 | 跨会话摘要、偏好和历史资料检索 | `backend/memory/long_term.py` |
 | Agent 工作状态 | Task、Plan、Observation、预算和执行状态 | `backend/agent_runtime/` |
 | Redis 协调状态 | 队列、取消、锁、事件通知和短期协调 | `backend/infrastructure/redis/` |
+
+每次助手回答保存后，Worker 会投递幂等的 `memory_summary` 任务。短期 Memory 达到消息数或 Token 阈值后创建带 Embedding 和原始消息 ID 的 `MemorySegment`；长期 Memory 更新会话级 `ConversationSummary`。下一轮回答先检索摘要，再从 `source_message_ids` 回读仍未删除的原始消息，摘要本身不作为事实来源。跨会话检索只在“以前”“其他会话”“历史”等明确意图出现时启用，并排除当前会话。
 
 详细边界见 [`backend/memory/README.md`](./backend/memory/README.md)。
 

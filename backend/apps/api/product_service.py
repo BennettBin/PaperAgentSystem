@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from backend.agent_runtime.react_self_rag import ReActSelfRAGController
 from backend.agent_runtime.unified import RuntimeRequest, UnifiedAgentRuntime
 from backend.agent_runtime.verifier import VerificationInput, VerificationStatus, Verifier
+from backend.core.domain.ids import ConversationId, WorkspaceId
 from backend.core.errors import ErrorCode, ProjectError
 from backend.core.ports.llm_client import EmbeddingClient, LLMClient, RerankerClient
 from backend.core.ports.observability import TaskAuditLogWriter, TraceWriter
@@ -41,6 +42,7 @@ from backend.infrastructure.postgres.models import (
     WorkspaceSearchModel,
 )
 from backend.infrastructure.sse.service import TaskEventStore
+from backend.memory import LongTermMemoryService, ShortTermMemoryService
 from backend.rag.indexing import DocumentIndexer
 from backend.rag.local_models import (
     MultilingualHashEmbeddingClient,
@@ -834,6 +836,9 @@ class PaperAgentProcessor:
         audit_log_writer: TaskAuditLogWriter | None = None,
         unified_runtime: UnifiedAgentRuntime | None = None,
         skill_runtime: SkillRuntime | None = None,
+        short_term_memory: ShortTermMemoryService | None = None,
+        long_term_memory: LongTermMemoryService | None = None,
+        memory_task_queue: TaskQueue | None = None,
     ) -> None:
         self._sessions = sessions
         self._objects = object_store
@@ -851,6 +856,9 @@ class PaperAgentProcessor:
         self._verifier = Verifier()
         self._unified_runtime = unified_runtime
         self._skill_runtime = skill_runtime
+        self._short_term_memory = short_term_memory
+        self._long_term_memory = long_term_memory
+        self._memory_task_queue = memory_task_queue
 
     async def parse(self, payload: dict[str, Any]) -> dict[str, Any]:
         file_id = str(payload["file_id"])
@@ -1033,11 +1041,11 @@ class PaperAgentProcessor:
         question = str(payload["question"])
         clarification_answer = str(payload.get("clarification_answer", "")).strip()
         file_ids = [str(value) for value in payload.get("file_ids", [])]
-        history = _related_conversation_context(
-            self._sessions,
+        history = await self._conversation_memory_context(
             conversation_id,
             question,
             exclude_message_id=str(payload.get("message_id", "")),
+            task_id=task_id,
         )
         self._event(task_id, "task_started", "任务开始", {})
         with self._sessions() as session:
@@ -1147,7 +1155,16 @@ class PaperAgentProcessor:
                     "runtime_mode": runtime_mode,
                     "history_used": bool(history["source_message_ids"]),
                     "history_source_message_ids": history["source_message_ids"],
+                    "short_term_memory_used": history["short_term_memory_used"],
+                    "long_term_memory_used": history["long_term_memory_used"],
+                    "memory_segment_ids": history["memory_segment_ids"],
+                    "memory_conversation_ids": history["memory_conversation_ids"],
                 },
+            )
+            await self._schedule_memory_summary(
+                conversation_id,
+                message_id,
+                task_id,
             )
             self._event(
                 task_id,
@@ -1423,11 +1440,20 @@ class PaperAgentProcessor:
                 "section_hint": decision.section_hint,
                 "history_used": bool(history["source_message_ids"]),
                 "history_source_message_ids": history["source_message_ids"],
+                "short_term_memory_used": history["short_term_memory_used"],
+                "long_term_memory_used": history["long_term_memory_used"],
+                "memory_segment_ids": history["memory_segment_ids"],
+                "memory_conversation_ids": history["memory_conversation_ids"],
                 **retrieval_metadata,
             },
             visual_artifacts=_visual_artifacts_mentioned(
                 question, answer, visual_candidates
             ),
+        )
+        await self._schedule_memory_summary(
+            conversation_id,
+            message_id,
+            task_id,
         )
         self._event(
             task_id,
@@ -1549,6 +1575,158 @@ class PaperAgentProcessor:
             for hit in file_hits
         ][:8]
         return balanced_hits, missing_file_ids
+
+    async def _conversation_memory_context(
+        self,
+        conversation_id: str,
+        question: str,
+        *,
+        exclude_message_id: str,
+        task_id: str,
+    ) -> dict[str, Any]:
+        history = _related_conversation_context(
+            self._sessions,
+            conversation_id,
+            question,
+            exclude_message_id=exclude_message_id,
+        )
+        history.update(
+            {
+                "short_term_memory_used": False,
+                "long_term_memory_used": False,
+                "memory_segment_ids": [],
+                "memory_conversation_ids": [],
+            }
+        )
+        recalled_lines: list[str] = []
+        recalled_ids: list[str] = []
+        existing_ids = set(history["source_message_ids"])
+        if self._short_term_memory is not None:
+            short_recalls = await self._short_term_memory.recall(
+                WorkspaceId(value=LOCAL_WORKSPACE_ID),
+                ConversationId(value=conversation_id),
+                question,
+                top_k=2,
+            )
+            for short_recall in short_recalls:
+                if short_recall.score < 0.35:
+                    continue
+                messages = _select_relevant_memory_messages(
+                    short_recall.source_messages,
+                    question,
+                )
+                added = _append_memory_messages(
+                    recalled_lines,
+                    recalled_ids,
+                    existing_ids,
+                    messages,
+                    label="当前会话 Memory 原始消息",
+                )
+                if added:
+                    history["short_term_memory_used"] = True
+                    history["memory_segment_ids"].append(
+                        short_recall.segment_id
+                    )
+        if (
+            self._long_term_memory is not None
+            and _should_search_long_term_memory(question)
+        ):
+            long_recalls = await self._long_term_memory.search(
+                LOCAL_WORKSPACE_ID,
+                question,
+                top_k=3,
+                exclude_conversation_id=conversation_id,
+            )
+            for long_recall in long_recalls:
+                if (
+                    long_recall.kind != "conversation"
+                    or long_recall.score < 0.35
+                    or not long_recall.source_ids
+                ):
+                    continue
+                messages = _memory_source_messages(
+                    self._sessions,
+                    long_recall.source_ids,
+                )
+                messages = _select_relevant_memory_messages(messages, question)
+                added = _append_memory_messages(
+                    recalled_lines,
+                    recalled_ids,
+                    existing_ids,
+                    messages,
+                    label="历史会话 Memory 原始消息",
+                )
+                if added:
+                    history["long_term_memory_used"] = True
+                    if long_recall.conversation_id:
+                        history["memory_conversation_ids"].append(
+                            long_recall.conversation_id
+                        )
+        if recalled_lines:
+            memory_text = "\n".join(recalled_lines)
+            history["text"] = (
+                f"{history['text']}\n\n{memory_text}"
+                if history["text"]
+                else memory_text
+            )[-6000:]
+            history["source_message_ids"] = list(
+                dict.fromkeys([*history["source_message_ids"], *recalled_ids])
+            )
+        self._event(
+            task_id,
+            "step_completed",
+            "Memory 上下文检索完成",
+            {
+                "stage": "memory_recall",
+                "short_term_used": history["short_term_memory_used"],
+                "long_term_used": history["long_term_memory_used"],
+                "source_message_count": len(history["source_message_ids"]),
+            },
+        )
+        return history
+
+    async def _schedule_memory_summary(
+        self,
+        conversation_id: str,
+        source_message_id: str,
+        task_id: str,
+    ) -> None:
+        if self._memory_task_queue is None:
+            return
+        try:
+            summary_task_id = await self._memory_task_queue.enqueue(
+                "memory_summary",
+                {
+                    "workspace_id": LOCAL_WORKSPACE_ID,
+                    "conversation_id": conversation_id,
+                    "source_message_id": source_message_id,
+                },
+                (
+                    f"memory-summary:{LOCAL_WORKSPACE_ID}:"
+                    f"{conversation_id}:{source_message_id}"
+                ),
+            )
+        except Exception:
+            LOGGER.exception(
+                "Failed to enqueue memory summary for conversation %s",
+                conversation_id,
+            )
+            self._event(
+                task_id,
+                "step_failed",
+                "Memory 摘要任务投递失败",
+                {"stage": "memory_summary_enqueue"},
+            )
+            return
+        self._event(
+            task_id,
+            "step_completed",
+            "已安排 Memory 摘要更新",
+            {
+                "stage": "memory_summary_enqueue",
+                "memory_task_id": summary_task_id,
+            },
+        )
 
     async def _repair_skill_output_if_needed(
         self,
@@ -2048,6 +2226,101 @@ def _related_conversation_context(
         ),
         "retrieval_query": retrieval_query,
     }
+
+
+def _should_search_long_term_memory(question: str) -> bool:
+    return bool(
+        re.search(
+            r"(?:以前|历史|过去|之前的会话|其他会话|另一个会话|跨会话|"
+            r"曾经|上次聊|remember|previous conversation|earlier chat)",
+            question,
+            re.IGNORECASE,
+        )
+    )
+
+
+def _memory_source_messages(
+    sessions: sessionmaker[Session],
+    message_ids: list[str],
+) -> list[dict[str, str]]:
+    if not message_ids:
+        return []
+    with sessions() as session:
+        messages = list(
+            session.scalars(
+                select(MessageModel)
+                .where(
+                    MessageModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    MessageModel.id.in_(message_ids),
+                    MessageModel.deleted_at.is_(None),
+                )
+                .order_by(MessageModel.created_at, MessageModel.id)
+            )
+        )
+    return [
+        {
+            "message_id": message.id,
+            "role": message.role,
+            "content": message.content,
+        }
+        for message in messages
+    ]
+
+
+def _select_relevant_memory_messages(
+    messages: list[dict[str, str]],
+    question: str,
+    *,
+    limit: int = 6,
+) -> list[dict[str, str]]:
+    question_terms = set(retrieval_terms(question))
+    scored = [
+        (
+            len(question_terms & set(retrieval_terms(message["content"]))),
+            index,
+            message,
+        )
+        for index, message in enumerate(messages)
+    ]
+    selected_indexes = {
+        index
+        for score, index, _ in sorted(
+            scored,
+            key=lambda item: (-item[0], item[1]),
+        )[:limit]
+        if score > 0
+    }
+    for index in list(selected_indexes):
+        if index + 1 < len(messages):
+            selected_indexes.add(index + 1)
+    return [
+        message
+        for index, message in enumerate(messages)
+        if index in selected_indexes
+    ][:limit]
+
+
+def _append_memory_messages(
+    lines: list[str],
+    source_ids: list[str],
+    existing_ids: set[str],
+    messages: list[dict[str, str]],
+    *,
+    label: str,
+) -> bool:
+    added = False
+    for message in messages:
+        message_id = message["message_id"]
+        if message_id in existing_ids:
+            continue
+        existing_ids.add(message_id)
+        source_ids.append(message_id)
+        role = "用户" if message["role"] == "user" else "助手"
+        lines.append(
+            f"{label}｜{role}：{' '.join(message['content'].split())}"
+        )
+        added = True
+    return added
 
 
 def _visual_artifact_paths(metadata: dict[str, Any]) -> list[str]:

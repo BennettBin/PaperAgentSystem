@@ -9,7 +9,16 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 from testcontainers.postgres import PostgresContainer
 
-from backend.infrastructure.postgres.models import DocumentChunkModel, ParsedDocumentModel
+from backend.core.domain.ids import ConversationId, WorkspaceId
+from backend.infrastructure.postgres.models import (
+    ConversationModel,
+    DocumentChunkModel,
+    MessageModel,
+    ParsedDocumentModel,
+    UserModel,
+    WorkspaceModel,
+)
+from backend.memory import ShortTermMemoryService
 from backend.rag.retrieval import HybridRetriever
 
 
@@ -121,6 +130,63 @@ def test_postgres_empty_database_migration_upgrade_downgrade():
             )
         )
         assert hits[0].chunk_id == "integration-chunk"
+        with factory() as session:
+            session.add(
+                UserModel(
+                    id="memory-user",
+                    email="memory@example.test",
+                    name="Memory",
+                )
+            )
+            session.add(
+                WorkspaceModel(
+                    id="memory-workspace",
+                    user_id="memory-user",
+                    name="Memory workspace",
+                )
+            )
+            session.commit()
+            session.add(
+                ConversationModel(
+                    id="memory-conversation",
+                    workspace_id="memory-workspace",
+                    user_id="memory-user",
+                    title="Memory",
+                )
+            )
+            session.commit()
+            for index in range(8):
+                session.add(
+                    MessageModel(
+                        id=f"memory-message-{index}",
+                        workspace_id="memory-workspace",
+                        conversation_id="memory-conversation",
+                        role="user" if index % 2 == 0 else "assistant",
+                        type="text",
+                        content=f"PostgreSQL memory source {index}",
+                        metadata_json={},
+                    )
+                )
+            session.commit()
+        memory = ShortTermMemoryService(
+            factory,
+            IntegrationEmbeddings(),
+            message_threshold=8,
+        )
+        first_segment = asyncio.run(
+            memory.summarize_if_needed(
+                WorkspaceId(value="memory-workspace"),
+                ConversationId(value="memory-conversation"),
+            )
+        )
+        second_segment = asyncio.run(
+            memory.summarize_if_needed(
+                WorkspaceId(value="memory-workspace"),
+                ConversationId(value="memory-conversation"),
+            )
+        )
+        assert first_segment
+        assert second_segment == first_segment
         with engine.connect() as connection:
             assert connection.scalar(
                 text("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
