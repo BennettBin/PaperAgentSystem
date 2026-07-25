@@ -1714,6 +1714,7 @@ Codex 每完成一个工作包，在此更新状态：
 | N03 | completed | 2026-07-21 | 2/5/10 篇预算 DAG、深度 1、受控并发、80% 重复削减、超时/取消/部分失败；下一工作包 N04 |
 | N04 | completed | 2026-07-21 | 有界 Critic/Writer/Verifier 状态机；100-claim fixture 无依据率 0%、冲突 P/R 90%；下一工作包 N05 |
 | N05 | completed | 2026-07-22 | NO-GO：六组×90 case，450 次真实 4B 调用；Claim Support +5.63pp、Task Success -1.11pp、Token +398.03%；默认 single Agent，下一工作包 O00 |
+| N06 | completed | 2026-07-24 | 双开关实验生产接线：真实 Coordinator/Reader×N/Evidence/Critic/Writer/Verifier、任务级 PostgreSQL Blackboard、Tool/模型/Schema/预算/Trace、一次有界修订、会话引用/视觉/Memory 保存和 Docker/前端监控；冻结真实模型复核仍 NO-GO，默认 Safe RAG |
 | P01 | completed | 2026-07-22 | 统一 Runtime、公开 SSE、旧数据迁移与隔离 Compose 8 服务验收通过；M/N No-Go 非默认，Stage O/Cascade 明确不可用且不伪造效果 |
 | P02 | completed | 2026-07-22 | 闭合 taxonomy 聚类、管理员人审、授权/匿名化门禁、staging、自动回归/安全 Gate Runner、版本报告与回滚；36 tests |
 | P03 | completed | 2026-07-22 | 独立管理员 Dashboard；L05 300 + N05 180 冻结行，六指标/筛选/95% CI/样本下钻，300 行 P95<2s；15 tests + TS/build |

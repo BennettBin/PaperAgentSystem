@@ -174,6 +174,21 @@ class Coordinator:
             ready = [item for item in remaining if set(item.depends_on) <= set(terminal)]
             if not ready:
                 raise ProjectError(ErrorCode.INVALID_STATE, "Coordination DAG made no progress")
+            blocked = [
+                item
+                for item in ready
+                if self._has_failed_required_dependency(item, terminal)
+            ]
+            for assignment in blocked:
+                terminal[assignment.assignment_id] = RoleRunRecord(
+                    assignment_id=assignment.assignment_id,
+                    role=assignment.role,
+                    paper_ids=assignment.paper_ids,
+                    error="Required upstream role failed",
+                )
+            ready = [item for item in ready if item not in blocked]
+            if not ready:
+                continue
             for offset in range(0, len(ready), concurrency):
                 batch = ready[offset : offset + concurrency]
                 records = await asyncio.gather(
@@ -216,17 +231,56 @@ class Coordinator:
             total_tokens=total_tokens,
         )
 
+    def _has_failed_required_dependency(
+        self,
+        assignment: RoleAssignment,
+        terminal: dict[str, RoleRunRecord],
+    ) -> bool:
+        for dependency_id in assignment.depends_on:
+            dependency = terminal[dependency_id]
+            if dependency.error is None:
+                continue
+            # A failed Reader is an explicitly supported partial-result path:
+            # Evidence can still be built from the remaining Paper Cards.
+            if dependency.role is AgentRole.PAPER_READER:
+                continue
+            if self._registry.manifests[dependency.role].failure_policy.required:
+                return True
+        return False
+
     async def _run(
         self, task_id: str, workspace_id: str, assignment: RoleAssignment
     ) -> RoleRunRecord:
         try:
-            result = await asyncio.wait_for(
-                self._runner.invoke(
-                    assignment,
-                    idempotency_key=f"{task_id}:{assignment.assignment_id}",
-                ),
-                timeout=assignment.timeout_seconds,
+            manifest = self._registry.manifests[assignment.role]
+            attempts = (
+                min(1, manifest.budget.max_retries) + 1
+                if manifest.failure_policy.on_timeout == "retry_once"
+                else 1
             )
+            result: RoleRunResult | None = None
+            for attempt in range(1, attempts + 1):
+                try:
+                    result = await asyncio.wait_for(
+                        self._runner.invoke(
+                            assignment,
+                            idempotency_key=(
+                                f"{workspace_id}:{task_id}:"
+                                f"{assignment.assignment_id}:"
+                                f"{assignment.role.value}:attempt:{attempt}"
+                            ),
+                        ),
+                        timeout=assignment.timeout_seconds,
+                    )
+                    break
+                except TimeoutError:
+                    if attempt >= attempts:
+                        raise
+            if result is None:
+                raise ProjectError(
+                    ErrorCode.INTERNAL_ERROR,
+                    "Role execution ended without a result",
+                )
             self._registry.validate_output(assignment.role, result.output)
             _minimum_evidence_check(assignment.role, result.output)
             if self._blackboard:

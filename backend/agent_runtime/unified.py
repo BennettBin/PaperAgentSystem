@@ -48,10 +48,27 @@ class RuntimeDecision(_StrictModel):
     cascade_status: str
 
 
+class AdvancedEvidence(_StrictModel):
+    id: str = Field(min_length=1)
+    file_id: str = Field(min_length=1)
+    page: int = Field(ge=1)
+    section: list[str] = Field(default_factory=list)
+    quote: str = Field(min_length=1)
+    bbox: list[float] = Field(default_factory=list)
+    source_evidence_id: str = Field(min_length=1)
+
+
 class AdvancedRuntimeResult(_StrictModel):
     answer: str = Field(min_length=1)
     citation_ids: list[str] = Field(default_factory=list)
+    evidence: list[AdvancedEvidence] = Field(default_factory=list)
     public_steps: list[str] = Field(default_factory=list)
+    agent_roles: list[str] = Field(default_factory=list)
+    subagent_run_ids: list[str] = Field(default_factory=list)
+    blackboard_entry_ids: list[str] = Field(default_factory=list)
+    degraded: bool = False
+    revision_rounds: int = Field(default=0, ge=0, le=1)
+    missing_file_ids: list[str] = Field(default_factory=list)
 
 
 class UnifiedRuntimeExecution(_StrictModel):
@@ -72,10 +89,19 @@ class UnifiedRuntimeRouter:
 
     def route(self, request: RuntimeRequest) -> RuntimeDecision:
         normalized = request.question.casefold()
-        wants_multi = len(set(request.file_ids)) >= 2 and any(
+        wants_multi_intent = any(
             marker in normalized
-            for marker in ("比较", "对比", "综述", "review", "compare", "synthesize")
+            for marker in (
+                "比较",
+                "对比",
+                "综述",
+                "综合",
+                "review",
+                "compare",
+                "synthesize",
+            )
         )
+        wants_multi = len(set(request.file_ids)) >= 2 and wants_multi_intent
         wants_dynamic = any(
             marker in normalized
             for marker in ("重新规划", "换查询", "检索失败", "replan", "retry strategy")
@@ -91,6 +117,10 @@ class UnifiedRuntimeRouter:
                 mode = RuntimeMode.SAFE_RAG
                 reason = "multi-paper request uses promoted safe path"
                 fallback_reason = "multi_agent_not_promoted"
+        elif wants_multi_intent:
+            mode = RuntimeMode.SAFE_RAG
+            reason = "multi-Agent intent requires at least two distinct papers"
+            fallback_reason = "multi_agent_ineligible"
         elif wants_dynamic:
             if self.capabilities.dynamic_planner_enabled and self.capabilities.allow_experimental_no_go:
                 mode = RuntimeMode.DYNAMIC_PLAN
@@ -117,10 +147,12 @@ class UnifiedAgentRuntime:
         router: UnifiedRuntimeRouter,
         *,
         advanced_runtime: AdvancedRuntimePort | None = None,
+        multi_agent_runtime: AdvancedRuntimePort | None = None,
         progress_sink: ProgressSink | None = None,
     ) -> None:
         self._router = router
         self._advanced = advanced_runtime
+        self._multi_agent = multi_agent_runtime
         self._progress = progress_sink or (lambda _: None)
 
     async def execute(self, request: RuntimeRequest) -> UnifiedRuntimeExecution:
@@ -145,7 +177,12 @@ class UnifiedAgentRuntime:
         )
         if decision.mode not in {RuntimeMode.DYNAMIC_PLAN, RuntimeMode.MULTI_AGENT}:
             return UnifiedRuntimeExecution(decision=decision)
-        if self._advanced is None:
+        selected_runtime = (
+            self._multi_agent or self._advanced
+            if decision.mode is RuntimeMode.MULTI_AGENT
+            else self._advanced
+        )
+        if selected_runtime is None:
             fallback = decision.model_copy(
                 update={
                     "mode": RuntimeMode.SAFE_RAG,
@@ -174,7 +211,7 @@ class UnifiedAgentRuntime:
                     "max_depth": 1,
                 },
             )
-        result = await self._advanced.execute(request)
+        result = await selected_runtime.execute(request)
         for index, step in enumerate(result.public_steps, 1):
             self._emit(
                 request,

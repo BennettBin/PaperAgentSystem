@@ -1,9 +1,9 @@
 name: critic_agent
 version: 1.0.0
 role: critic
-description: Reviews draft claims and evidence for contradictions and weak support.
+description: Reviews the evidence matrix for contradictions, gaps, and weak support.
 model_profile: critic_v1
-allowed_tools: [verify_claim, verify_citations]
+allowed_tools: []
 input_schema: critic.input.schema.json
 output_schema: critic.output.schema.json
 budget: {max_tokens: 2000, max_steps: 4, max_tool_calls: 6, timeout_seconds: 60, max_retries: 1}
@@ -13,7 +13,6 @@ max_depth: 1
 can_message_user: false
 can_spawn_agents: false
 example_input:
-  draft_ref: artifact://draft/draft-1
   evidence_bundle_ref: artifact://evidence/bundle-1
 example_output:
   critique_ref: artifact://critique/critique-1

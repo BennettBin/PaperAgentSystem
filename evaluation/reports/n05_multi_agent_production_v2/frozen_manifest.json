@@ -1,0 +1,8 @@
+{
+  "artifacts": {
+    "case_scores.jsonl": "202653fc8ffcee067bd4e1ba6121cb0a0d946024464c2d5e8bb22bcc46402d0e",
+    "report.json": "e07805f79d6b2c692c093c00ed6ce3e4b6b7390574354e1fd70928761cb2ef02",
+    "report.md": "08ae69174748ef0561e5069d5e5e006744dbe8ef21f6ce778d0b6e936e6f8624"
+  },
+  "schema_version": "1.0"
+}

@@ -18,9 +18,16 @@ from backend.subagents.protocol import AgentRole, RoleProtocolRegistry
 
 
 class DelayedRoleRunner:
-    def __init__(self, *, delay: float = 0.0, failed_paper: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        delay: float = 0.0,
+        failed_paper: str | None = None,
+        failed_role: AgentRole | None = None,
+    ) -> None:
         self.delay = delay
         self.failed_paper = failed_paper
+        self.failed_role = failed_role
         self.calls: list[RoleAssignment] = []
         self.active = 0
         self.max_active = 0
@@ -34,6 +41,8 @@ class DelayedRoleRunner:
                 await asyncio.sleep(self.delay)
             if assignment.paper_ids == [self.failed_paper]:
                 raise RuntimeError("reader failed")
+            if assignment.role is self.failed_role:
+                raise RuntimeError(f"{assignment.role.value} failed")
             output = {
                 AgentRole.PAPER_READER: {
                     "paper_card_refs": [f"artifact://paper_card/{assignment.paper_ids[0]}"],
@@ -134,6 +143,42 @@ async def test_single_reader_failure_preserves_completed_results_and_labels_miss
     assert len([item for item in result.completed if item.role is AgentRole.PAPER_READER]) == 2
     assert any(item.role is AgentRole.VERIFIER for item in result.completed)
     assert len([call for call in runner.calls if call.role is AgentRole.PAPER_READER]) == 3
+
+
+@pytest.mark.asyncio
+async def test_required_failure_stops_dependent_roles() -> None:
+    runner = DelayedRoleRunner(failed_role=AgentRole.EVIDENCE)
+    coordinator = _coordinator(runner, concurrency=3)
+
+    result = await coordinator.execute(
+        "task-required-failure",
+        "ws-1",
+        coordinator.expand_spawn_step(_spawn_step(), ["paper-1", "paper-2"]),
+    )
+
+    assert result.status is CoordinationStatus.FAILED
+    called_roles = [call.role for call in runner.calls]
+    assert AgentRole.EVIDENCE in called_roles
+    assert AgentRole.CRITIC not in called_roles
+    assert AgentRole.WRITER not in called_roles
+    assert AgentRole.VERIFIER not in called_roles
+
+
+@pytest.mark.asyncio
+async def test_optional_critic_failure_degrades_but_writer_and_verifier_continue() -> None:
+    runner = DelayedRoleRunner(failed_role=AgentRole.CRITIC)
+    coordinator = _coordinator(runner, concurrency=3)
+
+    result = await coordinator.execute(
+        "task-critic-failure",
+        "ws-1",
+        coordinator.expand_spawn_step(_spawn_step(), ["paper-1", "paper-2"]),
+    )
+
+    assert result.status is CoordinationStatus.DEGRADED
+    called_roles = [call.role for call in runner.calls]
+    assert AgentRole.WRITER in called_roles
+    assert AgentRole.VERIFIER in called_roles
 
 
 def test_reuses_each_paper_read_across_roles_and_removes_at_least_80_percent_duplicates() -> None:

@@ -59,10 +59,24 @@ class InMemoryBlackboardRepository(BlackboardRepository):
     ) -> int:
         if source_type not in {"file", "message"}:
             raise ProjectError(ErrorCode.INVALID_ARGUMENT, "Unsupported Blackboard source type")
+        affected_tasks = {
+            (entry.workspace_id, entry.task_id)
+            for entry in self._current.values()
+            if entry.workspace_id == workspace_id
+            and (
+                entry.source.file_id
+                if source_type == "file"
+                else entry.source.message_id
+            )
+            == source_id
+            and entry.invalidated_at is None
+        }
         count = 0
         for key, entry in list(self._current.items()):
-            source_value = entry.source.file_id if source_type == "file" else entry.source.message_id
-            if key[0] != workspace_id or source_value != source_id or entry.invalidated_at:
+            if (
+                (entry.workspace_id, entry.task_id) not in affected_tasks
+                or entry.invalidated_at
+            ):
                 continue
             invalidated = entry.invalidate()
             self._current[key] = invalidated

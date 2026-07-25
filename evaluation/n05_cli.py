@@ -125,6 +125,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "same_max_token_budget": True,
         "gold_used_only_after_execution": True,
         "role_calls_per_case": 5,
+        "frozen_dataset_case_count": _line_count(args.dataset),
+        "eligibility_scope": "predeclared L4/L5 multi-paper subset",
     }
     _write_json(args.output / "report.json", report)
     _write_markdown(args.output / "report.md", report)
@@ -207,6 +209,10 @@ def _model_version(endpoint: str, model: str) -> str:
     raise ValueError(f"required real Ollama model is unavailable: {model}")
 
 
+def _line_count(path: Path) -> int:
+    return sum(1 for line in path.read_text("utf-8").splitlines() if line.strip())
+
+
 def _write_json(path: Path, payload: Any) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(
@@ -244,6 +250,14 @@ def _write_markdown(path: Path, report: dict[str, Any]) -> None:
         f"| Token/success increase | {metrics['token_per_success_increase']} |",
         f"| Conflict Recall delta | {metrics['conflict_recall_delta']} |",
         f"| Severe unsupported reduction | {metrics['severe_unsupported_reduction']} |",
+        f"| Baseline P95 latency (ms) | {metrics['baseline_p95_latency_ms']} |",
+        f"| Candidate P95 latency (ms) | {metrics['candidate_p95_latency_ms']} |",
+        f"| Candidate total Token | {metrics['candidate_total_tokens']} |",
+        f"| Candidate system exception rate | {metrics['candidate_system_exception_rate']} |",
+        f"| Candidate cost/success | {metrics['candidate_cost_per_success']} |",
+        f"| Multi-paper coverage | {metrics['multi_paper_coverage_rate']} |",
+        f"| Paper identity confusion | {metrics['paper_identity_confusion_rate']} |",
+        f"| Tool parameter validity | {metrics['tool_parameter_validity_rate']} |",
         "",
         "| Gate | Passed |",
         "|---|---|",

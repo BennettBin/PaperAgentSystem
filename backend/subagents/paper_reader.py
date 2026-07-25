@@ -82,7 +82,9 @@ class PaperReaderAgent:
     name = "paper_reader_agent"
     version = "1.0.0"
     model_profile = "paper_reader_v1"
-    allowed_tools = frozenset({"parse_document", "get_document_section", "verify_claim"})
+    allowed_tools = frozenset(
+        {"parse_document", "get_document_section", "search_document"}
+    )
 
     def __init__(
         self,

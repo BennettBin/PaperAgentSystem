@@ -68,5 +68,9 @@ def test_no_go_policy_keeps_multi_agent_off_the_default_path() -> None:
     assert policy["production_default"] == "single_agent"
     assert policy["multi_agent_enabled_by_default"] is False
     assert policy["roles"]["critic"] == "experimental_only"
-    assert policy["roles"]["verifier"] == "deterministic_gate_only"
+    assert (
+        policy["roles"]["verifier"]
+        == "experimental_only_with_deterministic_boundary"
+    )
     assert policy["full_revision_enabled"] is False
+    assert policy["experimental_full_revision_max_rounds"] == 1

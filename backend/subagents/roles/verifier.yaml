@@ -3,7 +3,7 @@ version: 1.0.0
 role: verifier
 description: Independently verifies final claims, citations, and completion criteria.
 model_profile: verifier_v1
-allowed_tools: [verify_claim, verify_citations]
+allowed_tools: []
 input_schema: verifier.input.schema.json
 output_schema: verifier.output.schema.json
 budget: {max_tokens: 2500, max_steps: 5, max_tool_calls: 8, timeout_seconds: 90, max_retries: 1}

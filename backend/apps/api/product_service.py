@@ -16,7 +16,12 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.agent_runtime.react_self_rag import ReActSelfRAGController
-from backend.agent_runtime.unified import RuntimeRequest, UnifiedAgentRuntime
+from backend.agent_runtime.unified import (
+    AdvancedEvidence,
+    AdvancedRuntimeResult,
+    RuntimeRequest,
+    UnifiedAgentRuntime,
+)
 from backend.agent_runtime.verifier import VerificationInput, VerificationStatus, Verifier
 from backend.core.domain.ids import ConversationId, WorkspaceId
 from backend.core.errors import ErrorCode, ProjectError
@@ -24,6 +29,9 @@ from backend.core.ports.llm_client import EmbeddingClient, LLMClient, RerankerCl
 from backend.core.ports.observability import TaskAuditLogWriter, TraceWriter
 from backend.core.ports.storage import ObjectStore, TaskQueue
 from backend.document_processing.pipeline import BasicPDFPipeline
+from backend.infrastructure.postgres.blackboard import (
+    ManagedSqlAlchemyBlackboardRepository,
+)
 from backend.infrastructure.postgres.models import (
     ConversationFileModel,
     ConversationModel,
@@ -360,6 +368,13 @@ class PaperAgentApplication:
             conversation.deleted_at = now
             conversation.updated_at = now
             session.commit()
+        blackboard = ManagedSqlAlchemyBlackboardRepository(self._sessions)
+        for deleted_file in deleted_files:
+            await blackboard.invalidate_source(
+                LOCAL_WORKSPACE_ID,
+                "file",
+                deleted_file.id,
+            )
         for key in object_keys:
             await self._objects.delete(key)
         return {
@@ -1060,6 +1075,16 @@ class PaperAgentProcessor:
         ]
         if not file_ids:
             file_ids = active_file_ids
+        if _is_multi_agent_candidate(question, file_ids):
+            for file_id in file_ids:
+                with self._sessions() as session:
+                    checksum = _file(session, file_id).checksum
+                if not self._indexer.is_current(
+                    LOCAL_WORKSPACE_ID,
+                    file_id,
+                    expected_checksum=checksum,
+                ):
+                    await self.parse({"_task_id": task_id, "file_id": file_id})
         runtime_mode = "legacy_safe"
         if self._unified_runtime is not None:
             runtime_execution = await self._unified_runtime.execute(
@@ -1082,6 +1107,15 @@ class PaperAgentProcessor:
                     "cascade_status": runtime_execution.decision.cascade_status,
                 },
             )
+            if runtime_execution.advanced_result is not None:
+                return await self._save_advanced_runtime_answer(
+                    conversation_id,
+                    task_id,
+                    question,
+                    runtime_mode,
+                    runtime_execution.advanced_result,
+                    history,
+                )
         self._event(
             task_id,
             "step_started",
@@ -1476,6 +1510,106 @@ class PaperAgentProcessor:
             "answer": answer,
         }
 
+    async def _save_advanced_runtime_answer(
+        self,
+        conversation_id: str,
+        task_id: str,
+        question: str,
+        runtime_mode: str,
+        result: AdvancedRuntimeResult,
+        history: dict[str, Any],
+    ) -> dict[str, Any]:
+        evidence = [item.model_dump(mode="json") for item in result.evidence]
+        evidence_ids = {str(item["id"]) for item in evidence}
+        citation_ids = set(result.citation_ids)
+        if not citation_ids or not citation_ids <= evidence_ids:
+            raise ProjectError(
+                ErrorCode.VERIFICATION_FAILED,
+                "Multi-Agent final citations do not resolve to persisted evidence",
+                {
+                    "citation_ids": sorted(citation_ids),
+                    "evidence_ids": sorted(evidence_ids),
+                },
+            )
+        verification = self._verifier.verify(
+            VerificationInput(
+                output={"answer": result.answer},
+                required_fields={"answer"},
+                valid_citation_ids=evidence_ids,
+                source_text="\n".join(
+                    str(item.get("quote", "")) for item in evidence
+                ),
+            ),
+            repair_count=Verifier.MAX_REPAIRS,
+        )
+        if verification.status is not VerificationStatus.PASSED:
+            raise ProjectError(
+                ErrorCode.VERIFICATION_FAILED,
+                "Multi-Agent final answer failed the product-boundary verifier",
+                {
+                    "issue_codes": [
+                        issue.code for issue in verification.issues
+                    ]
+                },
+            )
+        hits = [_advanced_evidence_hit(item) for item in result.evidence]
+        visual_candidates = _visual_artifacts_for_hits(self._sessions, hits)
+        message_id = self._save_answer(
+            conversation_id,
+            task_id,
+            result.answer,
+            [],
+            {
+                "used": True,
+                "decision": "multi_agent",
+                "runtime_mode": runtime_mode,
+                "history_used": bool(history["source_message_ids"]),
+                "history_source_message_ids": history["source_message_ids"],
+                "short_term_memory_used": history["short_term_memory_used"],
+                "long_term_memory_used": history["long_term_memory_used"],
+                "memory_segment_ids": history["memory_segment_ids"],
+                "memory_conversation_ids": history["memory_conversation_ids"],
+                "agent_roles": result.agent_roles,
+                "subagent_run_ids": result.subagent_run_ids,
+                "blackboard_entry_ids": result.blackboard_entry_ids,
+                "degraded": result.degraded,
+                "revision_rounds": result.revision_rounds,
+                "missing_file_ids": result.missing_file_ids,
+            },
+            visual_artifacts=_visual_artifacts_mentioned(
+                question,
+                result.answer,
+                visual_candidates,
+            ),
+            evidence=evidence,
+        )
+        await self._schedule_memory_summary(
+            conversation_id,
+            message_id,
+            task_id,
+        )
+        self._event(
+            task_id,
+            "task_completed",
+            "多 Agent 回答生成完成",
+            {"message_id": message_id},
+        )
+        await self._trace(
+            task_id,
+            "task.completed",
+            {
+                "message_id": message_id,
+                "runtime_mode": runtime_mode,
+                "evidence_count": len(evidence),
+                "revision_rounds": result.revision_rounds,
+            },
+        )
+        return {
+            "status": "completed",
+            "message_id": message_id,
+            "answer": result.answer,
+        }
+
     async def _activate_skill(
         self,
         request: str,
@@ -1850,6 +1984,7 @@ class PaperAgentProcessor:
         hits: list[RetrievalHit],
         rag: dict[str, Any],
         visual_artifacts: list[dict[str, Any]] | None = None,
+        evidence: list[dict[str, Any]] | None = None,
     ) -> str:
         with self._sessions() as session:
             message = MessageModel(
@@ -1862,9 +1997,14 @@ class PaperAgentProcessor:
                 metadata_json={
                     "task_id": task_id,
                     "rag": rag,
-                    "evidence": [
-                        _hit_dict(index, hit) for index, hit in enumerate(hits, 1)
-                    ],
+                    "evidence": (
+                        evidence
+                        if evidence is not None
+                        else [
+                            _hit_dict(index, hit)
+                            for index, hit in enumerate(hits, 1)
+                        ]
+                    ),
                     "visual_artifacts": visual_artifacts or [],
                 },
             )
@@ -2404,6 +2544,22 @@ def _is_substantive_answer(answer: str) -> bool:
     return len(compact) >= 12
 
 
+def _is_multi_agent_candidate(question: str, file_ids: list[str]) -> bool:
+    normalized = question.casefold()
+    return len(set(file_ids)) >= 2 and any(
+        marker in normalized
+        for marker in (
+            "比较",
+            "对比",
+            "综述",
+            "综合",
+            "review",
+            "compare",
+            "synthesize",
+        )
+    )
+
+
 def _hit_dict(index: int, hit: RetrievalHit) -> dict[str, Any]:
     return {
         "id": f"E{index}",
@@ -2413,6 +2569,23 @@ def _hit_dict(index: int, hit: RetrievalHit) -> dict[str, Any]:
         "quote": hit.text[:800],
         "bbox": list(hit.bbox),
     }
+
+
+def _advanced_evidence_hit(item: AdvancedEvidence) -> RetrievalHit:
+    bbox = list(item.bbox[:4])
+    bbox.extend([0.0] * (4 - len(bbox)))
+    return RetrievalHit(
+        chunk_id=item.source_evidence_id,
+        workspace_id=LOCAL_WORKSPACE_ID,
+        file_id=item.file_id,
+        text=item.quote,
+        section_path=tuple(item.section),
+        page_start=item.page,
+        page_end=item.page,
+        bbox=(bbox[0], bbox[1], bbox[2], bbox[3]),
+        source_block_ids=(),
+        score=1.0,
+    )
 
 
 def _parsed_document_debug_dict(model: ParsedDocumentModel) -> dict[str, Any]:

@@ -26,6 +26,85 @@ class RecordingAdvancedRuntime:
         )
 
 
+@pytest.mark.parametrize(
+    ("multi_enabled", "experimental_enabled"),
+    [
+        (False, False),
+        (True, False),
+        (False, True),
+    ],
+)
+def test_multi_agent_requires_both_feature_gates(
+    multi_enabled: bool,
+    experimental_enabled: bool,
+) -> None:
+    router = UnifiedRuntimeRouter(
+        RuntimeCapabilities(
+            multi_agent_enabled=multi_enabled,
+            allow_experimental_no_go=experimental_enabled,
+        )
+    )
+
+    decision = router.route(
+        RuntimeRequest(
+            task_id="gated",
+            question="综合比较两篇论文",
+            file_ids=["f1", "f2"],
+        )
+    )
+
+    assert decision.mode is RuntimeMode.SAFE_RAG
+    assert decision.fallback_reason == "multi_agent_not_promoted"
+
+
+@pytest.mark.parametrize(
+    ("question", "file_ids", "expected_reason"),
+    [
+        ("比较这篇论文的方法", ["f1"], "multi_agent_ineligible"),
+        ("综合这些研究的结论", ["f1"], "multi_agent_ineligible"),
+        ("回答两篇论文分别发表于哪一年", ["f1", "f2"], None),
+    ],
+)
+def test_multi_agent_requires_multiple_files_and_explicit_collaboration_intent(
+    question: str,
+    file_ids: list[str],
+    expected_reason: str | None,
+) -> None:
+    router = UnifiedRuntimeRouter(
+        RuntimeCapabilities(
+            multi_agent_enabled=True,
+            allow_experimental_no_go=True,
+        )
+    )
+
+    decision = router.route(
+        RuntimeRequest(task_id="eligibility", question=question, file_ids=file_ids)
+    )
+
+    assert decision.mode is RuntimeMode.SAFE_RAG
+    assert decision.fallback_reason == expected_reason
+
+
+def test_multi_agent_route_accepts_deduplicated_multi_file_synthesis() -> None:
+    router = UnifiedRuntimeRouter(
+        RuntimeCapabilities(
+            multi_agent_enabled=True,
+            allow_experimental_no_go=True,
+        )
+    )
+
+    decision = router.route(
+        RuntimeRequest(
+            task_id="eligible",
+            question="综合分析三篇论文",
+            file_ids=["f1", "f1", "f2", "f3"],
+        )
+    )
+
+    assert decision.mode is RuntimeMode.MULTI_AGENT
+    assert decision.fallback_reason is None
+
+
 def test_router_keeps_no_go_features_off_default_path_and_cascade_unavailable() -> None:
     router = UnifiedRuntimeRouter(RuntimeCapabilities())
     simple = router.route(RuntimeRequest(task_id="t1", question="你好", file_ids=[]))
@@ -85,6 +164,30 @@ async def test_dynamic_and_multi_agent_paths_are_injectable_bounded_and_public_o
     serialized = str(progress).casefold()
     assert "hidden_reasoning" not in serialized
     assert "chain_of_thought" not in serialized
+
+
+@pytest.mark.asyncio
+async def test_missing_advanced_runtime_falls_back_to_safe_rag() -> None:
+    runtime = UnifiedAgentRuntime(
+        UnifiedRuntimeRouter(
+            RuntimeCapabilities(
+                multi_agent_enabled=True,
+                allow_experimental_no_go=True,
+            )
+        )
+    )
+
+    execution = await runtime.execute(
+        RuntimeRequest(
+            task_id="missing-adapter",
+            question="比较两篇论文",
+            file_ids=["f1", "f2"],
+        )
+    )
+
+    assert execution.decision.mode is RuntimeMode.SAFE_RAG
+    assert execution.decision.fallback_reason == "advanced_runtime_unavailable"
+    assert execution.advanced_result is None
 
 
 def test_legacy_task_metadata_migration_is_idempotent_and_fail_safe() -> None:

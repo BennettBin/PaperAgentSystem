@@ -257,6 +257,16 @@ def build_n05_report(
             "omission_rate": _mean(row.omission_rate for row in items),
             "mean_tokens": _mean(float(row.total_tokens) for row in items),
             "mean_latency_ms": _mean(float(row.latency_ms) for row in items),
+            "p95_latency_ms": _percentile(
+                [float(row.latency_ms) for row in items],
+                0.95,
+            ),
+            "total_tokens": sum(row.total_tokens for row in items),
+            "system_exception_rate": 0.0,
+            "local_monetary_cost": 0.0,
+            "cost_per_success": (
+                0.0 if any(row.task_success for row in items) else None
+            ),
         }
         for system, items in sorted(grouped.items())
     }
@@ -281,7 +291,7 @@ def build_n05_report(
         for left, right in zip(progressive_order, progressive_order[1:])
     }
     return {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "truth_class": truth_class,
         "systems": counts,
         "matrix_complete": matrix_complete,
@@ -298,6 +308,24 @@ def build_n05_report(
             "severe_unsupported_reduction": unsupported_reduction,
             "total_token_increase": total_token_increase,
             "token_per_success_increase": token_per_success_increase,
+            "baseline_p95_latency_ms": per_system["single_agent"][
+                "p95_latency_ms"
+            ],
+            "candidate_p95_latency_ms": per_system["full_system"][
+                "p95_latency_ms"
+            ],
+            "candidate_total_tokens": per_system["full_system"][
+                "total_tokens"
+            ],
+            "candidate_system_exception_rate": per_system["full_system"][
+                "system_exception_rate"
+            ],
+            "candidate_cost_per_success": per_system["full_system"][
+                "cost_per_success"
+            ],
+            "multi_paper_coverage_rate": None,
+            "paper_identity_confusion_rate": None,
+            "tool_parameter_validity_rate": None,
         },
         "per_system": per_system,
         "marginal_contribution": marginal_contribution,
@@ -305,14 +333,16 @@ def build_n05_report(
             "production_default": "single_agent",
             "multi_agent_enabled_by_default": False,
             "critic": "experimental_only",
-            "verifier": "merge_with_deterministic_verification_gate; disable extra LLM pass",
-            "full_revision": "disabled; negative marginal Claim Support",
+            "verifier": "experimental role plus deterministic product-boundary gate",
+            "full_revision": "experimental only; bounded to one Writer/Verifier retry",
         },
         "gates": gates,
         "all_gates_passed": all(gates.values()),
         "limitations": [
             "Conflict gold is unavailable in frozen L4/L5; conflict Recall and its promotion gate are unavailable.",
             "The frozen single-Agent report has no claim-level unsupported-fact annotation, so reduction is unavailable.",
+            "Paper-identity confusion, full-paper coverage, and Tool parameter validity were not annotated in this frozen N05 artifact; they remain acceptance-test metrics, not fabricated effect estimates.",
+            "Local Ollama has zero external API charge; cost-per-success is unavailable when the candidate has no successful cases.",
         ],
     }
 
@@ -399,6 +429,17 @@ def _mean(values: Iterable[float]) -> float:
 def _optional_mean(values: Iterable[float | None]) -> float | None:
     items = [value for value in values if value is not None]
     return sum(items) / len(items) if items else None
+
+
+def _percentile(values: list[float], quantile: float) -> float:
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    index = min(
+        len(ordered) - 1,
+        max(0, int((len(ordered) - 1) * quantile)),
+    )
+    return ordered[index]
 
 
 def _tokens_per_success(rows: list[N05CaseScore]) -> float | None:

@@ -25,6 +25,66 @@ const Icon = ({ children, size = 20 }: { children: React.ReactNode; size?: numbe
   </svg>
 );
 
+type AssistantContentBlock =
+  | { kind: "text"; content: string }
+  | { kind: "table"; headers: string[]; rows: string[][] };
+
+const parseMarkdownTableRow = (line: string): string[] | null => {
+  const trimmed = line.trim();
+  if (!trimmed.includes("|")) {
+    return null;
+  }
+  const withoutOuterPipes = trimmed.replace(/^\|/, "").replace(/\|$/, "");
+  const cells = withoutOuterPipes.split("|").map((cell) => cell.trim());
+  return cells.length >= 2 ? cells : null;
+};
+
+const isMarkdownTableDivider = (cells: string[]) =>
+  cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+
+const parseAssistantContent = (content: string): AssistantContentBlock[] => {
+  const lines = content.split("\n");
+  const blocks: AssistantContentBlock[] = [];
+  const pendingText: string[] = [];
+  const flushText = () => {
+    if (pendingText.length) {
+      blocks.push({ kind: "text", content: pendingText.join("\n") });
+      pendingText.length = 0;
+    }
+  };
+
+  for (let index = 0; index < lines.length; ) {
+    const headers = parseMarkdownTableRow(lines[index]);
+    const divider = index + 1 < lines.length
+      ? parseMarkdownTableRow(lines[index + 1])
+      : null;
+    if (
+      headers
+      && divider
+      && headers.length === divider.length
+      && isMarkdownTableDivider(divider)
+    ) {
+      flushText();
+      const rows: string[][] = [];
+      index += 2;
+      while (index < lines.length) {
+        const row = parseMarkdownTableRow(lines[index]);
+        if (!row || row.length !== headers.length) {
+          break;
+        }
+        rows.push(row);
+        index += 1;
+      }
+      blocks.push({ kind: "table", headers, rows });
+      continue;
+    }
+    pendingText.push(lines[index]);
+    index += 1;
+  }
+  flushText();
+  return blocks;
+};
+
 export interface AppLayoutProps {}
 
 const emptyUsage: ConversationTokenUsage = {
@@ -45,6 +105,24 @@ const progressLabel = (event: TaskProgressEvent) => {
     tool_completed: "工具调用完成",
     subagent_started: "多 Agent 协作已开始",
     subagent_completed: "Agent 子任务已完成",
+    multi_agent_started: "多 Agent 生产链已启动",
+    multi_agent_completed: "多 Agent 生产链已完成",
+    multi_agent_degraded: "多 Agent 生产链已降级完成",
+    multi_agent_failed: "多 Agent 生产链执行失败",
+    multi_agent_revision_started: "Writer 开始定向修订",
+    multi_agent_revision_completed: "Verifier 已通过修订结果",
+    coordinator_agent_started: "Coordinator Agent 开始任务编排",
+    coordinator_agent_completed: "Coordinator Agent 已完成任务编排",
+    paper_reader_agent_started: "Paper Reader 开始读取论文",
+    paper_reader_agent_completed: "Paper Reader 已生成论文卡片",
+    evidence_agent_started: "Evidence Agent 开始构建证据矩阵",
+    evidence_agent_completed: "Evidence Agent 已完成证据矩阵",
+    critic_agent_started: "Critic Agent 开始审阅",
+    critic_agent_completed: "Critic Agent 已完成审阅",
+    writer_agent_started: "Writer Agent 开始生成回答",
+    writer_agent_completed: "Writer Agent 已生成草稿",
+    verifier_agent_started: "Verifier Agent 开始核验",
+    verifier_agent_passed: "Verifier Agent 核验通过",
     verification_completed: "回答核验完成",
     verification_failed: "回答核验失败",
   };
@@ -64,6 +142,17 @@ const completedEventTypes = new Set([
   "step_completed",
   "tool_completed",
   "subagent_completed",
+  "multi_agent_completed",
+  "multi_agent_degraded",
+  "multi_agent_revision_completed",
+  "multi_agent_idempotency_replayed",
+  "coordinator_agent_completed",
+  "paper_reader_agent_completed",
+  "evidence_agent_completed",
+  "critic_agent_completed",
+  "writer_agent_completed",
+  "verifier_agent_completed",
+  "verifier_agent_passed",
   "verification_completed",
   "task_completed",
 ]);
@@ -175,87 +264,127 @@ export const AssistantMessage = ({ message }: { message: ChatMessage }) => {
     setPinnedReference((current) => (current === key ? null : key));
   };
   const isOpen = (key: string) =>
-    hoveredReference === key || pinnedReference === key;
+    (hoveredReference ?? pinnedReference) === key;
+  const renderInlineReferences = (content: string, scope: string) =>
+    content.split(referencePattern).map((part, index) => {
+      const id = part.match(/^\[(E\d+)\]$/)?.[1];
+      const citation = id ? byId.get(id) : undefined;
+      if (citation) {
+        const key = `citation:${citation.id}:${scope}:${index}`;
+        return (
+          <span
+            className="inline-reference-shell"
+            data-testid={`inline-reference-${citation.id}`}
+            key={`${scope}-${part}-${index}`}
+            onMouseEnter={() => setHoveredReference(key)}
+            onMouseLeave={() => setHoveredReference(null)}
+          >
+            <button
+              aria-expanded={isOpen(key)}
+              className="inline-citation"
+              onBlur={() => setHoveredReference(null)}
+              onClick={() => togglePinned(key)}
+              onFocus={() => setHoveredReference(key)}
+              type="button"
+            >
+              [{id}]
+            </button>
+            {isOpen(key) ? (
+              <span className="reference-popover citation-popover" role="tooltip">
+                <span>
+                  <strong>{citation.id}</strong>
+                  <small>第 {citation.page} 页</small>
+                </span>
+                <span>{citation.quote}</span>
+              </span>
+            ) : null}
+          </span>
+        );
+      }
+      const visual = visualByLabel.get(part.toLocaleLowerCase());
+      if (visual) {
+        referencedVisualIds.add(visual.id);
+        const key = `visual:${visual.id}:${scope}:${index}`;
+        return (
+          <span
+            className="inline-reference-shell"
+            data-testid={`inline-reference-${visual.id}`}
+            key={`${scope}-${part}-${index}`}
+            onMouseEnter={() => setHoveredReference(key)}
+            onMouseLeave={() => setHoveredReference(null)}
+          >
+            <button
+              aria-expanded={isOpen(key)}
+              className="inline-citation inline-visual-reference"
+              onBlur={() => setHoveredReference(null)}
+              onClick={() => togglePinned(key)}
+              onFocus={() => setHoveredReference(key)}
+              type="button"
+            >
+              {visual.label}
+            </button>
+            {isOpen(key) ? (
+              <span className="reference-popover visual-popover" role="tooltip">
+                <img
+                  alt={`${visual.label}，论文第 ${visual.page} 页`}
+                  loading="lazy"
+                  src={visual.image_url}
+                />
+                <span>
+                  <strong>{visual.label}</strong>
+                  <small>第 {visual.page} 页</small>
+                  {visual.caption ? <span>{visual.caption}</span> : null}
+                </span>
+              </span>
+            ) : null}
+          </span>
+        );
+      }
+      return <React.Fragment key={`${scope}-${part}-${index}`}>{part}</React.Fragment>;
+    });
+  const contentBlocks = parseAssistantContent(message.content);
 
   return (
     <div className="chat-message-assistant">
       <div>
-        {message.content.split(referencePattern).map((part, index) => {
-          const id = part.match(/^\[(E\d+)\]$/)?.[1];
-          const citation = id ? byId.get(id) : undefined;
-          if (citation) {
-            const key = `citation:${citation.id}`;
-            return (
-              <span
-                className="inline-reference-shell"
-                data-testid={`inline-reference-${citation.id}`}
-                key={`${part}-${index}`}
-                onMouseEnter={() => setHoveredReference(key)}
-                onMouseLeave={() => setHoveredReference(null)}
-              >
-                <button
-                  aria-expanded={isOpen(key)}
-                  className="inline-citation"
-                  onBlur={() => setHoveredReference(null)}
-                  onClick={() => togglePinned(key)}
-                  onFocus={() => setHoveredReference(key)}
-                  type="button"
-                >
-                  [{id}]
-                </button>
-                {isOpen(key) ? (
-                  <span className="reference-popover citation-popover" role="tooltip">
-                    <span>
-                      <strong>{citation.id}</strong>
-                      <small>第 {citation.page} 页</small>
-                    </span>
-                    <span>{citation.quote}</span>
-                  </span>
-                ) : null}
-              </span>
-            );
-          }
-          const visual = visualByLabel.get(part.toLocaleLowerCase());
-          if (visual) {
-            referencedVisualIds.add(visual.id);
-            const key = `visual:${visual.id}`;
-            return (
-              <span
-                className="inline-reference-shell"
-                data-testid={`inline-reference-${visual.id}`}
-                key={`${part}-${index}`}
-                onMouseEnter={() => setHoveredReference(key)}
-                onMouseLeave={() => setHoveredReference(null)}
-              >
-                <button
-                  aria-expanded={isOpen(key)}
-                  className="inline-citation inline-visual-reference"
-                  onBlur={() => setHoveredReference(null)}
-                  onClick={() => togglePinned(key)}
-                  onFocus={() => setHoveredReference(key)}
-                  type="button"
-                >
-                  {visual.label}
-                </button>
-                {isOpen(key) ? (
-                  <span className="reference-popover visual-popover" role="tooltip">
-                    <img
-                      alt={`${visual.label}，论文第 ${visual.page} 页`}
-                      loading="lazy"
-                      src={visual.image_url}
-                    />
-                    <span>
-                      <strong>{visual.label}</strong>
-                      <small>第 {visual.page} 页</small>
-                      {visual.caption ? <span>{visual.caption}</span> : null}
-                    </span>
-                  </span>
-                ) : null}
-              </span>
-            );
-          }
-          return <React.Fragment key={`${part}-${index}`}>{part}</React.Fragment>;
-        })}
+        {contentBlocks.map((block, blockIndex) => (
+          block.kind === "text" ? (
+            <React.Fragment key={`text-${blockIndex}`}>
+              {renderInlineReferences(block.content, `text-${blockIndex}`)}
+            </React.Fragment>
+          ) : (
+            <div className="assistant-table-scroll" key={`table-${blockIndex}`}>
+              <table aria-label="论文对比表" className="assistant-markdown-table">
+                <thead>
+                  <tr>
+                    {block.headers.map((header, columnIndex) => (
+                      <th key={`header-${columnIndex}`} scope="col">
+                        {renderInlineReferences(
+                          header,
+                          `table-${blockIndex}-header-${columnIndex}`,
+                        )}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {block.rows.map((row, rowIndex) => (
+                    <tr key={`row-${rowIndex}`}>
+                      {row.map((cell, columnIndex) => (
+                        <td key={`cell-${rowIndex}-${columnIndex}`}>
+                          {renderInlineReferences(
+                            cell,
+                            `table-${blockIndex}-cell-${rowIndex}-${columnIndex}`,
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ))}
       </div>
       {visualArtifacts.some((artifact) => !referencedVisualIds.has(artifact.id)) ? (
         <div className="visual-reference-list" aria-label="回答引用的论文截图">

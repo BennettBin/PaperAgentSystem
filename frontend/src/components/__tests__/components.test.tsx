@@ -368,6 +368,88 @@ describe("Frontend Components", () => {
     expect(screen.getByRole("img", { name: "Table 1，论文第 3 页" })).toBeDefined();
   });
 
+  it("opens only the hovered occurrence when a citation id is repeated", () => {
+    render(
+      <AssistantMessage
+        message={{
+          id: "assistant-repeated-citation",
+          role: "assistant",
+          content: "第一处结论 [E1]，第二处结论仍引用 [E1]。",
+          created_at: "2026-07-25T00:00:00Z",
+          metadata: {
+            evidence: [
+              {
+                id: "E1",
+                file_id: "file-1",
+                page: 3,
+                section: ["Results"],
+                quote: "Only one citation popover should be visible.",
+              },
+            ],
+          },
+        }}
+      />,
+    );
+
+    const repeatedCitations = screen.getAllByRole("button", { name: "[E1]" });
+    expect(repeatedCitations).toHaveLength(2);
+
+    fireEvent.mouseEnter(repeatedCitations[0]);
+    expect(
+      screen.getAllByText("Only one citation popover should be visible."),
+    ).toHaveLength(1);
+
+    fireEvent.mouseLeave(repeatedCitations[0].closest(".inline-reference-shell")!);
+    fireEvent.mouseEnter(repeatedCitations[1]);
+    expect(
+      screen.getAllByText("Only one citation popover should be visible."),
+    ).toHaveLength(1);
+  });
+
+  it("renders a Markdown paper comparison as a semantic table", () => {
+    render(
+      <AssistantMessage
+        message={{
+          id: "assistant-comparison-table",
+          role: "assistant",
+          content: [
+            "两篇论文对比如下：",
+            "",
+            "| 论文 | 方法 | 结果 |",
+            "| --- | --- | --- |",
+            "| Alpha | CNN [E1] | 90% |",
+            "| Beta | Transformer [E2] | 92% |",
+          ].join("\n"),
+          created_at: "2026-07-25T00:00:00Z",
+          metadata: {
+            evidence: [
+              {
+                id: "E1",
+                file_id: "file-alpha",
+                page: 4,
+                section: ["Method"],
+                quote: "Alpha uses CNN.",
+              },
+              {
+                id: "E2",
+                file_id: "file-beta",
+                page: 5,
+                section: ["Method"],
+                quote: "Beta uses Transformer.",
+              },
+            ],
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("table", { name: "论文对比表" })).toBeDefined();
+    expect(screen.getByRole("columnheader", { name: "论文" })).toBeDefined();
+    expect(screen.getByRole("cell", { name: "Alpha" })).toBeDefined();
+    expect(screen.getByRole("cell", { name: "Transformer [E2]" })).toBeDefined();
+    expect(screen.queryByText("| --- | --- | --- |")).toBeNull();
+  });
+
   it("renders FilePreview", () => {
     const file = { id: "1", name: "test.pdf", type: "pdf" };
     render(<FilePreview file={file} onClose={() => {}} />);

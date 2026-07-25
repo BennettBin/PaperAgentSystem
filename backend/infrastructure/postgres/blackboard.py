@@ -7,7 +7,7 @@ from typing import Literal, cast
 from uuid import uuid4
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from backend.core.domain.blackboard import BlackboardEntry, BlackboardEvent
 from backend.core.errors import ErrorCode, ProjectError
@@ -23,7 +23,8 @@ class SqlAlchemyBlackboardRepository(BlackboardRepository):
         self, entry: BlackboardEntry, *, expected_version: int
     ) -> BlackboardEntry:
         current = self._session.get(
-            BlackboardEntryModel, (entry.entry_id, entry.workspace_id)
+            BlackboardEntryModel,
+            (entry.entry_id, entry.workspace_id, entry.task_id),
         )
         actual = 0 if current is None else current.entry_version
         if actual != expected_version or entry.version != expected_version + 1:
@@ -108,10 +109,13 @@ class SqlAlchemyBlackboardRepository(BlackboardRepository):
                 )
             )
         )
-        count = 0
         key = "file_id" if source_type == "file" else "message_id"
+        affected_task_ids = {
+            row.task_id for row in rows if row.source_json.get(key) == source_id
+        }
+        count = 0
         for row in rows:
-            if row.source_json.get(key) != source_id:
+            if row.task_id not in affected_task_ids:
                 continue
             invalidated = _entry_from_model(row).invalidate()
             row.entry_version = invalidated.version
@@ -140,6 +144,68 @@ class SqlAlchemyBlackboardRepository(BlackboardRepository):
 
     @staticmethod
     def rebuild(events: Sequence[BlackboardEvent]) -> dict[str, BlackboardEntry]:
+        return BlackboardRepository.rebuild(events)
+
+
+class ManagedSqlAlchemyBlackboardRepository(BlackboardRepository):
+    """Short-lived transactional Blackboard adapter for long-running Workers."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._sessions = session_factory
+
+    async def append(
+        self,
+        entry: BlackboardEntry,
+        *,
+        expected_version: int,
+    ) -> BlackboardEntry:
+        with self._sessions() as session:
+            saved = await SqlAlchemyBlackboardRepository(session).append(
+                entry,
+                expected_version=expected_version,
+            )
+            session.commit()
+            return saved
+
+    async def list_active(
+        self,
+        workspace_id: str,
+        task_id: str,
+    ) -> list[BlackboardEntry]:
+        with self._sessions() as session:
+            return await SqlAlchemyBlackboardRepository(session).list_active(
+                workspace_id,
+                task_id,
+            )
+
+    async def list_events(
+        self,
+        workspace_id: str,
+        task_id: str,
+    ) -> list[BlackboardEvent]:
+        with self._sessions() as session:
+            return await SqlAlchemyBlackboardRepository(session).list_events(
+                workspace_id,
+                task_id,
+            )
+
+    async def invalidate_source(
+        self,
+        workspace_id: str,
+        source_type: str,
+        source_id: str,
+    ) -> int:
+        with self._sessions() as session:
+            count = await SqlAlchemyBlackboardRepository(
+                session
+            ).invalidate_source(workspace_id, source_type, source_id)
+            session.commit()
+            return count
+
+    @staticmethod
+    def rebuild(
+        events: Sequence[BlackboardEvent],
+    ) -> dict[str, BlackboardEntry]:
         return BlackboardRepository.rebuild(events)
 
 

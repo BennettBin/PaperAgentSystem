@@ -1,1 +1,1 @@
-{"type":"object","additionalProperties":false,"required":["outline_ref","evidence_bundle_ref"],"properties":{"outline_ref":{"type":"string","minLength":1},"evidence_bundle_ref":{"type":"string","minLength":1}}}
+{"type":"object","additionalProperties":false,"required":["task_ref","evidence_bundle_ref"],"properties":{"task_ref":{"type":"string","minLength":1},"evidence_bundle_ref":{"type":"string","minLength":1},"critique_ref":{"type":"string","minLength":1},"draft_ref":{"type":"string","minLength":1},"verification_ref":{"type":"string","minLength":1}}}

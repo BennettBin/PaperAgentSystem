@@ -152,7 +152,8 @@ start-paperagent.cmd
    分别说明这些数据集在训练集和测试集中的作用。
    ```
 
-5. 鼠标指向或点击回答中的引用编号，可在编号旁查看原文证据；图、表和算法标签以相同方式
+5. 鼠标指向或点击回答中的引用编号，可在编号旁查看原文证据；每个编号实例独立控制浮层，
+   即使同一证据在回答中重复出现，也只显示当前指向或点击的实例。图、表和算法标签以相同方式
    悬浮显示对应截图。
 6. 点击任务状态旁的“监控”查看本轮 Agent 的公开执行阶段。
 
@@ -175,7 +176,7 @@ RAG 链路包含：
 6. 大模型回答生成；
 7. Claim、数字、引用与证据核验。
 
-多论文对比会先按每个文件独立执行混合检索，再在总上下文预算内合并证据。每条证据同时携带论文文件名、`file_id`、章节和页码；输出表固定包含“论文”列，对比维度则根据问题动态选择，例如“主要内容”“方法”“数据集”或“结果”。若首次生成未满足 Skill 的 Markdown 表格契约，系统只进行一次有界格式修复，不重复执行 PDF 解析和整条检索链路。
+多论文对比会先按每个文件独立执行混合检索，再在总上下文预算内合并证据。每条证据同时携带论文文件名、`file_id`、章节和页码；输出表固定包含“论文”列，对比维度则根据问题动态选择，例如“主要内容”“方法”“数据集”或“结果”。若首次生成未满足 Skill 的 Markdown 表格契约，系统只进行一次有界格式修复，不重复执行 PDF 解析和整条检索链路。前端会将通过契约校验的 Markdown 表格渲染为可横向滚动的语义化 HTML 表格，并保留单元格内证据编号的交互式原文预览。
 
 ## Skill 与 Tool
 
@@ -233,6 +234,24 @@ runtime/logs/agent/<task_id>.jsonl
 runtime/diagnostics/rag/
 ```
 
+## 实验性多 Agent 生产链
+
+系统默认继续使用 `FAST_PATH` / `SAFE_RAG`。如需对至少两篇论文执行比较、综述或综合分析，可在
+`.env` 中同时开启以下两个开关并重启 Worker：
+
+```env
+MULTI_AGENT_ENABLED=true
+ALLOW_EXPERIMENTAL_NO_GO=true
+```
+
+合格任务将执行 `Coordinator → Paper Reader × N → Evidence → Critic → Writer → Verifier`。
+每个 Reader 只检索分配给自己的论文；角色间通过任务级 Evidence Blackboard 交换结构化引用。
+Verifier 发现严重问题时最多允许一次 Writer 定向修订和一次复验，复验仍失败则不保存回答。
+Reader 单篇失败会显式列为缺失论文，Critic 不可用可降级，Evidence、Writer 或 Verifier 失败
+则任务失败。关闭任一开关即可恢复原 Safe RAG 路径，不需要回滚数据库。
+
+该能力通过机制、权限和产品接线验收，但真实模型 N05 消融仍为 **NO-GO**，因此不会默认开启。
+
 ## 模型配置
 
 系统通过 OpenAI-compatible 接口连接 Ollama，并区分小模型和大模型职责：
@@ -253,6 +272,8 @@ runtime/diagnostics/rag/
 | `MINIO_ENDPOINT` | MinIO 地址 | `localhost:9000` |
 | `EMBEDDING_MODEL_NAME` | Embedding 模型 | `bge-m3` |
 | `AGENT_LOG_DIR` | Agent 审计日志目录 | `runtime/logs/agent` |
+| `MULTI_AGENT_ENABLED` | 允许多 Agent 候选路由 | `false` |
+| `ALLOW_EXPERIMENTAL_NO_GO` | 明确授权运行 No-Go 实验能力 | `false` |
 
 完整配置见 [`.env.example`](./.env.example)。
 

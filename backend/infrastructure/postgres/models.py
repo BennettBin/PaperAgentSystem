@@ -488,7 +488,7 @@ class BlackboardEntryModel(Base, LifecycleMixin):
     __tablename__ = "blackboard_entries"
     entry_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     workspace_id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    task_id: Mapped[str] = mapped_column(String(64), index=True)
+    task_id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
     kind: Mapped[str] = mapped_column(String(32), index=True)
     producer_role: Mapped[str] = mapped_column(String(32))
     entry_version: Mapped[int] = mapped_column(Integer)

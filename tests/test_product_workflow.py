@@ -10,13 +10,22 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from backend.agent_runtime.skill_selector import SkillSelector
+from backend.agent_runtime.unified import AdvancedEvidence, AdvancedRuntimeResult
 from backend.apps.api import product_service as product_service_module
 from backend.apps.api.product_service import PaperAgentApplication, PaperAgentProcessor
 from backend.apps.worker.fake_queue import FakeTaskQueue
+from backend.core.domain.blackboard import (
+    BlackboardEntry,
+    BlackboardEntryKind,
+    EvidenceSource,
+)
 from backend.core.errors import ProjectError
 from backend.infrastructure.fake.adapters import FakeObjectStore
 from backend.infrastructure.fake.llm_clients import FakeEmbeddingClient, FakeRerankerClient
 from backend.infrastructure.fake.observability import FakeTraceWriter
+from backend.infrastructure.postgres.blackboard import (
+    ManagedSqlAlchemyBlackboardRepository,
+)
 from backend.infrastructure.postgres.models import (
     Base,
     ConversationFileModel,
@@ -239,6 +248,87 @@ def _skill_runtime() -> SkillRuntime:
     )
     return SkillRuntime(
         SkillSelector(registry, fallback_skill="paper_reader"), registry
+    )
+
+
+@pytest.mark.asyncio
+async def test_multi_agent_result_uses_normal_message_evidence_and_memory_path(
+    product_database,
+) -> None:
+    queue = FakeTaskQueue()
+    llm = RecordingLLM()
+    processor = PaperAgentProcessor(
+        product_database,
+        FakeObjectStore(),
+        FakeEmbeddingClient(),
+        FakeRerankerClient(),
+        llm,
+        memory_task_queue=queue,
+    )
+    result = AdvancedRuntimeResult(
+        answer="论文 A 与论文 B 的结果均为 92% [E1][E2]",
+        citation_ids=["E1", "E2"],
+        evidence=[
+            AdvancedEvidence(
+                id="E1",
+                file_id="paper-a",
+                page=1,
+                section=["Results"],
+                quote="Paper A reports 92%.",
+                bbox=[0.1, 0.1, 0.8, 0.2],
+                source_evidence_id="chunk-a",
+            ),
+            AdvancedEvidence(
+                id="E2",
+                file_id="paper-b",
+                page=2,
+                section=["Results"],
+                quote="Paper B reports 92%.",
+                bbox=[0.1, 0.2, 0.8, 0.3],
+                source_evidence_id="chunk-b",
+            ),
+        ],
+        agent_roles=[
+            "coordinator",
+            "paper_reader",
+            "evidence",
+            "critic",
+            "writer",
+            "verifier",
+        ],
+        subagent_run_ids=["reader:paper-a", "reader:paper-b"],
+        blackboard_entry_ids=["evidence", "writer", "verifier"],
+        revision_rounds=1,
+    )
+
+    saved = await processor._save_advanced_runtime_answer(  # noqa: SLF001
+        "conversation-1",
+        "multi-task",
+        "比较两篇论文",
+        "multi_agent",
+        result,
+        {
+            "source_message_ids": [],
+            "short_term_memory_used": False,
+            "long_term_memory_used": False,
+            "memory_segment_ids": [],
+            "memory_conversation_ids": [],
+        },
+    )
+
+    assert saved["status"] == "completed"
+    assert llm.prompt == ""
+    with product_database() as session:
+        message = session.get(MessageModel, saved["message_id"])
+        assert message is not None
+        assert message.metadata_json["rag"]["runtime_mode"] == "multi_agent"
+        assert message.metadata_json["rag"]["revision_rounds"] == 1
+        assert [item["id"] for item in message.metadata_json["evidence"]] == [
+            "E1",
+            "E2",
+        ]
+    assert any(
+        task.task_type == "memory_summary" for task in queue.tasks.values()
     )
 
 
@@ -1098,6 +1188,30 @@ async def test_delete_conversation_removes_history_files_and_indexes(product_dat
         )
         session.commit()
 
+    blackboard = ManagedSqlAlchemyBlackboardRepository(product_database)
+    for entry in (
+        BlackboardEntry(
+            entry_id="reader:file-delete",
+            workspace_id="local-workspace",
+            task_id="delete-task",
+            kind=BlackboardEntryKind.PAPER_CARD,
+            producer_role="paper_reader",
+            confidence=1,
+            payload={"paper_id": "file-delete"},
+            source=EvidenceSource(file_id="file-delete"),
+        ),
+        BlackboardEntry(
+            entry_id="writer",
+            workspace_id="local-workspace",
+            task_id="delete-task",
+            kind=BlackboardEntryKind.DRAFT_SECTION,
+            producer_role="writer",
+            confidence=1,
+            payload={"answer": "derived"},
+            source=EvidenceSource(inferred=True),
+        ),
+    ):
+        await blackboard.append(entry, expected_version=0)
     application = PaperAgentApplication(product_database, store, FakeTaskQueue())
 
     result = await application.delete_conversation("conversation-1")
@@ -1115,6 +1229,10 @@ async def test_delete_conversation_removes_history_files_and_indexes(product_dat
         assert session.get(ParsedDocumentModel, "document-delete") is None
         assert session.get(DocumentSectionModel, "section-delete") is None
         assert session.get(DocumentChunkModel, "chunk-delete") is None
+    assert (
+        await blackboard.list_active("local-workspace", "delete-task")
+        == []
+    )
 
 
 @pytest.mark.asyncio
