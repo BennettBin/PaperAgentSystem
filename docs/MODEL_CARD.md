@@ -17,7 +17,10 @@ Paper reading, section QA, multi-paper comparison support, drafting assistance a
 
 - Not an autonomous scientific authority or a source of invented experiments.
 - Frozen B0–B3 Task Success is only 6.33%–8.0%; verification, generation and routing are the dominant failure classes.
-- Dynamic Planner and Multi-Agent are NO-GO and non-default.
+- M06 Dynamic Planner and N05 Multi-Agent remain historical NO-GO effect
+  conclusions. Dynamic Planner is now enabled by explicit product policy for
+  bounded public planning and status visibility; this is not an effect
+  promotion. Multi-Agent remains non-default.
 - No project SFT/RL Adapter is claimed: Stage O was explicitly skipped.
 - Local monetary cost is recorded as zero but excludes electricity and hardware amortization.
 

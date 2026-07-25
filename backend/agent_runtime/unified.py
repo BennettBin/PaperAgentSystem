@@ -25,7 +25,7 @@ class RuntimeMode(StrEnum):
 
 
 class RuntimeCapabilities(_StrictModel):
-    dynamic_planner_enabled: bool = False
+    dynamic_planner_enabled: bool = True
     multi_agent_enabled: bool = False
     allow_experimental_no_go: bool = False
     cascade_enabled: bool = False
@@ -71,13 +71,35 @@ class AdvancedRuntimeResult(_StrictModel):
     missing_file_ids: list[str] = Field(default_factory=list)
 
 
+class PublicPlanStep(_StrictModel):
+    step_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    step_type: str = Field(min_length=1)
+    depends_on: list[str] = Field(default_factory=list)
+
+
+class PublicExecutionPlan(_StrictModel):
+    plan_id: str = Field(min_length=1)
+    version: int = Field(ge=1)
+    goal: str = Field(min_length=1)
+    termination_condition: str = Field(min_length=1)
+    steps: list[PublicPlanStep] = Field(min_length=1, max_length=8)
+    fallback_used: bool = False
+    fallback_reason: str | None = None
+
+
 class UnifiedRuntimeExecution(_StrictModel):
     decision: RuntimeDecision
     advanced_result: AdvancedRuntimeResult | None = None
+    public_plan: PublicExecutionPlan | None = None
 
 
 class AdvancedRuntimePort(Protocol):
     async def execute(self, request: RuntimeRequest) -> AdvancedRuntimeResult: ...
+
+
+class DynamicPlannerPort(Protocol):
+    async def create_plan(self, request: RuntimeRequest) -> PublicExecutionPlan: ...
 
 
 ProgressSink = Callable[[dict[str, object]], None]
@@ -109,22 +131,29 @@ class UnifiedRuntimeRouter:
         mode = RuntimeMode.FAST_PATH if not request.file_ids else RuntimeMode.SAFE_RAG
         reason = "simple request uses bounded fast path" if not request.file_ids else "safe RAG"
         fallback_reason: str | None = None
-        if wants_multi:
-            if self.capabilities.multi_agent_enabled and self.capabilities.allow_experimental_no_go:
-                mode = RuntimeMode.MULTI_AGENT
-                reason = "explicit experimental multi-paper route"
-            else:
-                mode = RuntimeMode.SAFE_RAG
-                reason = "multi-paper request uses promoted safe path"
+        if wants_multi and (
+            self.capabilities.multi_agent_enabled
+            and self.capabilities.allow_experimental_no_go
+        ):
+            mode = RuntimeMode.MULTI_AGENT
+            reason = "explicit experimental multi-paper route"
+        elif request.file_ids and self.capabilities.dynamic_planner_enabled:
+            mode = RuntimeMode.DYNAMIC_PLAN
+            reason = "default bounded dynamic Planner route"
+            if wants_multi:
                 fallback_reason = "multi_agent_not_promoted"
+        elif wants_multi:
+            mode = RuntimeMode.SAFE_RAG
+            reason = "multi-paper request uses promoted safe path"
+            fallback_reason = "multi_agent_not_promoted"
         elif wants_multi_intent:
             mode = RuntimeMode.SAFE_RAG
             reason = "multi-Agent intent requires at least two distinct papers"
             fallback_reason = "multi_agent_ineligible"
         elif wants_dynamic:
-            if self.capabilities.dynamic_planner_enabled and self.capabilities.allow_experimental_no_go:
+            if self.capabilities.dynamic_planner_enabled:
                 mode = RuntimeMode.DYNAMIC_PLAN
-                reason = "explicit experimental dynamic planning route"
+                reason = "bounded dynamic Planner route"
             else:
                 mode = RuntimeMode.SAFE_RAG
                 reason = "dynamic request uses promoted safe path"
@@ -148,11 +177,13 @@ class UnifiedAgentRuntime:
         *,
         advanced_runtime: AdvancedRuntimePort | None = None,
         multi_agent_runtime: AdvancedRuntimePort | None = None,
+        dynamic_planner: DynamicPlannerPort | None = None,
         progress_sink: ProgressSink | None = None,
     ) -> None:
         self._router = router
         self._advanced = advanced_runtime
         self._multi_agent = multi_agent_runtime
+        self._dynamic_planner = dynamic_planner
         self._progress = progress_sink or (lambda _: None)
 
     async def execute(self, request: RuntimeRequest) -> UnifiedRuntimeExecution:
@@ -177,6 +208,28 @@ class UnifiedAgentRuntime:
         )
         if decision.mode not in {RuntimeMode.DYNAMIC_PLAN, RuntimeMode.MULTI_AGENT}:
             return UnifiedRuntimeExecution(decision=decision)
+        if decision.mode is RuntimeMode.DYNAMIC_PLAN:
+            if self._dynamic_planner is None:
+                fallback = decision.model_copy(
+                    update={
+                        "mode": RuntimeMode.SAFE_RAG,
+                        "reason": "dynamic Planner Adapter unavailable; use safe RAG",
+                        "fallback_reason": "dynamic_planner_unavailable",
+                    }
+                )
+                self._emit(
+                    request,
+                    "runtime_fallback",
+                    {"mode": fallback.mode.value, "reason": fallback.fallback_reason},
+                )
+                return UnifiedRuntimeExecution(decision=fallback)
+            plan = await self._dynamic_planner.create_plan(request)
+            self._emit(
+                request,
+                "plan_created",
+                plan.model_dump(mode="json"),
+            )
+            return UnifiedRuntimeExecution(decision=decision, public_plan=plan)
         selected_runtime = (
             self._multi_agent or self._advanced
             if decision.mode is RuntimeMode.MULTI_AGENT
@@ -196,21 +249,14 @@ class UnifiedAgentRuntime:
                 {"mode": fallback.mode.value, "reason": fallback.fallback_reason},
             )
             return UnifiedRuntimeExecution(decision=fallback)
-        if decision.mode is RuntimeMode.DYNAMIC_PLAN:
-            self._emit(
-                request,
-                "plan_created",
-                {"goal": "execute bounded research task", "max_replans": 2},
-            )
-        else:
-            self._emit(
-                request,
-                "subagent_started",
-                {
-                    "agents": ["paper_reader", "evidence", "critic", "writer", "verifier"],
-                    "max_depth": 1,
-                },
-            )
+        self._emit(
+            request,
+            "subagent_started",
+            {
+                "agents": ["paper_reader", "evidence", "critic", "writer", "verifier"],
+                "max_depth": 1,
+            },
+        )
         result = await selected_runtime.execute(request)
         for index, step in enumerate(result.public_steps, 1):
             self._emit(

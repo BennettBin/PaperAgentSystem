@@ -99,6 +99,11 @@ const progressLabel = (event: TaskProgressEvent) => {
     model_selected: "已选择模型 Profile",
     runtime_fallback: "高级路径未晋级，已回退安全流程",
     plan_created: "已生成执行计划",
+    plan_step_started: "正在执行动态计划步骤",
+    plan_step_completed: "动态计划步骤已完成",
+    plan_step_skipped: "动态计划步骤未执行",
+    plan_revised: "动态计划已更新",
+    plan_completed: "动态计划已结束",
     step_started: "正在执行计划步骤",
     step_completed: "计划步骤已完成",
     tool_started: "正在调用工具",
@@ -140,6 +145,9 @@ const skillEventDetail = (event: TaskProgressEvent) => {
 
 const completedEventTypes = new Set([
   "step_completed",
+  "plan_step_completed",
+  "plan_step_skipped",
+  "plan_completed",
   "tool_completed",
   "subagent_completed",
   "multi_agent_completed",
@@ -169,6 +177,28 @@ export const TaskStatusMonitor = ({
   onOpen?: () => void | Promise<void>;
 }) => {
   const [open, setOpen] = React.useState(false);
+  const planEvent = [...events].reverse().find((event) => event.type === "plan_created");
+  const rawPlanSteps = Array.isArray(planEvent?.data.steps) ? planEvent.data.steps : [];
+  const planSteps = rawPlanSteps.flatMap((value) => {
+    if (!value || typeof value !== "object") return [];
+    const item = value as Record<string, unknown>;
+    if (typeof item.step_id !== "string" || typeof item.title !== "string") return [];
+    return [{
+      stepId: item.step_id,
+      title: item.title,
+      stepType: typeof item.step_type === "string" ? item.step_type : "step",
+    }];
+  });
+  const planState = new Map<string, "pending" | "active" | "completed" | "skipped">(
+    planSteps.map((step) => [step.stepId, "pending"]),
+  );
+  events.forEach((event) => {
+    const stepId = typeof event.data.step_id === "string" ? event.data.step_id : "";
+    if (!stepId || !planState.has(stepId)) return;
+    if (event.type === "plan_step_started") planState.set(stepId, "active");
+    if (event.type === "plan_step_completed") planState.set(stepId, "completed");
+    if (event.type === "plan_step_skipped") planState.set(stepId, "skipped");
+  });
   return (
     <div className="task-monitor-wrap">
       <div className="task-status-row">
@@ -201,6 +231,30 @@ export const TaskStatusMonitor = ({
               ×
             </button>
           </header>
+          {planSteps.length ? (
+            <section className="task-monitor-plan" aria-label="动态执行计划">
+              <div>
+                <strong>动态执行计划</strong>
+                <small>
+                  {typeof planEvent?.data.goal === "string" ? planEvent.data.goal : "当前任务"}
+                </small>
+              </div>
+              <ol>
+                {planSteps.map((step, index) => {
+                  const state = planState.get(step.stepId) || "pending";
+                  return (
+                    <li className={state} key={step.stepId}>
+                      <span>{index + 1}</span>
+                      <div>
+                        <strong>{step.title}</strong>
+                        <small>{step.stepType}</small>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          ) : null}
           {events.length ? (
             <ol className="task-monitor-events">
               {events.map((event, index) => {

@@ -4,6 +4,8 @@ import pytest
 
 from backend.agent_runtime.unified import (
     AdvancedRuntimeResult,
+    PublicExecutionPlan,
+    PublicPlanStep,
     RuntimeCapabilities,
     RuntimeMode,
     RuntimeRequest,
@@ -23,6 +25,33 @@ class RecordingAdvancedRuntime:
             answer="bounded result [E1]",
             citation_ids=["E1"],
             public_steps=["plan", "retrieve", "verify"],
+        )
+
+
+class RecordingPlanner:
+    def __init__(self) -> None:
+        self.requests: list[RuntimeRequest] = []
+
+    async def create_plan(self, request: RuntimeRequest) -> PublicExecutionPlan:
+        self.requests.append(request)
+        return PublicExecutionPlan(
+            plan_id=f"plan-{request.task_id}",
+            version=1,
+            goal=request.question,
+            termination_condition="verified answer",
+            steps=[
+                PublicPlanStep(
+                    step_id="retrieve",
+                    title="检索论文证据",
+                    step_type="tool_call",
+                ),
+                PublicPlanStep(
+                    step_id="answer",
+                    title="生成并核验回答",
+                    step_type="generate",
+                    depends_on=["retrieve"],
+                ),
+            ],
         )
 
 
@@ -53,22 +82,21 @@ def test_multi_agent_requires_both_feature_gates(
         )
     )
 
-    assert decision.mode is RuntimeMode.SAFE_RAG
+    assert decision.mode is RuntimeMode.DYNAMIC_PLAN
     assert decision.fallback_reason == "multi_agent_not_promoted"
 
 
 @pytest.mark.parametrize(
-    ("question", "file_ids", "expected_reason"),
+    ("question", "file_ids"),
     [
-        ("比较这篇论文的方法", ["f1"], "multi_agent_ineligible"),
-        ("综合这些研究的结论", ["f1"], "multi_agent_ineligible"),
-        ("回答两篇论文分别发表于哪一年", ["f1", "f2"], None),
+        ("比较这篇论文的方法", ["f1"]),
+        ("综合这些研究的结论", ["f1"]),
+        ("回答两篇论文分别发表于哪一年", ["f1", "f2"]),
     ],
 )
 def test_multi_agent_requires_multiple_files_and_explicit_collaboration_intent(
     question: str,
     file_ids: list[str],
-    expected_reason: str | None,
 ) -> None:
     router = UnifiedRuntimeRouter(
         RuntimeCapabilities(
@@ -81,8 +109,8 @@ def test_multi_agent_requires_multiple_files_and_explicit_collaboration_intent(
         RuntimeRequest(task_id="eligibility", question=question, file_ids=file_ids)
     )
 
-    assert decision.mode is RuntimeMode.SAFE_RAG
-    assert decision.fallback_reason == expected_reason
+    assert decision.mode is RuntimeMode.DYNAMIC_PLAN
+    assert decision.fallback_reason is None
 
 
 def test_multi_agent_route_accepts_deduplicated_multi_file_synthesis() -> None:
@@ -105,7 +133,7 @@ def test_multi_agent_route_accepts_deduplicated_multi_file_synthesis() -> None:
     assert decision.fallback_reason is None
 
 
-def test_router_keeps_no_go_features_off_default_path_and_cascade_unavailable() -> None:
+def test_router_uses_dynamic_planner_for_default_paper_path() -> None:
     router = UnifiedRuntimeRouter(RuntimeCapabilities())
     simple = router.route(RuntimeRequest(task_id="t1", question="你好", file_ids=[]))
     assert simple.mode is RuntimeMode.FAST_PATH
@@ -117,14 +145,15 @@ def test_router_keeps_no_go_features_off_default_path_and_cascade_unavailable() 
         question="比较三篇论文并形成有引用的综述",
         file_ids=["f1", "f2", "f3"],
     )
-    fallback = router.route(complex_request)
-    assert fallback.mode is RuntimeMode.SAFE_RAG
-    assert fallback.fallback_reason == "multi_agent_not_promoted"
+    planned = router.route(complex_request)
+    assert planned.mode is RuntimeMode.DYNAMIC_PLAN
+    assert planned.fallback_reason == "multi_agent_not_promoted"
 
 
 @pytest.mark.asyncio
 async def test_dynamic_and_multi_agent_paths_are_injectable_bounded_and_public_only() -> None:
     advanced = RecordingAdvancedRuntime()
+    planner = RecordingPlanner()
     progress: list[dict[str, object]] = []
     runtime = UnifiedAgentRuntime(
         UnifiedRuntimeRouter(
@@ -135,6 +164,7 @@ async def test_dynamic_and_multi_agent_paths_are_injectable_bounded_and_public_o
             )
         ),
         advanced_runtime=advanced,
+        dynamic_planner=planner,
         progress_sink=progress.append,
     )
     dynamic = await runtime.execute(
@@ -153,9 +183,10 @@ async def test_dynamic_and_multi_agent_paths_are_injectable_bounded_and_public_o
     )
     assert dynamic.decision.mode is RuntimeMode.DYNAMIC_PLAN
     assert multi.decision.mode is RuntimeMode.MULTI_AGENT
-    assert dynamic.advanced_result is not None
+    assert dynamic.public_plan is not None
     assert multi.advanced_result is not None
-    assert len(advanced.requests) == 2
+    assert len(advanced.requests) == 1
+    assert [request.task_id for request in planner.requests] == ["dynamic"]
     assert {event["type"] for event in progress} >= {
         "plan_created",
         "subagent_started",
@@ -188,6 +219,23 @@ async def test_missing_advanced_runtime_falls_back_to_safe_rag() -> None:
     assert execution.decision.mode is RuntimeMode.SAFE_RAG
     assert execution.decision.fallback_reason == "advanced_runtime_unavailable"
     assert execution.advanced_result is None
+
+
+@pytest.mark.asyncio
+async def test_missing_dynamic_planner_falls_back_to_safe_rag() -> None:
+    runtime = UnifiedAgentRuntime(UnifiedRuntimeRouter(RuntimeCapabilities()))
+
+    execution = await runtime.execute(
+        RuntimeRequest(
+            task_id="missing-planner",
+            question="总结这篇论文",
+            file_ids=["f1"],
+        )
+    )
+
+    assert execution.decision.mode is RuntimeMode.SAFE_RAG
+    assert execution.decision.fallback_reason == "dynamic_planner_unavailable"
+    assert execution.public_plan is None
 
 
 def test_legacy_task_metadata_migration_is_idempotent_and_fail_safe() -> None:

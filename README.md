@@ -64,9 +64,10 @@ flowchart LR
 
 默认运行策略针对不同任务选择合适链路：
 
-- 简单任务使用低开销 Fast Path；
-- 论文证据问题使用 Safe RAG；
-- 动态 Plan-and-Execute 与多智能体协作作为显式实验模式保留，不影响默认链路的稳定性。
+- 无论文的简单任务使用低开销 Fast Path；
+- 有论文的任务默认先由受约束 Planner 生成最多八步的公开 Plan，再由 Safe RAG 产品执行器完成判断、检索、生成和核验；
+- Plan 的步骤、依赖和实时状态通过任务监控展示，Prompt 与隐藏推理不进入事件；
+- 多智能体协作仍是双开关控制的显式实验模式。
 
 ## 快速开始
 
@@ -234,6 +235,18 @@ runtime/logs/agent/<task_id>.jsonl
 runtime/diagnostics/rag/
 ```
 
+## 默认动态 Planner
+
+`DYNAMIC_PLANNER_ENABLED` 默认为 `true`。有论文的任务会使用小模型生成 Plan V2；计划必须
+通过 Schema、DAG、Registry、Tool 白名单和预算检查，模型输出无效时最多修复一次，再失败
+则采用安全固定计划。计划创建、步骤开始、完成、跳过和结束都写入持久化 TaskEvent，并通过
+SSE 在任务监控中实时显示。
+
+本次默认启用是明确的产品策略调整，不改变 M06 冻结消融的历史结论：Planner 的结构指标
+合格，但当时没有证明端到端效果/成本增益。默认执行仍复用有界 Safe RAG，不允许 Planner
+绕过 Workspace、Skill/Tool 权限、引用核验或终止预算。设置
+`DYNAMIC_PLANNER_ENABLED=false` 可恢复原直接 Safe RAG 路由。
+
 ## 实验性多 Agent 生产链
 
 系统默认继续使用 `FAST_PATH` / `SAFE_RAG`。如需对至少两篇论文执行比较、综述或综合分析，可在
@@ -274,6 +287,7 @@ Reader 单篇失败会显式列为缺失论文，Critic 不可用可降级，Evi
 | `AGENT_LOG_DIR` | Agent 审计日志目录 | `runtime/logs/agent` |
 | `MULTI_AGENT_ENABLED` | 允许多 Agent 候选路由 | `false` |
 | `ALLOW_EXPERIMENTAL_NO_GO` | 明确授权运行 No-Go 实验能力 | `false` |
+| `DYNAMIC_PLANNER_ENABLED` | 论文任务默认生成并展示受约束 Plan | `true` |
 
 完整配置见 [`.env.example`](./.env.example)。
 
@@ -325,7 +339,7 @@ PaperAgentSystem/
 
 | 检查 | 结果 |
 |---|---:|
-| Python 单元、契约与集成测试 | 404 passed |
+| Python 非 Docker 单元、契约与组件测试 | 419 passed |
 | 前端组件测试 | 20 passed |
 | TypeScript 类型检查 | 通过 |
 | Next.js 生产构建 | 通过 |
@@ -333,9 +347,13 @@ PaperAgentSystem/
 | 核心 Agent、模型与 Tool Runtime 类型检查 | 通过 |
 | API、Worker、Web Docker 镜像构建 | 通过 |
 
+本次 Planner 默认启用变更未在当前环境重跑 Docker-backed Redis/MinIO/SSE 集成；最近一次完整
+Docker 验证基线仍见过程日志。
+
 评测框架提供版本化数据集、资源预算、失败分类、95% 置信区间、逐 Case 结果和 SHA-256 Manifest。动态规划与多智能体模块不会仅因机制测试通过就进入默认路径，而是依据冻结评测结果和成本门槛决定是否启用。
 
-M06 动态 Planner 与 N05 多智能体消融结论均为 **NO-GO**，因此不进入默认产品链路；项目专用
+M06 动态 Planner 与 N05 多智能体的冻结消融结论仍为 **NO-GO**。动态 Planner 后续根据
+明确产品决策默认开启，但不把该决策表述为效果晋级；多智能体仍不进入默认路径。项目专用
 SFT/RL Adapter 当前不可用，系统默认使用已配置的基础模型 Profile。
 
 可使用 `python -m evaluation.p05_demo` 复现离线演示报告；具体步骤和输出位置见 Demo Runbook。
@@ -343,11 +361,16 @@ SFT/RL Adapter 当前不可用，系统默认使用已配置的基础模型 Prof
 相关材料：
 
 - [产品架构](./docs/development/02-产品架构文档.md)
+- [项目面试完整介绍](./docs/项目面试完整介绍.md)
 - [最终评测报告](./evaluation/reports/p04_final_v1/report.md)
 - [Model Card](./docs/MODEL_CARD.md)
 - [Dataset Card](./evaluation/datasets/DATASET_CARD.md)
 - [Demo Runbook](./docs/DEMO_RUNBOOK.md)
 - [Failure Postmortems](./docs/FAILURE_POSTMORTEMS.md)
+
+面试介绍中的两条关键链路已逐步标明真实责任主体：上传链路区分 Ingestion Worker 与确定性
+解析/索引组件，问答链路区分主 Agent、Dynamic Planner、Safe RAG、Skill/Tool Runtime、
+确定性 Verifier 和双开关多 Agent 分支；文档每个二级标题均先说明本节目的。
 
 ## 隐私与安全
 

@@ -187,9 +187,44 @@ describe("Frontend Components", () => {
         status="正在执行 Agent 任务…"
         events={[
           {
-            event_id: "event-1",
+            event_id: "plan-1",
             task_id: "task-1",
             sequence: 1,
+            type: "plan_created",
+            title: "已生成公开执行计划",
+            data: {
+              plan_id: "plan-task-1",
+              goal: "总结论文方法",
+              steps: [
+                {
+                  step_id: "retrieve",
+                  title: "检索论文证据",
+                  step_type: "tool_call",
+                  depends_on: [],
+                },
+                {
+                  step_id: "answer",
+                  title: "生成并核验回答",
+                  step_type: "generate",
+                  depends_on: ["retrieve"],
+                },
+              ],
+            },
+            created_at: "2026-07-22T11:59:59Z",
+          },
+          {
+            event_id: "plan-step-1",
+            task_id: "task-1",
+            sequence: 2,
+            type: "plan_step_completed",
+            title: "计划步骤完成：检索论文证据",
+            data: { plan_id: "plan-task-1", step_id: "retrieve" },
+            created_at: "2026-07-22T12:00:00Z",
+          },
+          {
+            event_id: "event-1",
+            task_id: "task-1",
+            sequence: 3,
             type: "step_started",
             title: "小模型进行问题判断",
             data: {},
@@ -198,7 +233,7 @@ describe("Frontend Components", () => {
           {
             event_id: "event-2",
             task_id: "task-1",
-            sequence: 2,
+            sequence: 4,
             type: "skill_selected",
             title: "调用 summary_generator Skill",
             data: {
@@ -218,6 +253,10 @@ describe("Frontend Components", () => {
     expect(screen.getByRole("dialog", { name: "Agent 任务监控" })).toBeDefined();
     expect(screen.getByText("小模型进行问题判断")).toBeDefined();
     expect(screen.getByText("调用 summary_generator Skill")).toBeDefined();
+    expect(screen.getByRole("region", { name: "动态执行计划" })).toBeDefined();
+    expect(screen.getByText("总结论文方法")).toBeDefined();
+    expect(screen.getAllByText("检索论文证据").length).toBeGreaterThan(0);
+    expect(screen.getByText("生成并核验回答")).toBeDefined();
     expect(screen.getByText("v1.0.0 · Profile: development")).toBeDefined();
     expect(screen.getByText("runtime/logs/agent/task-1.jsonl")).toBeDefined();
     expect(onOpen).toHaveBeenCalledTimes(1);

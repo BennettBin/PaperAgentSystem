@@ -19,6 +19,7 @@ from backend.agent_runtime.react_self_rag import ReActSelfRAGController
 from backend.agent_runtime.unified import (
     AdvancedEvidence,
     AdvancedRuntimeResult,
+    PublicExecutionPlan,
     RuntimeRequest,
     UnifiedAgentRuntime,
 )
@@ -1063,6 +1064,72 @@ class PaperAgentProcessor:
             task_id=task_id,
         )
         self._event(task_id, "task_started", "任务开始", {})
+        public_plan: PublicExecutionPlan | None = None
+        plan_cursor = -1
+
+        def advance_plan() -> None:
+            nonlocal plan_cursor
+            if public_plan is None:
+                return
+            if 0 <= plan_cursor < len(public_plan.steps):
+                step = public_plan.steps[plan_cursor]
+                self._event(
+                    task_id,
+                    "plan_step_completed",
+                    f"计划步骤完成：{step.title}",
+                    _plan_step_event_data(public_plan, step, plan_cursor),
+                )
+            plan_cursor += 1
+            if plan_cursor < len(public_plan.steps):
+                step = public_plan.steps[plan_cursor]
+                self._event(
+                    task_id,
+                    "plan_step_started",
+                    f"正在执行计划：{step.title}",
+                    _plan_step_event_data(public_plan, step, plan_cursor),
+                )
+
+        def finish_plan(status: str = "completed") -> None:
+            nonlocal plan_cursor
+            if public_plan is None:
+                return
+            if 0 <= plan_cursor < len(public_plan.steps):
+                step = public_plan.steps[plan_cursor]
+                event_type = (
+                    "plan_step_completed"
+                    if status == "completed"
+                    else "plan_step_skipped"
+                )
+                self._event(
+                    task_id,
+                    event_type,
+                    (
+                        f"计划步骤完成：{step.title}"
+                        if status == "completed"
+                        else f"计划步骤停止：{step.title}"
+                    ),
+                    _plan_step_event_data(public_plan, step, plan_cursor),
+                )
+                plan_cursor += 1
+            while plan_cursor < len(public_plan.steps):
+                step = public_plan.steps[plan_cursor]
+                self._event(
+                    task_id,
+                    "plan_step_skipped",
+                    f"计划步骤未执行：{step.title}",
+                    _plan_step_event_data(public_plan, step, plan_cursor),
+                )
+                plan_cursor += 1
+            self._event(
+                task_id,
+                "plan_completed",
+                "动态执行计划已结束",
+                {
+                    "plan_id": public_plan.plan_id,
+                    "plan_version": public_plan.version,
+                    "status": status,
+                },
+            )
         with self._sessions() as session:
             active_file_ids = _active_conversation_file_ids(
                 session, conversation_id
@@ -1097,6 +1164,7 @@ class PaperAgentProcessor:
                 )
             )
             runtime_mode = runtime_execution.decision.mode.value
+            public_plan = runtime_execution.public_plan
             await self._trace(
                 task_id,
                 "runtime.route",
@@ -1116,6 +1184,8 @@ class PaperAgentProcessor:
                     runtime_execution.advanced_result,
                     history,
                 )
+            if public_plan is not None:
+                advance_plan()
         self._event(
             task_id,
             "step_started",
@@ -1145,6 +1215,7 @@ class PaperAgentProcessor:
             "小模型完成问题判断",
             {"action": action, "section_hint": decision.section_hint},
         )
+        advance_plan()
         await self._trace(
             task_id,
             "agent.react",
@@ -1155,6 +1226,7 @@ class PaperAgentProcessor:
             },
         )
         if action == "clarify":
+            finish_plan("ask_user")
             return self._ask_clarification(
                 conversation_id,
                 task_id,
@@ -1178,6 +1250,7 @@ class PaperAgentProcessor:
                 temperature=0.2,
             )
             self._record_usage(conversation_id, task_id, "large", self._llm)
+            advance_plan()
             message_id = self._save_answer(
                 conversation_id,
                 task_id,
@@ -1206,8 +1279,10 @@ class PaperAgentProcessor:
                 "回答生成完成",
                 {"message_id": message_id},
             )
+            finish_plan()
             return {"status": "completed", "message_id": message_id, "answer": answer}
         if not file_ids:
+            finish_plan("ask_user")
             return self._ask_clarification(
                 conversation_id,
                 task_id,
@@ -1359,6 +1434,7 @@ class PaperAgentProcessor:
                 "retrieval_mode": retrieval_metadata["retrieval_mode"],
             },
         )
+        advance_plan()
         await self._trace(
             task_id,
             "rag.retrieve",
@@ -1421,6 +1497,7 @@ class PaperAgentProcessor:
             task_id,
         )
         self._record_usage(conversation_id, task_id, "large", self._llm)
+        advance_plan()
         self._event(
             task_id,
             "step_started",
@@ -1441,6 +1518,7 @@ class PaperAgentProcessor:
             "Verifier 回答检验完成" if verification_passed else "Verifier 回答检验失败",
             {"evidence_count": len(hits)},
         )
+        finish_plan("completed" if verification_passed else "failed")
         await self._trace(
             task_id,
             "verification.complete",
@@ -2120,6 +2198,23 @@ def _public_task_event(event: TaskEventModel) -> dict[str, Any]:
         "title": title,
         "data": data,
         "created_at": event.created_at.isoformat(),
+    }
+
+
+def _plan_step_event_data(
+    plan: PublicExecutionPlan,
+    step: Any,
+    index: int,
+) -> dict[str, Any]:
+    return {
+        "plan_id": plan.plan_id,
+        "plan_version": plan.version,
+        "step_id": step.step_id,
+        "step_title": step.title,
+        "step_type": step.step_type,
+        "step_index": index + 1,
+        "step_count": len(plan.steps),
+        "depends_on": list(step.depends_on),
     }
 
 

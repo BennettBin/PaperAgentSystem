@@ -2,7 +2,7 @@
 
 ## Planner and Replan
 
-Plan V2 is a versioned Pydantic contract with DAG dependencies, permissions, budgets, evidence requirements and completion predicates. Completion is evaluated from structured Observations. Replan is bounded to two revisions, uses immutable patches and prevents repeated strategy/input fingerprints. Mechanism gates passed; M06 effect gates did not.
+Plan V2 is a versioned Pydantic contract with DAG dependencies, permissions, budgets, evidence requirements and completion predicates. Completion is evaluated from structured Observations. Replan is bounded to two revisions, uses immutable patches and prevents repeated strategy/input fingerprints. Mechanism gates passed; M06 effect gates did not. Since 2026-07-25, the bounded Dynamic Planner is default-on for document tasks as a public plan/state layer; the existing Safe RAG path still performs the actual product execution and remains the fallback.
 
 ## Memory
 
@@ -22,4 +22,4 @@ The fixed 300-case set has provenance, authorization, group split and Gold evide
 
 ## Good closing answer
 
-“我实现的不只是 Agent 功能，还建立了决定它是否应该上线的证据链。Planner 和多 Agent 的机制是完整的，但真实消融没有通过效果/成本门槛，所以生产默认保持简单可靠路径。这一负结果反而证明系统具备可评测、可回滚和不自欺的工程闭环。”
+“我实现的不只是 Agent 功能，还建立了决定它是否应该上线的证据链。真实消融没有通过 Planner 与多 Agent 的效果/成本门槛，所以我没有伪造效果晋级：多 Agent 继续双开关关闭；Dynamic Planner 后来按产品策略作为文档任务默认的公开计划/状态层启用，但实际执行仍受 Safe RAG、预算、权限和核验约束，失败时可回退。这体现了机制可用、产品策略与实验结论三者分开管理。”

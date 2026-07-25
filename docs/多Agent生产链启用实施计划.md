@@ -3,6 +3,8 @@
 > 目标文件最终位置：`D:\vscode\Projects\PaperAgentSystem\docs\多Agent生产链启用实施计划.md`  
 > 文档性质：实施计划与验收基线；A～P 已于 2026-07-24 按本文件完成，默认晋级结论仍为 NO-GO。  
 > 核心约束：仅补齐现有多 Agent 模块到默认 Worker 的生产接线，不重构统一主 Agent、RAG、Skill、Tool、Memory、数据库或前端整体架构。
+>
+> 2026-07-25 状态补充：本文的 NO-GO 与双开关结论仅针对多 Agent 和实验效果晋级。Dynamic Planner 已按产品策略改为文档任务默认开启，用于生成并公开展示有界计划；实际阶段仍由 Safe RAG 执行，Planner 失败时也回退 Safe RAG，因此不改变本文的多 Agent 结论。
 
 ## 1. 实施目标
 

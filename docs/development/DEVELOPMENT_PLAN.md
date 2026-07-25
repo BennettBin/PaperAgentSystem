@@ -1720,6 +1720,7 @@ Codex 每完成一个工作包，在此更新状态：
 | P03 | completed | 2026-07-22 | 独立管理员 Dashboard；L05 300 + N05 180 冻结行，六指标/筛选/95% CI/样本下钻，300 行 P95<2s；15 tests + TS/build |
 | P04 | completed | 2026-07-22 | B0–B3/生产安全策略总体+三类切片；全可用指标 N/分母/95% CI；M/N NO-GO，SFT/Cascade unavailable；30/300 人工 Gold 审计 |
 | P05 | completed | 2026-07-22 | README 首屏、可复现离线 Demo/3–5 分钟录制稿、ADR、Evaluation/Model/Dataset Card、三例复盘、面试/简历材料；全量 425 tests |
+| P06 | completed | 2026-07-25 | 用户明确要求动态 Planner 默认开启：生产 Planner Adapter、默认有论文路由、公开 Plan Schema、TaskEvent/SSE 步骤状态、前端动态计划面板、关闭开关回滚；保留 M06 NO-GO 历史结论 |
 
 状态只使用：
 

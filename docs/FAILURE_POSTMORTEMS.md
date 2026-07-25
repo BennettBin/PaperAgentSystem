@@ -5,7 +5,7 @@
 - Signal: M02 final Plan Schema validity 100%, invalid Tool calls 0 and Required Step Recall 96.84%.
 - Counter-signal: M06 L3–L5 Task Success improvement was only +1.33pp with paired 95% CI [-3.33pp, 6.00pp]; recovery gain was 0pp and Token/success rose 78.55%.
 - Root cause: a valid Plan cannot repair weak evidence retrieval/generation, and 53.33% of M02 cases already depended on safe fallback.
-- Decision: retain bounded Planner mechanisms and recovery semantics, but keep the path opt-in. Do not tune on the frozen test set.
+- Historical evaluation decision: retain bounded Planner mechanisms and recovery semantics without claiming an effect-gate promotion. On 2026-07-25, product policy changed the bounded Dynamic Planner to default-on as a public planning/state layer over the existing Safe RAG executor; this does not overturn the M06 NO-GO result. Do not tune on the frozen test set.
 - Evidence: `evaluation/reports/m06_planner_ablation_v1/report.json`.
 
 ## 2. Multi-Agent raised Claim Support but destroyed efficiency

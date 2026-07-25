@@ -15,9 +15,18 @@ from pathlib import Path
 from minio import Minio
 from redis import Redis
 
+from backend.agent_runtime.llm_planner import (
+    ConstrainedLLMPlanner,
+    PlannerModelMetadata,
+)
+from backend.agent_runtime.planner import RegistrySnapshot
+from backend.agent_runtime.planner_runtime_adapter import (
+    DynamicPlannerRuntimeAdapter,
+)
 from backend.agent_runtime.skill_selector import SkillSelector
 from backend.agent_runtime.unified import (
     AdvancedRuntimePort,
+    DynamicPlannerPort,
     RuntimeCapabilities,
     UnifiedAgentRuntime,
     UnifiedRuntimeRouter,
@@ -118,11 +127,12 @@ def _serve_health() -> None:
 
 def build_unified_runtime(
     multi_agent_runtime: AdvancedRuntimePort,
+    dynamic_planner: DynamicPlannerPort,
     progress_sink: Callable[[dict[str, object]], None],
 ) -> UnifiedAgentRuntime:
-    """Build the gated runtime without constructing a second main Agent."""
+    """Build the default Planner path and separately gated multi-Agent path."""
     capabilities = RuntimeCapabilities(
-        dynamic_planner_enabled=_env_flag("DYNAMIC_PLANNER_ENABLED"),
+        dynamic_planner_enabled=_env_flag("DYNAMIC_PLANNER_ENABLED", default=True),
         multi_agent_enabled=_env_flag("MULTI_AGENT_ENABLED"),
         allow_experimental_no_go=_env_flag("ALLOW_EXPERIMENTAL_NO_GO"),
         cascade_enabled=False,
@@ -137,6 +147,7 @@ def build_unified_runtime(
     return UnifiedAgentRuntime(
         UnifiedRuntimeRouter(capabilities),
         multi_agent_runtime=multi_agent_runtime,
+        dynamic_planner=dynamic_planner,
         progress_sink=progress_sink,
     )
 
@@ -260,8 +271,33 @@ def main() -> None:
         cancellation_check=queue.is_cancelled,
         trace_writer=trace_writer,
     )
+    planner_skill_names = sorted(skill.name for skill in skill_registry.list_all())
+    planner_tool_schemas: dict[str, dict[str, object]] = {
+        "search_document": SearchDocumentTool.input_model.model_json_schema(),
+    }
+    planner_registry = RegistrySnapshot(
+        skills=set(planner_skill_names),
+        tools=set(planner_tool_schemas),
+        permitted_skills=set(planner_skill_names),
+        permitted_tools=set(planner_tool_schemas),
+    )
+    dynamic_planner = DynamicPlannerRuntimeAdapter(
+        ConstrainedLLMPlanner(
+            llm=decision_llm,
+            registry=planner_registry,
+            model=PlannerModelMetadata(
+                model="runtime-selected-small",
+                profile="small",
+                version="selected",
+                prompt_version="planner-v2",
+            ),
+        ),
+        skill_names=planner_skill_names,
+        tool_schemas=planner_tool_schemas,
+    )
     unified_runtime = build_unified_runtime(
         multi_agent_runtime,
+        dynamic_planner,
         publish_runtime_progress,
     )
     short_term_memory = ShortTermMemoryService(
@@ -307,8 +343,11 @@ def main() -> None:
             time.sleep(0.1)
 
 
-def _env_flag(name: str) -> bool:
-    return os.getenv(name, "false").strip().casefold() in {"1", "true", "yes", "on"}
+def _env_flag(name: str, *, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().casefold() in {"1", "true", "yes", "on"}
 
 
 def _runtime_event_title(event_type: str) -> str:
@@ -317,6 +356,11 @@ def _runtime_event_title(event_type: str) -> str:
         "model_selected": "已选择模型 Profile",
         "runtime_fallback": "高级路径不可用，回退安全流程",
         "plan_created": "已生成公开执行计划",
+        "plan_step_started": "动态计划步骤已开始",
+        "plan_step_completed": "动态计划步骤已完成",
+        "plan_step_skipped": "动态计划步骤未执行",
+        "plan_revised": "动态执行计划已更新",
+        "plan_completed": "动态执行计划已结束",
         "subagent_started": "多 Agent 协作已开始",
         "step_completed": "执行步骤已完成",
         "verification_completed": "结果核验完成",
