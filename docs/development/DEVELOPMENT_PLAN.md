@@ -1702,25 +1702,26 @@ Codex 每完成一个工作包，在此更新状态：
 | L02 | completed | 2026-07-21 | 从 QASPER v0.3 与 CSL 官方 test 构建固定 300-case；L1～L6=60/60/60/45/45/30，240 英文/60 中文，218 个证据任务/657 Gold span，30 条双标注 κ=1.0；单栏/双栏/退化扫描 PDF 可复现，test 永久禁止训练调参；下一工作包 L03 |
 | L03 | completed | 2026-07-21 | 冻结效果/路由/轨迹/效率/成本/鲁棒性 33 项指标与可执行公式目录；实现 seeded bootstrap、paired bootstrap 95% CI 和绝对/相对 Baseline 报告；规则优先、结构化 LLM 补充、人工兜底 Judge；50 人工参考 Gold 校准一致率与三次一致率均 100%；下一工作包 L04 |
 | L04 | completed | 2026-07-21 | 可恢复并发 Runner、稳定 seed/重试/预算预约、原子 Checkpoint、case/task Trace 回放、八类错误与确定性三类报告；300-case unit_fake 验收 0 未分类异常、0% 系统异常；下一工作包 L05 |
-| L05 | completed | 2026-07-21 | B0～B3 各 300 条真实模型评测，1,800 调用 metadata/usage 100% 完整、0 系统异常；Task Success=8.0%/6.33%/6.33%/7.0%，三大失败=核验/生成/路由，冻结报告、95% CI、paired B0 差值和 M/N/O gate；下一工作包 M01 |
+| L05 | completed | 2026-07-25 | 工作包机制已完成，但更新前代码的 Baseline 结果已失效；保留评测框架，当前版本待重新评测 |
 | M01 | completed | 2026-07-21 | Plan/Step/Observation/Patch V2、预算/风险/证据/完成谓词、V1 迁移与版本 Trace；100 fixture 判定 100%，14 项新旧 Planner/Executor 回归通过；下一工作包 M02 |
 | M02 | completed | 2026-07-21 | 受约束 4B Plan V2、通用工作流契约、一次修复、Fast Path 与安全回退；270-case 最终 Schema 100%、非法调用 0、Required Step Recall 96.84%（B1 36%，paired 95% CI 增益 [55.82pp,65.25pp]）；下一工作包 M03 |
 | M03 | completed | 2026-07-21 | Completion Evaluator 覆盖 Schema/证据/比较/数字/写作不变量，输出五类决策与具体缺失项；50 bad-success fixture 漏判 0%、金标一致 100%；下一工作包 M04 |
 | M04 | completed | 2026-07-21 | 8 类失败→11 种受限策略与不可变 Plan Patch；16 注入较 retry 基线 +87.5pp（unit fixture），0 循环、最多 2 次且预算/权限/取消门禁有效；下一工作包 M05 |
 | M05 | completed | 2026-07-21 | version/DAG-aware 动态执行、CAS checkpoint、幂等恢复、安全并行、原子预算/Trace 与取消传播；崩溃不重复 Artifact/扣费，20 次取消 P95<2s；下一工作包 M06 |
-| M06 | completed | 2026-07-21 | NO-GO：五组真实 4B 消融；540 candidate/1,497 调用，L3～L5 较最佳旧组 +1.33pp（paired 95% CI [-3.33pp,6.00pp]）、恢复 +0pp、Token/success +78.55%；不晋级默认路径，下一工作包 N01 |
+| M06 | completed | 2026-07-25 | 工作包机制已完成，但更新前代码的 Planner 效果结果已失效；当前 Dynamic Planner 默认启用，待重新评测 |
 | N01 | completed | 2026-07-21 | 六角色 Manifest/Schema、引用式消息、Tool 白名单与降级协议；14 项协议/旧子 Agent 回归通过；下一工作包 N02 |
 | N02 | completed | 2026-07-21 | Blackboard Domain/Port/Fake/SQL/迁移；append-only、乐观锁、删除失效与事件重建；下一工作包 N03 |
 | N03 | completed | 2026-07-21 | 2/5/10 篇预算 DAG、深度 1、受控并发、80% 重复削减、超时/取消/部分失败；下一工作包 N04 |
 | N04 | completed | 2026-07-21 | 有界 Critic/Writer/Verifier 状态机；100-claim fixture 无依据率 0%、冲突 P/R 90%；下一工作包 N05 |
-| N05 | completed | 2026-07-22 | NO-GO：六组×90 case，450 次真实 4B 调用；Claim Support +5.63pp、Task Success -1.11pp、Token +398.03%；默认 single Agent，下一工作包 O00 |
-| N06 | completed | 2026-07-24 | 双开关实验生产接线：真实 Coordinator/Reader×N/Evidence/Critic/Writer/Verifier、任务级 PostgreSQL Blackboard、Tool/模型/Schema/预算/Trace、一次有界修订、会话引用/视觉/Memory 保存和 Docker/前端监控；冻结真实模型复核仍 NO-GO，默认 Safe RAG |
-| P01 | completed | 2026-07-22 | 统一 Runtime、公开 SSE、旧数据迁移与隔离 Compose 8 服务验收通过；M/N No-Go 非默认，Stage O/Cascade 明确不可用且不伪造效果 |
+| N05 | completed | 2026-07-25 | 工作包机制已完成，但更新前代码的 Multi-Agent 效果结果已失效；当前版本待重新评测 |
+| N06 | completed | 2026-07-25 | 默认合格 Multi-Agent 生产接线：Coordinator/Reader×N/Evidence/Critic/Writer/Verifier、任务级 PostgreSQL Blackboard、Tool/模型/Schema/预算/Trace、一次有界修订、会话引用/视觉/Memory 保存和关闭门禁回退 |
+| P01 | completed | 2026-07-25 | 统一 Runtime 默认路由 Fast / Dynamic Plan + Safe RAG / 合格 Multi-Agent；公开 SSE、旧数据迁移和 Stage O/Cascade fail closed |
 | P02 | completed | 2026-07-22 | 闭合 taxonomy 聚类、管理员人审、授权/匿名化门禁、staging、自动回归/安全 Gate Runner、版本报告与回滚；36 tests |
 | P03 | completed | 2026-07-22 | 独立管理员 Dashboard；L05 300 + N05 180 冻结行，六指标/筛选/95% CI/样本下钻，300 行 P95<2s；15 tests + TS/build |
-| P04 | completed | 2026-07-22 | B0–B3/生产安全策略总体+三类切片；全可用指标 N/分母/95% CI；M/N NO-GO，SFT/Cascade unavailable；30/300 人工 Gold 审计 |
+| P04 | completed | 2026-07-25 | 工作包机制已完成，但更新前最终效果报告已失效；报告生成框架保留，当前默认链待重新评测 |
 | P05 | completed | 2026-07-22 | README 首屏、可复现离线 Demo/3–5 分钟录制稿、ADR、Evaluation/Model/Dataset Card、三例复盘、面试/简历材料；全量 425 tests |
-| P06 | completed | 2026-07-25 | 用户明确要求动态 Planner 默认开启：生产 Planner Adapter、默认有论文路由、公开 Plan Schema、TaskEvent/SSE 步骤状态、前端动态计划面板、关闭开关回滚；保留 M06 NO-GO 历史结论 |
+| P06 | completed | 2026-07-25 | Dynamic Planner 默认用于未进入 Multi-Agent 的论文任务：生产 Planner Adapter、公开 Plan Schema、TaskEvent/SSE 步骤状态、前端动态计划面板和关闭回滚 |
+| P07 | completed | 2026-07-25 | 用户明确要求合格 Multi-Agent 默认开启：双门禁默认 true、默认路由与 Worker Adapter 回归、旧代码评测结论作废、面试/架构/README 同步；当前效果待重评 |
 
 状态只使用：
 

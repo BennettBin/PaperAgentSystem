@@ -1,7 +1,8 @@
-"""Feature-gated product routing for the unified Agent Runtime.
+"""Bounded product routing for the unified Agent Runtime.
 
-This layer exposes M/N capabilities through a Port without making either No-Go
-path the production default. Stage O dependent cascade behavior fails closed.
+Eligible multi-paper collaboration uses the real multi-Agent runtime by default;
+operators can still disable either gate to fall back to the bounded Planner/Safe
+RAG path. Stage O dependent cascade behavior fails closed.
 """
 
 from __future__ import annotations
@@ -26,8 +27,8 @@ class RuntimeMode(StrEnum):
 
 class RuntimeCapabilities(_StrictModel):
     dynamic_planner_enabled: bool = True
-    multi_agent_enabled: bool = False
-    allow_experimental_no_go: bool = False
+    multi_agent_enabled: bool = True
+    allow_experimental_no_go: bool = True
     cascade_enabled: bool = False
 
 
@@ -136,16 +137,16 @@ class UnifiedRuntimeRouter:
             and self.capabilities.allow_experimental_no_go
         ):
             mode = RuntimeMode.MULTI_AGENT
-            reason = "explicit experimental multi-paper route"
+            reason = "default eligible multi-paper collaboration route"
         elif request.file_ids and self.capabilities.dynamic_planner_enabled:
             mode = RuntimeMode.DYNAMIC_PLAN
             reason = "default bounded dynamic Planner route"
             if wants_multi:
-                fallback_reason = "multi_agent_not_promoted"
+                fallback_reason = "multi_agent_disabled"
         elif wants_multi:
             mode = RuntimeMode.SAFE_RAG
-            reason = "multi-paper request uses promoted safe path"
-            fallback_reason = "multi_agent_not_promoted"
+            reason = "multi-Agent gates are disabled; use safe path"
+            fallback_reason = "multi_agent_disabled"
         elif wants_multi_intent:
             mode = RuntimeMode.SAFE_RAG
             reason = "multi-Agent intent requires at least two distinct papers"

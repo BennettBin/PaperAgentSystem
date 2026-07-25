@@ -1,25 +1,20 @@
 # Failure Postmortems
 
-## 1. Planner improved structure but not end-to-end success
+## 1. Old evaluation results outlived their code path
 
-- Signal: M02 final Plan Schema validity 100%, invalid Tool calls 0 and Required Step Recall 96.84%.
-- Counter-signal: M06 L3–L5 Task Success improvement was only +1.33pp with paired 95% CI [-3.33pp, 6.00pp]; recovery gain was 0pp and Token/success rose 78.55%.
-- Root cause: a valid Plan cannot repair weak evidence retrieval/generation, and 53.33% of M02 cases already depended on safe fallback.
-- Historical evaluation decision: retain bounded Planner mechanisms and recovery semantics without claiming an effect-gate promotion. On 2026-07-25, product policy changed the bounded Dynamic Planner to default-on as a public planning/state layer over the existing Safe RAG executor; this does not overturn the M06 NO-GO result. Do not tune on the frozen test set.
-- Evidence: `evaluation/reports/m06_planner_ablation_v1/report.json`.
+- Signal: current routing, Planner integration and multi-Agent defaults no longer matched the assumptions recorded by previous reports.
+- Root cause: generated evaluation artifacts were being treated as timeless product facts instead of version-bound evidence.
+- Decision: remove old scores and decisions from current product documentation and set effect status to `pending_re_evaluation`.
+- Prevention: every new report must record the code revision, model/Profile, prompts, role manifests, dataset and runtime flags.
 
-## 2. Multi-Agent raised Claim Support but destroyed efficiency
+## 2. Default enablement can be mistaken for universal routing
 
-- Signal: Full System improved Claim Support by 5.63pp versus Single Agent.
-- Counter-signal: Task Success fell 1.11pp with 95% CI [-3.33pp, 0]; total Token increased 398.03%.
-- Root cause: repeated Critic/Verifier passes added 886.6 Token and 6.61s without quality gain; the final revision reduced Claim Support by 2.07pp.
-- Decision: production default remains Single Agent; deterministic verification is retained, extra LLM review/revision is disabled.
-- Evidence: `evaluation/reports/n05_multi_agent_ablation_v1/report.json`.
+- Signal: saying “Multi-Agent is default” can be misread as “every task launches six roles.”
+- Root cause: feature defaults and route eligibility were described together without distinguishing them.
+- Decision: keep both gates default-on, but require at least two distinct papers plus explicit comparison/review/synthesis intent.
+- Fallback: setting either gate to `false`, an unavailable Adapter or an ineligible request returns to the bounded Planner/Safe RAG path.
 
-## 3. Baseline quality exposed verification/generation bottlenecks
+## 3. Mechanism evidence is not effect evidence
 
-- Signal: B0–B3 Task Success was 8.0% / 6.33% / 6.33% / 7.0%; no paired Task Success CI established improvement over B0.
-- Trace finding: verification, generation and routing were the three leading actionable error families.
-- Root cause: small local models frequently produced incomplete or unsupported answers even when retrieval and schemas were valid.
-- Decision: report the low baseline openly, keep citation validation fail-closed, and prioritize new development data plus evidence/generation improvements over adding orchestration depth.
-- Evidence: `evaluation/reports/l05_baselines_v1/baseline_report.json` and `evaluation/reports/p04_final_v1/report.json`.
+- Signal: role, DAG, Blackboard, revision and persistence tests prove execution semantics but not answer-quality improvement.
+- Decision: report those checks as mechanism verification only; quality, cost and latency remain unknown until the current version is re-evaluated.

@@ -71,8 +71,8 @@ services:
       MINIO_BUCKET_PREFIX: paperagent
       OLLAMA_ENDPOINT: ${OLLAMA_ENDPOINT:-http://host.docker.internal:11434}
       AGENT_LOG_DIR: /app/runtime/logs/agent
-      MULTI_AGENT_ENABLED: ${MULTI_AGENT_ENABLED:-false}
-      ALLOW_EXPERIMENTAL_NO_GO: ${ALLOW_EXPERIMENTAL_NO_GO:-false}
+      MULTI_AGENT_ENABLED: ${MULTI_AGENT_ENABLED:-true}
+      ALLOW_EXPERIMENTAL_NO_GO: ${ALLOW_EXPERIMENTAL_NO_GO:-true}
       DYNAMIC_PLANNER_ENABLED: ${DYNAMIC_PLANNER_ENABLED:-true}
     volumes:
       - ../../runtime/logs/agent:/app/runtime/logs/agent

@@ -130,11 +130,13 @@ def build_unified_runtime(
     dynamic_planner: DynamicPlannerPort,
     progress_sink: Callable[[dict[str, object]], None],
 ) -> UnifiedAgentRuntime:
-    """Build the default Planner path and separately gated multi-Agent path."""
+    """Build default Planner and eligible multi-Agent product paths."""
     capabilities = RuntimeCapabilities(
         dynamic_planner_enabled=_env_flag("DYNAMIC_PLANNER_ENABLED", default=True),
-        multi_agent_enabled=_env_flag("MULTI_AGENT_ENABLED"),
-        allow_experimental_no_go=_env_flag("ALLOW_EXPERIMENTAL_NO_GO"),
+        multi_agent_enabled=_env_flag("MULTI_AGENT_ENABLED", default=True),
+        allow_experimental_no_go=_env_flag(
+            "ALLOW_EXPERIMENTAL_NO_GO", default=True
+        ),
         cascade_enabled=False,
     )
     LOGGER.info(

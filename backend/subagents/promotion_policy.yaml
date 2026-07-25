@@ -1,18 +1,19 @@
 schema_version: 1.0
-decision: no_go
-source_report: evaluation/reports/n05_multi_agent_production_v2/report.json
-production_default: single_agent
-multi_agent_enabled_by_default: false
+decision: pending_re_evaluation
+source_report: null
+production_default: multi_agent_for_eligible_tasks
+multi_agent_enabled_by_default: true
 roles:
-  reader_parallel: experimental_only
-  evidence: experimental_only
-  critic: experimental_only
-  verifier: experimental_only_with_deterministic_boundary
-full_revision_enabled: false
-experimental_override_requires:
+  reader_parallel: default_for_eligible_tasks
+  evidence: default_for_eligible_tasks
+  critic: default_for_eligible_tasks
+  verifier: default_for_eligible_tasks_with_deterministic_boundary
+bounded_revision_enabled: true
+runtime_gates:
   MULTI_AGENT_ENABLED: true
   ALLOW_EXPERIMENTAL_NO_GO: true
 experimental_full_revision_max_rounds: 1
 reason: >-
-  The 90-case offline-real-model ablation missed the Claim Support and Token gates;
-  the extra Verifier LLM pass had zero quality gain and full revision reduced Claim Support.
+  Product policy enables the bounded multi-Agent DAG for eligible multi-paper tasks.
+  Previous result artifacts came from an older code path and are not evidence for
+  the current runtime; a fresh evaluation is required.

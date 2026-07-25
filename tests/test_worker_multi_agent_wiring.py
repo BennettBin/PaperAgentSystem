@@ -42,7 +42,30 @@ class RecordingPlanner:
 
 
 @pytest.mark.asyncio
-async def test_worker_runtime_injects_adapter_but_keeps_dual_gate(
+async def test_worker_runtime_enables_eligible_multi_agent_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    adapter = RecordingMultiAgentRuntime()
+    planner = RecordingPlanner()
+    monkeypatch.delenv("MULTI_AGENT_ENABLED", raising=False)
+    monkeypatch.delenv("ALLOW_EXPERIMENTAL_NO_GO", raising=False)
+
+    runtime = build_unified_runtime(adapter, planner, lambda _: None)
+    execution = await runtime.execute(
+        RuntimeRequest(
+            task_id="default-enabled",
+            question="比较两篇论文",
+            file_ids=["paper-a", "paper-b"],
+        )
+    )
+
+    assert execution.decision.mode is RuntimeMode.MULTI_AGENT
+    assert execution.advanced_result is not None
+    assert [request.task_id for request in adapter.calls] == ["default-enabled"]
+
+
+@pytest.mark.asyncio
+async def test_worker_runtime_preserves_explicit_dual_gate_opt_out(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     adapter = RecordingMultiAgentRuntime()

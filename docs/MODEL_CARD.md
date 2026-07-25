@@ -16,14 +16,15 @@ Paper reading, section QA, multi-paper comparison support, drafting assistance a
 ## Non-goals and risks
 
 - Not an autonomous scientific authority or a source of invented experiments.
-- Frozen B0–B3 Task Success is only 6.33%–8.0%; verification, generation and routing are the dominant failure classes.
-- M06 Dynamic Planner and N05 Multi-Agent remain historical NO-GO effect
-  conclusions. Dynamic Planner is now enabled by explicit product policy for
-  bounded public planning and status visibility; this is not an effect
-  promotion. Multi-Agent remains non-default.
+- Previous evaluation artifacts were produced by an older code path and are not
+  valid evidence for the current runtime. Current quality, cost and latency are
+  pending a version-bound re-evaluation.
+- Dynamic Planner is default for single-paper and ordinary document tasks.
+  Eligible multi-paper comparison/review/synthesis tasks use the bounded
+  multi-Agent DAG by default; either runtime gate can disable that route.
 - No project SFT/RL Adapter is claimed: Stage O was explicitly skipped.
 - Local monetary cost is recorded as zero but excludes electricity and hardware amortization.
 
 ## Evaluation and governance
 
-See `evaluation/reports/p04_final_v1/report.json`. Promotion requires frozen evaluation, security checks and explicit policy change. Model/Profile changes are versioned and rollbackable.
+The evaluation framework remains available, but no old result is cited as a current claim. New reports must bind the code revision, model/Profile, prompts, role manifests, dataset and runtime flags. Model/Profile changes remain versioned and rollbackable.

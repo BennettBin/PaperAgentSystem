@@ -63,14 +63,16 @@ def test_report_fails_closed_when_frozen_dataset_has_no_conflict_gold() -> None:
     assert "unavailable" in report["limitations"][0].casefold()
 
 
-def test_no_go_policy_keeps_multi_agent_off_the_default_path() -> None:
+def test_current_product_policy_defaults_eligible_tasks_to_multi_agent() -> None:
     policy = yaml.safe_load(Path("backend/subagents/promotion_policy.yaml").read_text("utf-8"))
-    assert policy["production_default"] == "single_agent"
-    assert policy["multi_agent_enabled_by_default"] is False
-    assert policy["roles"]["critic"] == "experimental_only"
+    assert policy["decision"] == "pending_re_evaluation"
+    assert policy["source_report"] is None
+    assert policy["production_default"] == "multi_agent_for_eligible_tasks"
+    assert policy["multi_agent_enabled_by_default"] is True
+    assert policy["roles"]["critic"] == "default_for_eligible_tasks"
     assert (
         policy["roles"]["verifier"]
-        == "experimental_only_with_deterministic_boundary"
+        == "default_for_eligible_tasks_with_deterministic_boundary"
     )
-    assert policy["full_revision_enabled"] is False
+    assert policy["bounded_revision_enabled"] is True
     assert policy["experimental_full_revision_max_rounds"] == 1

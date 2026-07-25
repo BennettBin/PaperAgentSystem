@@ -65,9 +65,9 @@ flowchart LR
 默认运行策略针对不同任务选择合适链路：
 
 - 无论文的简单任务使用低开销 Fast Path；
-- 有论文的任务默认先由受约束 Planner 生成最多八步的公开 Plan，再由 Safe RAG 产品执行器完成判断、检索、生成和核验；
+- 单论文及普通论文任务默认由受约束 Planner 生成最多八步公开 Plan，再由 Safe RAG 完成真实执行；
 - Plan 的步骤、依赖和实时状态通过任务监控展示，Prompt 与隐藏推理不进入事件；
-- 多智能体协作仍是双开关控制的显式实验模式。
+- 至少两篇论文且具有比较、综述或综合意图时，默认执行受约束多智能体 DAG；两个门禁可用于显式关闭和回退。
 
 ## 快速开始
 
@@ -242,28 +242,28 @@ runtime/diagnostics/rag/
 则采用安全固定计划。计划创建、步骤开始、完成、跳过和结束都写入持久化 TaskEvent，并通过
 SSE 在任务监控中实时显示。
 
-本次默认启用是明确的产品策略调整，不改变 M06 冻结消融的历史结论：Planner 的结构指标
-合格，但当时没有证明端到端效果/成本增益。默认执行仍复用有界 Safe RAG，不允许 Planner
-绕过 Workspace、Skill/Tool 权限、引用核验或终止预算。设置
+Planner 默认执行仍复用有界 Safe RAG，不允许绕过 Workspace、Skill/Tool 权限、引用核验或
+终止预算。旧代码生成的评测结果已失效，当前质量与成本需要重新评测。设置
 `DYNAMIC_PLANNER_ENABLED=false` 可恢复原直接 Safe RAG 路由。
 
-## 实验性多 Agent 生产链
+## 默认多 Agent 生产链
 
-系统默认继续使用 `FAST_PATH` / `SAFE_RAG`。如需对至少两篇论文执行比较、综述或综合分析，可在
-`.env` 中同时开启以下两个开关并重启 Worker：
+以下两个开关默认均为 `true`：
 
 ```env
 MULTI_AGENT_ENABLED=true
 ALLOW_EXPERIMENTAL_NO_GO=true
 ```
 
-合格任务将执行 `Coordinator → Paper Reader × N → Evidence → Critic → Writer → Verifier`。
+至少两篇不同论文且问题包含比较、对比、综述或综合意图时，任务默认执行
+`Coordinator → Paper Reader × N → Evidence → Critic → Writer → Verifier`。
 每个 Reader 只检索分配给自己的论文；角色间通过任务级 Evidence Blackboard 交换结构化引用。
 Verifier 发现严重问题时最多允许一次 Writer 定向修订和一次复验，复验仍失败则不保存回答。
 Reader 单篇失败会显式列为缺失论文，Critic 不可用可降级，Evidence、Writer 或 Verifier 失败
 则任务失败。关闭任一开关即可恢复原 Safe RAG 路径，不需要回滚数据库。
 
-该能力通过机制、权限和产品接线验收，但真实模型 N05 消融仍为 **NO-GO**，因此不会默认开启。
+单论文和普通论文问答仍走 Dynamic Planner + Safe RAG。旧代码评测结果不再作为当前结论；
+当前默认多 Agent 的质量、Token 和 P95 需要基于新代码重新评测。
 
 ## 模型配置
 
@@ -285,8 +285,8 @@ Reader 单篇失败会显式列为缺失论文，Critic 不可用可降级，Evi
 | `MINIO_ENDPOINT` | MinIO 地址 | `localhost:9000` |
 | `EMBEDDING_MODEL_NAME` | Embedding 模型 | `bge-m3` |
 | `AGENT_LOG_DIR` | Agent 审计日志目录 | `runtime/logs/agent` |
-| `MULTI_AGENT_ENABLED` | 允许多 Agent 候选路由 | `false` |
-| `ALLOW_EXPERIMENTAL_NO_GO` | 明确授权运行 No-Go 实验能力 | `false` |
+| `MULTI_AGENT_ENABLED` | 允许合格多论文任务进入多 Agent | `true` |
+| `ALLOW_EXPERIMENTAL_NO_GO` | 多 Agent 第二运行门禁（兼容旧变量名） | `true` |
 | `DYNAMIC_PLANNER_ENABLED` | 论文任务默认生成并展示受约束 Plan | `true` |
 
 完整配置见 [`.env.example`](./.env.example)。
@@ -339,22 +339,17 @@ PaperAgentSystem/
 
 | 检查 | 结果 |
 |---|---:|
-| Python 非 Docker 单元、契约与组件测试 | 419 passed |
-| 前端组件测试 | 20 passed |
+| Python 非 Docker 单元、契约与组件测试 | 421 passed |
+| 前端组件测试 | 22 passed（本次未改前端） |
 | TypeScript 类型检查 | 通过 |
 | Next.js 生产构建 | 通过 |
 | Ruff 静态检查 | 通过 |
 | 核心 Agent、模型与 Tool Runtime 类型检查 | 通过 |
 | API、Worker、Web Docker 镜像构建 | 通过 |
 
-本次 Planner 默认启用变更未在当前环境重跑 Docker-backed Redis/MinIO/SSE 集成；最近一次完整
-Docker 验证基线仍见过程日志。
-
-评测框架提供版本化数据集、资源预算、失败分类、95% 置信区间、逐 Case 结果和 SHA-256 Manifest。动态规划与多智能体模块不会仅因机制测试通过就进入默认路径，而是依据冻结评测结果和成本门槛决定是否启用。
-
-M06 动态 Planner 与 N05 多智能体的冻结消融结论仍为 **NO-GO**。动态 Planner 后续根据
-明确产品决策默认开启，但不把该决策表述为效果晋级；多智能体仍不进入默认路径。项目专用
-SFT/RL Adapter 当前不可用，系统默认使用已配置的基础模型 Profile。
+评测框架提供版本化数据集、资源预算、失败分类、95% 置信区间、逐 Case 结果和 SHA-256
+Manifest。旧代码生成的基线、Planner、多 Agent 和最终效果报告不代表当前默认链，当前状态为
+待重新评测；新报告必须绑定代码、模型 Profile、Prompt/Manifest、数据集和运行配置版本。
 
 可使用 `python -m evaluation.p05_demo` 复现离线演示报告；具体步骤和输出位置见 Demo Runbook。
 
@@ -362,7 +357,6 @@ SFT/RL Adapter 当前不可用，系统默认使用已配置的基础模型 Prof
 
 - [产品架构](./docs/development/02-产品架构文档.md)
 - [项目面试完整介绍](./docs/项目面试完整介绍.md)
-- [最终评测报告](./evaluation/reports/p04_final_v1/report.md)
 - [Model Card](./docs/MODEL_CARD.md)
 - [Dataset Card](./evaluation/datasets/DATASET_CARD.md)
 - [Demo Runbook](./docs/DEMO_RUNBOOK.md)
@@ -370,7 +364,7 @@ SFT/RL Adapter 当前不可用，系统默认使用已配置的基础模型 Prof
 
 面试介绍中的两条关键链路已逐步标明真实责任主体：上传链路区分 Ingestion Worker 与确定性
 解析/索引组件，问答链路区分主 Agent、Dynamic Planner、Safe RAG、Skill/Tool Runtime、
-确定性 Verifier 和双开关多 Agent 分支；文档每个二级标题均先说明本节目的。
+确定性 Verifier 和默认合格多 Agent 分支；文档每个二级标题均先说明本节目的。
 
 ## 隐私与安全
 

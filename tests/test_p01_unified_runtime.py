@@ -83,7 +83,7 @@ def test_multi_agent_requires_both_feature_gates(
     )
 
     assert decision.mode is RuntimeMode.DYNAMIC_PLAN
-    assert decision.fallback_reason == "multi_agent_not_promoted"
+    assert decision.fallback_reason == "multi_agent_disabled"
 
 
 @pytest.mark.parametrize(
@@ -133,7 +133,7 @@ def test_multi_agent_route_accepts_deduplicated_multi_file_synthesis() -> None:
     assert decision.fallback_reason is None
 
 
-def test_router_uses_dynamic_planner_for_default_paper_path() -> None:
+def test_router_uses_multi_agent_for_default_eligible_multi_paper_path() -> None:
     router = UnifiedRuntimeRouter(RuntimeCapabilities())
     simple = router.route(RuntimeRequest(task_id="t1", question="你好", file_ids=[]))
     assert simple.mode is RuntimeMode.FAST_PATH
@@ -146,8 +146,23 @@ def test_router_uses_dynamic_planner_for_default_paper_path() -> None:
         file_ids=["f1", "f2", "f3"],
     )
     planned = router.route(complex_request)
+    assert planned.mode is RuntimeMode.MULTI_AGENT
+    assert planned.fallback_reason is None
+
+
+def test_router_keeps_dynamic_planner_for_default_single_paper_path() -> None:
+    router = UnifiedRuntimeRouter(RuntimeCapabilities())
+
+    planned = router.route(
+        RuntimeRequest(
+            task_id="single-paper",
+            question="总结这篇论文的方法和结论",
+            file_ids=["f1"],
+        )
+    )
+
     assert planned.mode is RuntimeMode.DYNAMIC_PLAN
-    assert planned.fallback_reason == "multi_agent_not_promoted"
+    assert planned.fallback_reason is None
 
 
 @pytest.mark.asyncio

@@ -1,17 +1,16 @@
 # PaperAgent 多 Agent 生产链启用实施计划
 
 > 目标文件最终位置：`D:\vscode\Projects\PaperAgentSystem\docs\多Agent生产链启用实施计划.md`  
-> 文档性质：实施计划与验收基线；A～P 已于 2026-07-24 按本文件完成，默认晋级结论仍为 NO-GO。  
+> 文档性质：实施计划与验收基线；A～P 已完成，当前合格多论文任务默认使用 Multi-Agent。
 > 核心约束：仅补齐现有多 Agent 模块到默认 Worker 的生产接线，不重构统一主 Agent、RAG、Skill、Tool、Memory、数据库或前端整体架构。
 >
-> 2026-07-25 状态补充：本文的 NO-GO 与双开关结论仅针对多 Agent 和实验效果晋级。Dynamic Planner 已按产品策略改为文档任务默认开启，用于生成并公开展示有界计划；实际阶段仍由 Safe RAG 执行，Planner 失败时也回退 Safe RAG，因此不改变本文的多 Agent 结论。
+> 当前状态：两个 Multi-Agent 门禁默认均为 true；至少两篇不同论文且包含比较/综述/综合意图时执行真实角色 DAG。旧代码评测结果已失效，当前效果与成本待重新评测。
 
 ## 1. 实施目标
 
-实施状态：**已完成显式实验路径的生产接线**。两个开关仍默认关闭；真实模型效果门禁未通过，
-所以“可显式运行”和“默认生产启用”是两个不同结论。
+实施状态：**已完成默认合格任务的生产接线**。两个开关默认开启，仍可显式关闭以回退安全路径。
 
-当且仅当下面两个开关同时开启：
+默认配置为：
 
 ```env
 MULTI_AGENT_ENABLED=true
@@ -658,27 +657,26 @@ sequenceDiagram
 
 ### 目标
 
-保证宿主机开关能真实传入 Worker 容器，同时保持默认关闭。
+保证宿主机开关能真实传入 Worker 容器，并保持当前默认开启策略。
 
 ### 修改内容
 
 1. 在 `.env.example` 增加：
 
    ```env
-   # Experimental multi-Agent runtime; both must be true to enable.
-   MULTI_AGENT_ENABLED=false
-   ALLOW_EXPERIMENTAL_NO_GO=false
-   DYNAMIC_PLANNER_ENABLED=false
+   MULTI_AGENT_ENABLED=true
+   ALLOW_EXPERIMENTAL_NO_GO=true
+   DYNAMIC_PLANNER_ENABLED=true
    ```
 
 2. 在 `infrastructure/docker/compose.yaml` 的 Worker 环境中显式传入这三个变量。
 3. 不在 Web 或 API 前端环境中暴露 `ALLOW_EXPERIMENTAL_NO_GO`。
 4. 启动日志只记录开关状态，不记录密钥或 Prompt 正文。
 5. README 说明：
-   - 默认关闭；
+   - 合格多论文任务默认开启；
    - 两个开关必须同时开启；
    - 只对符合条件的多论文任务生效；
-   - 它是实验路径，不代表已晋级生产默认。
+   - 任一门禁关闭时回退 Dynamic Planner + Safe RAG。
 
 ### 预计修改文件
 
@@ -689,7 +687,7 @@ sequenceDiagram
 ### 输出目标
 
 - 宿主机配置、Compose 和 Worker 实际环境一致；
-- 默认行为不变。
+- 默认行为与当前产品策略一致。
 
 ### 验收标准
 
@@ -1019,7 +1017,7 @@ docker compose -f infrastructure\docker\compose.yaml ps
 - 评测使用真实模型 Profile；
 - Candidate 与 Baseline 使用相同数据、预算和 Judge；
 - 报告失败分类，不只报告平均值；
-- 未达门槛时继续默认关闭；
+- 新结果只用于描述当前质量与成本，不复用旧代码结论；
 - 不把 Fake/确定性测试写成真实模型效果。
 
 ---
@@ -1035,7 +1033,7 @@ docker compose -f infrastructure\docker\compose.yaml ps
 实施完成后同步：
 
 1. `README.md`
-   - 多 Agent 默认关闭；
+   - 多 Agent 对合格任务默认开启；
    - 开启方法；
    - 适用任务；
    - 失败和回退语义。
@@ -1049,11 +1047,11 @@ docker compose -f infrastructure\docker\compose.yaml ps
    - Feature Gate；
    - 状态、失败和核验语义。
 4. `docs/development/03-执行计划文档.md`
-   - 记录实际完成范围和评测结论。
+   - 记录实际完成范围和当前待重新评测状态。
 5. `docs/development/DEVELOPMENT_PLAN.md`
    - 按工作包更新状态。
 6. `docs/项目面试完整介绍.md`
-   - 区分默认 Safe RAG 与开关开启的实验 Multi-Agent。
+   - 区分默认 Dynamic Planner + Safe RAG 与默认合格 Multi-Agent。
 7. `docs/development/process_log.md`
    - 按仓库要求记录每次实施、验证和遗留问题。
 
@@ -1065,9 +1063,9 @@ docker compose -f infrastructure\docker\compose.yaml ps
 ### 验收标准
 
 - 文档不再写“开关开启仍一定回退”，前提是生产 Adapter 已真实接入；
-- 文档明确默认仍为关闭；
+- 文档明确资格条件、默认开启和显式关闭回退；
 - 所有路径与重构后的真实目录一致；
-- 不将实验能力描述为已晋级默认生产路径。
+- 不把默认开启描述为已经证明效果提升。
 
 ## 7. 文件修改总表
 
@@ -1244,7 +1242,7 @@ ALLOW_EXPERIMENTAL_NO_GO=false
 
 - [x] 使用冻结数据集完成 Safe RAG vs Multi-Agent 对照。
 - [x] 报告 Task Success、Citation/Claim Support、Token、P95 和成本；冻结标注缺失项明确为不可用。
-- [x] 未达到晋级门槛时保持默认关闭。
+- [x] 旧代码评测结果已失效，当前版本标记为待重新评测。
 
 ## 12. 建议执行顺序
 
