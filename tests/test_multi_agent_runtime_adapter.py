@@ -228,6 +228,11 @@ async def test_adapter_executes_existing_role_dag_and_returns_verified_result() 
         "verifier",
     ]
     assert len([call for call in calls if call.role is AgentRole.PAPER_READER]) == 2
+    assert {
+        call.requested_tokens
+        for call in calls
+        if call.role is AgentRole.PAPER_READER
+    } == {6000}
     assert result.subagent_run_ids == [
         "reader:paper-a",
         "reader:paper-b",

@@ -285,6 +285,9 @@ ALLOW_EXPERIMENTAL_NO_GO=true
 至少两篇不同论文且问题包含比较、对比、综述或综合意图时，任务默认执行
 `Coordinator → Paper Reader × N → Evidence → Critic → Writer → Verifier`。
 每个 Reader 只检索分配给自己的论文；角色间通过任务级 Evidence Blackboard 交换结构化引用。
+每个 Paper Reader 的生成上限为 6000 Token；角色上限按模型实际输出 Token 校验，不再把检索
+Prompt 的输入 Token 重复计入同一个生成上限。Coordinator 的 84000 Token 全局上限覆盖正常
+2/5/10 篇论文协作规模，实际消耗仍以模型 usage 为准，并继续受角色 Manifest 和全局预算双重限制。
 Verifier 发现严重问题时最多允许一次 Writer 定向修订和一次复验，复验仍失败则不保存回答。
 Reader 单篇失败会显式列为缺失论文，Critic 不可用可降级，Evidence、Writer 或 Verifier 失败
 则任务失败。关闭任一开关即可恢复原 Safe RAG 路径，不需要回滚数据库。

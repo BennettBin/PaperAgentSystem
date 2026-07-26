@@ -909,7 +909,14 @@ class ProductionRoleRunner:
                 cause=exc,
             ) from exc
         usage = getattr(client, "last_usage", None)
-        return value, int(getattr(usage, "total_tokens", 0))
+        # ``requested_tokens`` is passed to the model as the completion-token
+        # ceiling.  Comparing it with prompt + completion tokens rejects a
+        # valid role response merely because its retrieved evidence is long.
+        # Keep the role and coordination budget on the same output-token basis.
+        output_tokens = getattr(usage, "output_tokens", None)
+        if output_tokens is None:
+            output_tokens = getattr(usage, "total_tokens", 0)
+        return value, int(output_tokens) if output_tokens is not None else 0
 
     def _tool_context(self, assignment: RoleAssignment) -> ToolContext:
         manifest = self._registry.manifests[assignment.role]

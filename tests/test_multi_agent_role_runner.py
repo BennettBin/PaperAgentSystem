@@ -21,9 +21,19 @@ from backend.tool_runtime.runtime import ToolContext, ToolInvocationResult
 
 
 class ScriptedRoleLLM(LLMClient):
-    def __init__(self, requested_profiles: list[str]) -> None:
+    def __init__(
+        self,
+        requested_profiles: list[str],
+        *,
+        input_tokens: int = 0,
+        output_tokens: int = 20,
+    ) -> None:
         self.requested_profiles = requested_profiles
-        self.last_usage = SimpleNamespace(total_tokens=20)
+        self.last_usage = SimpleNamespace(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=input_tokens + output_tokens,
+        )
 
     async def generate(
         self,
@@ -262,3 +272,34 @@ async def test_paper_reader_rejects_multiple_assigned_files() -> None:
             ),
             idempotency_key="task-1:reader:invalid",
         )
+
+
+@pytest.mark.asyncio
+async def test_role_budget_applies_to_generated_tokens_not_prompt_tokens() -> None:
+    registry = RoleProtocolRegistry.load(Path("backend/subagents/roles"))
+    llm = ScriptedRoleLLM([], input_tokens=3200, output_tokens=200)
+    runner = ProductionRoleRunner(
+        registry,
+        RoleExecutionContext(
+            workspace_id="ws-1",
+            conversation_id="conversation-1",
+            task_id="task-1",
+            question="比较论文中的方法与结果",
+            blackboard=InMemoryBlackboardRepository(),
+        ),
+        llm_resolver=lambda _: llm,
+        tool_runtime=RecordingSearchTool(),
+    )
+
+    result = await runner.invoke(
+        RoleAssignment(
+            assignment_id="reader:paper-a",
+            role=AgentRole.PAPER_READER,
+            paper_ids=["paper-a"],
+            requested_tokens=1000,
+            timeout_seconds=30,
+        ),
+        idempotency_key="task-1:reader:paper-a",
+    )
+
+    assert result.token_usage == 200

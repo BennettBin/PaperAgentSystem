@@ -57,7 +57,9 @@ class MultiAgentRuntimeAdapter:
         self._budget = budget or CoordinationBudget(
             max_concurrency=4,
             max_worker_slots=4,
-            max_tokens=20_000,
+            # Supports the full per-role Manifest budgets for the normal
+            # 2/5/10-paper operating range without starving each Reader.
+            max_tokens=84_000,
             max_assignments=20,
         )
         self._progress = progress_sink or (lambda _: None)
