@@ -3,6 +3,7 @@ LLM 和 Embedding 相关 Port 定义
 """
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -38,6 +39,26 @@ class LLMClient(ABC):
         pass
 
 
+@dataclass(frozen=True, slots=True)
+class EmbeddingProfile:
+    """Identity of one non-interchangeable embedding vector space."""
+
+    provider: str
+    model_name: str
+    model_version: str
+    dimension: int
+    max_length: int
+    normalized: bool
+
+    @property
+    def fingerprint(self) -> str:
+        normalized = "1" if self.normalized else "0"
+        return (
+            f"{self.provider}:{self.model_name}@{self.model_version}:"
+            f"d{self.dimension}:l{self.max_length}:n{normalized}"
+        )
+
+
 class EmbeddingClient(ABC):
     """Embedding 客户端 Port
 
@@ -53,6 +74,11 @@ class EmbeddingClient(ABC):
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         """批量获取向量"""
         pass
+
+    @property
+    def profile(self) -> EmbeddingProfile | None:
+        """Return vector-space metadata when the implementation supports it."""
+        return None
 
 
 class RerankerClient(ABC):

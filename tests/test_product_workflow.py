@@ -20,6 +20,7 @@ from backend.core.domain.blackboard import (
     EvidenceSource,
 )
 from backend.core.errors import ProjectError
+from backend.core.ports.scholarly import ScholarlySearchPage, ScholarlyWork
 from backend.infrastructure.fake.adapters import FakeObjectStore
 from backend.infrastructure.fake.llm_clients import FakeEmbeddingClient, FakeRerankerClient
 from backend.infrastructure.fake.observability import FakeTraceWriter
@@ -48,6 +49,13 @@ from backend.memory import (
 from backend.rag.indexing import CURRENT_INDEX_VERSION, CURRENT_SECTION_SCHEMA_VERSION
 from backend.skills.loader import SkillManifestLoader, SkillRegistry
 from backend.skills.runtime import SkillRuntime
+from backend.tool_runtime.runtime import (
+    InMemoryDataRefStore,
+    InMemoryIdempotencyStore,
+    ToolRegistry,
+    ToolRuntime,
+)
+from backend.tool_runtime.scholarly_search_tools import register_scholarly_search_tools
 
 SKILLS_ROOT = Path(__file__).resolve().parents[1] / "backend" / "skills"
 REAL_TOOLS = {
@@ -58,6 +66,10 @@ REAL_TOOLS = {
     "build_comparison_table",
     "build_literature_review",
     "save_artifact",
+    "search_crossref",
+    "search_semantic_scholar",
+    "search_openalex",
+    "search_arxiv",
 }
 
 
@@ -249,6 +261,87 @@ def _skill_runtime() -> SkillRuntime:
     return SkillRuntime(
         SkillSelector(registry, fallback_skill="paper_reader"), registry
     )
+
+
+class _FakeScholarlyProvider:
+    def __init__(self, source: str) -> None:
+        self.source = source
+
+    async def search(
+        self,
+        query: str,
+        *,
+        limit: int,
+        year_from: int | None = None,
+        year_to: int | None = None,
+    ) -> ScholarlySearchPage:
+        del limit, year_from, year_to
+        return ScholarlySearchPage(
+            source=self.source,
+            query=query,
+            total=1,
+            works=(
+                ScholarlyWork(
+                    source=self.source,
+                    external_id=f"{self.source}-paper",
+                    title="Agentic Retrieval Augmented Generation",
+                    authors=("Ada Lovelace",),
+                    year=2025,
+                    doi="10.1000/agentic-rag",
+                    url="https://doi.org/10.1000/agentic-rag",
+                    citation_count=10,
+                ),
+            ),
+        )
+
+
+@pytest.mark.asyncio
+async def test_topic_paper_search_runs_skill_and_four_tools_without_pdf(
+    product_database,
+) -> None:
+    traces = FakeTraceWriter()
+    registry = ToolRegistry()
+    register_scholarly_search_tools(
+        registry,
+        crossref=_FakeScholarlyProvider("crossref"),
+        semantic_scholar=_FakeScholarlyProvider("semantic_scholar"),
+        openalex=_FakeScholarlyProvider("openalex"),
+        arxiv=_FakeScholarlyProvider("arxiv"),
+    )
+    processor = PaperAgentProcessor(
+        product_database,
+        FakeObjectStore(),
+        FakeEmbeddingClient(),
+        FakeRerankerClient(),
+        RecordingLLM(),
+        skill_runtime=_skill_runtime(),
+        tool_runtime=ToolRuntime(
+            registry,
+            idempotency_store=InMemoryIdempotencyStore(),
+            data_ref_store=InMemoryDataRefStore(),
+            trace_writer=traces,
+        ),
+    )
+
+    result = await processor.answer(
+        {
+            "_task_id": "paper-discovery-task",
+            "conversation_id": "conversation-1",
+            "question": "帮我找几篇关于 Agentic RAG 的论文",
+            "file_ids": [],
+        }
+    )
+
+    assert result["status"] == "completed"
+    assert result["answer"].count("Agentic Retrieval Augmented Generation") == 1
+    assert "crossref, semantic_scholar, openalex, arxiv" not in result["answer"]
+    assert all(source in result["answer"] for source in ("crossref", "semantic_scholar", "openalex", "arxiv"))
+    assert len([trace for trace in traces.traces if trace["span_name"] == "tool.invoke"]) == 4
+    with product_database() as session:
+        message = session.get(MessageModel, result["message_id"])
+        assert message is not None
+        assert message.metadata_json["rag"]["decision"] == "scholarly_search"
+        assert message.metadata_json["evidence"] == []
 
 
 @pytest.mark.asyncio

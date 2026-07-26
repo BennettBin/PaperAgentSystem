@@ -28,3 +28,10 @@ class DocumentChunk(BaseModel):
     next_chunk_id: str | None = None
     embedding: list[float] = Field(default_factory=list)
     embedding_model: str = ""
+    embedding_provider: str = "legacy"
+    embedding_version: str = "unknown"
+    embedding_dimension: int = 1024
+    embedding_max_length: int = 0
+    embedding_normalized: bool = True
+    embedding_fingerprint: str = ""
+    embedding_status: str = "ready"

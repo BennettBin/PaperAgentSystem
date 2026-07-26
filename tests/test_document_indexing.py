@@ -13,6 +13,7 @@ from backend.infrastructure.postgres.models import (
     ParsedDocumentModel,
 )
 from backend.rag.indexing import CURRENT_INDEX_VERSION, DocumentIndexer, StructureAwareChunker
+from backend.rag.local_models import HashEmbedding
 
 
 def paper_pdf() -> bytes:
@@ -159,3 +160,21 @@ async def test_old_index_version_is_detected_and_rebuilt(database) -> None:
     with database() as session:
         stored = session.query(ParsedDocumentModel).one()
         assert stored.metadata_json["index_version"] == CURRENT_INDEX_VERSION
+
+
+@pytest.mark.asyncio
+async def test_versioned_embedding_profile_is_persisted(database) -> None:
+    data = paper_pdf()
+    parsed = await PyMuPDFParser().parse(data, "paper.pdf")
+    embeddings = HashEmbedding()
+    indexer = DocumentIndexer(database, embeddings)
+
+    chunks = await indexer.index("ws-1", "file-1", data, parsed)
+
+    assert chunks
+    assert indexer.is_current("ws-1", "file-1") is True
+    with database() as session:
+        stored = session.query(DocumentChunkModel).first()
+        assert stored.embedding_provider == "hash"
+        assert stored.embedding_fingerprint == embeddings.profile.fingerprint
+        assert stored.embedding_status == "ready"

@@ -6,6 +6,7 @@ Ports 模块初始化
 
 from .llm_client import (
     EmbeddingClient,
+    EmbeddingProfile,
     LLMClient,
     RerankerClient,
 )
@@ -51,6 +52,7 @@ __all__ = [
     # LLM Client
     "LLMClient",
     "EmbeddingClient",
+    "EmbeddingProfile",
     "RerankerClient",
     # Storage
     "ObjectStore",

@@ -4,6 +4,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from backend.core.ports.llm_client import EmbeddingProfile
 from backend.infrastructure.postgres.models import (
     Base,
     DocumentChunkModel,
@@ -45,6 +46,21 @@ class TopicEmbeddings:
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         return [vector(text) for text in texts]
+
+
+class VersionedTopicEmbeddings(TopicEmbeddings):
+    @property
+    def profile(self) -> EmbeddingProfile:
+        return EmbeddingProfile("fixture", "topics", "v1", 1024, 512, True)
+
+
+class RecordingVectorRetriever:
+    def __init__(self) -> None:
+        self.chunk_ids: list[str] = []
+
+    def retrieve(self, query, chunks, limit):
+        self.chunk_ids = [chunk.id for chunk in chunks]
+        return []
 
 
 class LexicalReranker:
@@ -185,6 +201,30 @@ async def test_exact_and_bm25_recall_work_when_vectors_are_uninformative(databas
 
     assert hits
     assert hits[0].file_id == "file-6"
+
+
+@pytest.mark.asyncio
+async def test_vector_channel_only_receives_matching_embedding_profile(database) -> None:
+    embeddings = VersionedTopicEmbeddings()
+    with database() as session:
+        compatible = session.get(DocumentChunkModel, "ws-1-0-0")
+        assert compatible is not None
+        compatible.embedding_fingerprint = embeddings.profile.fingerprint
+        compatible.embedding_status = "ready"
+        incompatible = session.get(DocumentChunkModel, "ws-1-0-1")
+        assert incompatible is not None
+        incompatible.embedding_fingerprint = "hash:other@v1:d1024:l0:n1"
+        incompatible.embedding_status = "ready"
+        session.commit()
+    retriever = HybridRetriever(database, embeddings, LexicalReranker())
+    recorder = RecordingVectorRetriever()
+    retriever._vectors = recorder
+
+    await retriever.search(
+        "bayesian calibration", workspace_id="ws-1", file_ids={"file-0"}
+    )
+
+    assert recorder.chunk_ids == ["ws-1-0-0"]
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,21 @@
+tools:
+  - name: search_crossref
+    purpose: 从 Crossref 检索 DOI、出版物与作者元数据。
+    when_to_use: 需要覆盖已正式出版且有 DOI 的论文时调用。
+    implementation: backend.tool_runtime.scholarly_search_tools.CrossrefSearchTool
+    example_input: {query: retrieval augmented generation, limit: 5}
+  - name: search_semantic_scholar
+    purpose: 从 Semantic Scholar 检索论文、摘要与被引次数元数据。
+    when_to_use: 需要语义相关候选论文及引用信息时调用。
+    implementation: backend.tool_runtime.scholarly_search_tools.SemanticScholarSearchTool
+    example_input: {query: retrieval augmented generation, limit: 5}
+  - name: search_openalex
+    purpose: 从 OpenAlex 检索开放学术图谱中的论文元数据。
+    when_to_use: 需要补充开放获取链接、机构和出版来源覆盖时调用。
+    implementation: backend.tool_runtime.scholarly_search_tools.OpenAlexSearchTool
+    example_input: {query: retrieval augmented generation, limit: 5}
+  - name: search_arxiv
+    purpose: 从 arXiv 检索相关预印本。
+    when_to_use: 需要覆盖最新预印本或尚未正式出版的工作时调用。
+    implementation: backend.tool_runtime.scholarly_search_tools.ArxivSearchTool
+    example_input: {query: retrieval augmented generation, limit: 5}

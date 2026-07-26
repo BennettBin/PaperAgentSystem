@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -16,6 +17,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.agent_runtime.react_self_rag import ReActSelfRAGController
+from backend.agent_runtime.skill_selector import SkillSelectionContext
 from backend.agent_runtime.unified import (
     AdvancedEvidence,
     AdvancedRuntimeResult,
@@ -61,6 +63,7 @@ from backend.rag.local_models import (
 from backend.rag.retrieval import HybridRetriever, RetrievalHit
 from backend.skills.loader import SkillToolBinding
 from backend.skills.runtime import SkillActivation, SkillRuntime
+from backend.tool_runtime.runtime import ToolContext, ToolRuntime
 
 LOCAL_USER_ID = "local-user"
 LOCAL_WORKSPACE_ID = "local-workspace"
@@ -786,10 +789,18 @@ class PaperAgentApplication:
         section_models = _section_scoped_models(models, parsed_section_hint)
         scoped_models = section_models or models
         query_text = f"{clean_question} {parsed_section_hint or ''}".strip()
-        query_vector = _pad_debug(await MultilingualHashEmbeddingClient().embed(query_text))
+        diagnostic_embeddings = MultilingualHashEmbeddingClient()
+        query_vector = _pad_debug(await diagnostic_embeddings.embed(query_text))
 
         exact_rank = _rank_exact(query_text, scoped_models, 30)
-        vector_rank = _rank_vector(query_vector, scoped_models, 30)
+        compatible_vector_models = [
+            model
+            for model in scoped_models
+            if model.embedding_status == "ready"
+            and model.embedding_fingerprint
+            == diagnostic_embeddings.profile.fingerprint
+        ]
+        vector_rank = _rank_vector(query_vector, compatible_vector_models, 30)
         bm25_rank = _rank_bm25(query_text, scoped_models, 30)
         merged_models, merged_scores = _merge_rankings(
             [exact_rank, vector_rank, bm25_rank], 30
@@ -855,12 +866,19 @@ class PaperAgentProcessor:
         short_term_memory: ShortTermMemoryService | None = None,
         long_term_memory: LongTermMemoryService | None = None,
         memory_task_queue: TaskQueue | None = None,
+        tool_runtime: ToolRuntime | None = None,
     ) -> None:
         self._sessions = sessions
         self._objects = object_store
         self._parser = BasicPDFPipeline()
         self._indexer = DocumentIndexer(
-            sessions, embeddings, embedding_model="multilingual-hash-v1"
+            sessions,
+            embeddings,
+            embedding_model=(
+                None
+                if getattr(embeddings, "profile", None) is not None
+                else "multilingual-hash-v1"
+            ),
         )
         self._retriever = HybridRetriever(sessions, embeddings, reranker)
         self._llm = llm
@@ -875,6 +893,7 @@ class PaperAgentProcessor:
         self._short_term_memory = short_term_memory
         self._long_term_memory = long_term_memory
         self._memory_task_queue = memory_task_queue
+        self._tool_runtime = tool_runtime
 
     async def parse(self, payload: dict[str, Any]) -> dict[str, Any]:
         file_id = str(payload["file_id"])
@@ -1225,6 +1244,15 @@ class PaperAgentProcessor:
                 "has_section_hint": bool(decision.section_hint),
             },
         )
+        if self._tool_runtime is not None and _is_scholarly_discovery_request(question):
+            return await self._answer_scholarly_discovery(
+                conversation_id,
+                task_id,
+                question,
+                runtime_mode,
+                history,
+                finish_plan,
+            )
         if action == "clarify":
             finish_plan("ask_user")
             return self._ask_clarification(
@@ -1299,7 +1327,10 @@ class PaperAgentProcessor:
         )
         is_multi_paper_comparison = bool(
             skill_activation is not None
-            and skill_activation.skill.name == "comparison_analyzer"
+            and any(
+                skill.name == "comparison_analyzer"
+                for skill in (skill_activation.skills or (skill_activation.skill,))
+            )
             and len(dict.fromkeys(file_ids)) >= 2
         )
         file_labels = _active_file_labels(self._sessions, file_ids)
@@ -1460,17 +1491,33 @@ class PaperAgentProcessor:
             conversation_context=history["text"],
             visual_artifacts=visual_candidates,
             skill_instructions=(
-                skill_activation.skill.instructions if skill_activation else ""
+                "\n\n".join(
+                    skill.instructions
+                    for skill in (skill_activation.skills or (skill_activation.skill,))
+                )
+                if skill_activation
+                else ""
             ),
             file_labels=file_labels,
             is_multi_paper_comparison=is_multi_paper_comparison,
             output_format=(
-                skill_activation.skill.output_contract.format
+                "markdown_table"
+                if skill_activation and any(
+                    skill.output_contract.format == "markdown_table"
+                    for skill in (skill_activation.skills or (skill_activation.skill,))
+                )
+                else skill_activation.skill.output_contract.format
                 if skill_activation
                 else ""
             ),
             required_columns=(
-                skill_activation.skill.output_contract.required_columns
+                tuple(
+                    dict.fromkeys(
+                        column
+                        for skill in (skill_activation.skills or (skill_activation.skill,))
+                        for column in skill.output_contract.required_columns
+                    )
+                )
                 if skill_activation
                 else ()
             ),
@@ -1709,19 +1756,199 @@ class PaperAgentProcessor:
             },
             task_id or "unpersisted-task",
             requested_skill=requested_skill,
+            selection_context=SkillSelectionContext(file_count=len(set(file_ids))),
         )
+        if activation.selection.model_used and conversation_id:
+            self._record_usage(
+                conversation_id,
+                task_id,
+                "small",
+                self._decision_llm,
+            )
+        active_skills = activation.skills or (activation.skill,)
         self._event(
             task_id,
             "skill_selected",
             f"调用 {activation.skill.name} Skill",
             {
                 "skill_name": activation.skill.name,
+                "skill_names": [skill.name for skill in active_skills],
                 "skill_version": activation.skill.version,
                 "model_profile": activation.skill.model_profile,
                 "used_fallback": activation.selection.used_fallback,
+                "selection_model_used": activation.selection.model_used,
+                "reason_summary": activation.selection.reason_summary,
+                "candidates": [
+                    {
+                        "name": candidate.name,
+                        "score": candidate.score,
+                        "rule_score": candidate.rule_score,
+                        "semantic_score": candidate.semantic_score,
+                    }
+                    for candidate in activation.selection.candidates
+                ],
+                "dag": [
+                    {
+                        "skill_name": step.skill_name,
+                        "depends_on": list(step.depends_on),
+                        "parallel_group": step.parallel_group,
+                    }
+                    for step in (activation.plan.steps if activation.plan else ())
+                ],
             },
         )
         return activation
+
+    async def _answer_scholarly_discovery(
+        self,
+        conversation_id: str,
+        task_id: str,
+        question: str,
+        runtime_mode: str,
+        history: dict[str, Any],
+        finish_plan: Any,
+    ) -> dict[str, Any]:
+        """Run the explicit external-metadata Skill without fabricating PDF evidence."""
+        tool_runtime = self._tool_runtime
+        if tool_runtime is None:
+            raise ProjectError(ErrorCode.UNAVAILABLE, "Scholarly Tool Runtime is unavailable")
+        activation = await self._activate_skill(
+            question,
+            [],
+            conversation_id,
+            task_id,
+            requested_skill="paper_discovery",
+        )
+        tool_names = (
+            "search_crossref",
+            "search_semantic_scholar",
+            "search_openalex",
+            "search_arxiv",
+        )
+        allowed_tools = frozenset(
+            tool.name
+            for skill in (
+                activation.skills or (activation.skill,)
+                if activation is not None
+                else ()
+            )
+            for tool in skill.tools
+        )
+        context = ToolContext(
+            workspace_id=LOCAL_WORKSPACE_ID,
+            user_id=LOCAL_USER_ID,
+            conversation_id=conversation_id,
+            task_id=task_id or "unpersisted-task",
+            trace_id=task_id or "unpersisted-task",
+            permissions=frozenset({"external:read"}),
+            allowed_tools=allowed_tools,
+        )
+        arguments = {"query": _scholarly_search_query(question), "limit": 5}
+
+        async def invoke(tool_name: str) -> tuple[str, dict[str, Any]]:
+            binding = await self._start_skill_tool(
+                activation,
+                tool_name,
+                arguments,
+                task_id,
+            )
+            self._event(
+                task_id,
+                "tool_started",
+                f"正在检索 {tool_name.removeprefix('search_')}",
+                {"tool_name": tool_name, "query": arguments["query"]},
+            )
+            result = await tool_runtime.invoke(
+                tool_name,
+                arguments,
+                context,
+                f"paper-discovery:{tool_name}:{hashlib.sha256(json.dumps(arguments, sort_keys=True).encode()).hexdigest()}",
+            )
+            if result.output is None:
+                raise ProjectError(
+                    ErrorCode.RESOURCE_EXHAUSTED,
+                    "Scholarly search result was stored out of line and cannot be rendered",
+                    {"tool_name": tool_name, "data_ref": result.data_ref},
+                )
+            await self._complete_skill_tool(binding, result.output, task_id)
+            self._event(
+                task_id,
+                "tool_completed",
+                f"{tool_name.removeprefix('search_')} 检索完成",
+                {"tool_name": tool_name, "result_count": len(result.output["works"])},
+            )
+            return tool_name, result.output
+
+        self._event(
+            task_id,
+            "step_started",
+            "并行检索外部学术元数据源",
+            {"stage": "paper_discovery", "tools": list(tool_names)},
+        )
+        outcomes = await asyncio.gather(
+            *(invoke(tool_name) for tool_name in tool_names),
+            return_exceptions=True,
+        )
+        outputs: list[dict[str, Any]] = []
+        failures: dict[str, str] = {}
+        for tool_name, outcome in zip(tool_names, outcomes, strict=True):
+            if isinstance(outcome, BaseException):
+                failures[tool_name] = str(outcome)
+                LOGGER.warning(
+                    "Scholarly source failed task_id=%s tool=%s error=%s",
+                    task_id,
+                    tool_name,
+                    outcome,
+                )
+                self._event(
+                    task_id,
+                    "tool_failed",
+                    f"{tool_name.removeprefix('search_')} 暂时不可用",
+                    {"tool_name": tool_name},
+                )
+            else:
+                outputs.append(outcome[1])
+        if not outputs:
+            finish_plan("failed")
+            raise ProjectError(
+                ErrorCode.UNAVAILABLE,
+                "All scholarly metadata sources are unavailable",
+                {"failed_tools": sorted(failures)},
+            )
+
+        works = _merge_scholarly_results(outputs)
+        answer = _render_scholarly_results(
+            str(arguments["query"]),
+            works,
+            failures,
+        )
+        await self._complete_skill(activation, task_id, answer)
+        message_id = self._save_answer(
+            conversation_id,
+            task_id,
+            answer,
+            [],
+            {
+                "used": False,
+                "decision": "scholarly_search",
+                "external_search_used": True,
+                "query": arguments["query"],
+                "sources": sorted(output["source"] for output in outputs),
+                "source_failures": sorted(failures),
+                "result_count": len(works),
+                "runtime_mode": runtime_mode,
+                "history_used": bool(history["source_message_ids"]),
+            },
+        )
+        await self._schedule_memory_summary(conversation_id, message_id, task_id)
+        self._event(
+            task_id,
+            "task_completed",
+            "外部论文检索完成",
+            {"message_id": message_id, "result_count": len(works)},
+        )
+        finish_plan()
+        return {"status": "completed", "message_id": message_id, "answer": answer}
 
     async def _start_skill_tool(
         self,
@@ -1953,8 +2180,23 @@ class PaperAgentProcessor:
             self._skill_runtime.validate_output(activation, answer)
             return answer
         except ValueError:
-            contract = activation.skill.output_contract
-            columns = "、".join(contract.required_columns) or "无固定列"
+            active_skills = activation.skills or (activation.skill,)
+            output_format = (
+                "markdown_table"
+                if any(
+                    skill.output_contract.format == "markdown_table"
+                    for skill in active_skills
+                )
+                else activation.skill.output_contract.format
+            )
+            required_columns = tuple(
+                dict.fromkeys(
+                    column
+                    for skill in active_skills
+                    for column in skill.output_contract.required_columns
+                )
+            )
+            columns = "、".join(required_columns) or "无固定列"
             self._event(
                 task_id,
                 "step_started",
@@ -1962,14 +2204,15 @@ class PaperAgentProcessor:
                 {
                     "stage": "skill_output_repair",
                     "skill_name": activation.skill.name,
-                    "output_format": contract.format,
+                    "skill_names": [skill.name for skill in active_skills],
+                    "output_format": output_format,
                 },
             )
             repair_prompt = (
                 f"{original_prompt}\n\n"
                 f"上一次回答：\n{answer}\n\n"
                 "上一次回答的结构不符合已激活 Skill 的输出契约。"
-                f"请保持事实、证据标签和结论不变，仅重写为 {contract.format}；"
+                f"请保持事实、证据标签和结论不变，仅重写为 {output_format}；"
                 f"必须包含的表头列为：{columns}。只输出修复后的完整回答。"
             )
             repaired = await self._generate_substantive_answer(
@@ -2653,6 +2896,138 @@ def _is_multi_agent_candidate(question: str, file_ids: list[str]) -> bool:
             "synthesize",
         )
     )
+
+
+def _is_scholarly_discovery_request(question: str) -> bool:
+    """Distinguish external paper discovery from retrieval inside uploaded PDFs."""
+    normalized = " ".join(question.casefold().split())
+    explicit_source = any(
+        source in normalized
+        for source in ("crossref", "semantic scholar", "openalex", "arxiv")
+    )
+    local_document_request = any(
+        marker in normalized
+        for marker in ("这篇论文", "本文", "已上传", "上传的", "附件", "pdf 中", "文档中")
+    )
+    chinese_discovery = bool(
+        re.search(r"(?:找|查找|搜索|检索|推荐).{0,48}(?:论文|文献|paper)", normalized)
+        or re.search(r"(?:论文|文献).{0,10}(?:推荐|搜索|检索)", normalized)
+    )
+    english_discovery = bool(
+        re.search(r"\b(?:find|search|recommend)\b.{0,32}\bpapers?\b", normalized)
+        or re.search(r"\bpapers?\s+(?:about|on|related to)\b", normalized)
+        or "literature search" in normalized
+    )
+    return explicit_source or ((chinese_discovery or english_discovery) and not local_document_request)
+
+
+def _scholarly_search_query(question: str) -> str:
+    """Remove conversational wrappers while retaining technical terms and constraints."""
+    query = " ".join(question.strip().split())
+    query = re.sub(
+        r"^(?:请|请你)?(?:帮我|给我)?(?:查找|找|搜索|检索|推荐)(?:一下|一些|几篇)?(?:关于)?",
+        "",
+        query,
+    )
+    query = re.sub(
+        r"^(?:please\s+)?(?:find|search(?:\s+for)?|recommend)\s+(?:some\s+)?papers?\s+(?:about|on)?\s*",
+        "",
+        query,
+        flags=re.I,
+    )
+    query = re.sub(r"(?:的)?(?:相关)?(?:论文|文献)[？?。.!]*$", "", query).strip()
+    return query if len(query) >= 2 else question.strip()
+
+
+def _merge_scholarly_results(outputs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge records by DOI first and normalized title second."""
+    merged: dict[str, dict[str, Any]] = {}
+    for output in outputs:
+        for raw_work in output.get("works", []):
+            work = dict(raw_work)
+            doi = str(work.get("doi") or "").casefold().strip()
+            title_key = re.sub(r"[^\w\u4e00-\u9fff]+", "", str(work.get("title") or "").casefold())
+            key = f"doi:{doi}" if doi else f"title:{title_key}"
+            if not title_key or key == "title:":
+                continue
+            source = str(work.get("source") or output.get("source") or "unknown")
+            existing = merged.get(key)
+            if existing is None:
+                work["sources"] = [source]
+                merged[key] = work
+                continue
+            existing["sources"] = sorted(set(existing.get("sources", [])) | {source})
+            for field in (
+                "external_id",
+                "abstract",
+                "authors",
+                "year",
+                "venue",
+                "doi",
+                "url",
+                "citation_count",
+                "open_access_url",
+            ):
+                if not existing.get(field) and work.get(field):
+                    existing[field] = work[field]
+            if (work.get("citation_count") or 0) > (existing.get("citation_count") or 0):
+                existing["citation_count"] = work["citation_count"]
+    return sorted(
+        merged.values(),
+        key=lambda work: (
+            work.get("citation_count") or -1,
+            work.get("year") or -1,
+        ),
+        reverse=True,
+    )
+
+
+def _render_scholarly_results(
+    query: str,
+    works: list[dict[str, Any]],
+    failures: dict[str, str],
+) -> str:
+    lines = [
+        "## 论文检索结果",
+        "",
+        f"检索主题：{query}",
+        "",
+        "以下内容来自外部学术元数据服务，已优先按 DOI、其次按标题去重；它们不是已核验的论文正文证据。",
+        "",
+    ]
+    if not works:
+        lines.append("本次未检索到匹配的论文。可以尝试缩短主题、补充英文关键词或调整年份范围。")
+    for index, work in enumerate(works[:20], 1):
+        title = str(work.get("title") or "未命名论文").replace("[", "\\[").replace("]", "\\]")
+        raw_link = str(work.get("open_access_url") or work.get("url") or "")
+        link = raw_link if re.fullmatch(r"https?://[^\s()<>\"]+", raw_link, flags=re.I) else None
+        heading = f"{index}. [{title}]({link})" if link else f"{index}. {title}"
+        lines.extend([heading, ""])
+        details = []
+        if work.get("year"):
+            details.append(str(work["year"]))
+        if work.get("venue"):
+            details.append(str(work["venue"]))
+        authors = work.get("authors") or []
+        if authors:
+            details.append(", ".join(str(author) for author in authors[:5]))
+        if details:
+            lines.extend([f"   - {' · '.join(details)}", ""])
+        if work.get("doi"):
+            lines.extend([f"   - DOI: `{work['doi']}`", ""])
+        lines.extend(
+            [
+                f"   - 元数据来源：{', '.join(work.get('sources') or [work.get('source', 'unknown')])}",
+                "",
+            ]
+        )
+    if failures:
+        failed_sources = ", ".join(
+            tool.removeprefix("search_") for tool in sorted(failures)
+        )
+        lines.extend([f"> 部分来源暂时不可用：{failed_sources}。其余结果仍可使用。", ""])
+    lines.append("如需对某篇论文做正文问答或引用核验，请上传或导入对应 PDF。")
+    return "\n".join(lines)
 
 
 def _hit_dict(index: int, hit: RetrievalHit) -> dict[str, Any]:

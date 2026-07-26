@@ -11,6 +11,8 @@ output_contract:
 trigger_conditions: [核验引用是否有效, 整理参考文献或引用映射]
 non_trigger_conditions: [生成不存在的引用, 回答不涉及引用的普通论文问题]
 routing_keywords: [引用, 参考文献, citation]
+routing_policy:
+  runs_after: [claim_extractor, claim_verifier, summary_generator, comparison_analyzer, literature_synthesizer]
 clarification_conditions: [缺少完成任务所需的论文、范围或目标]
 termination_conditions: [已返回通过结构化契约校验的结果或明确失败原因]
 acceptance_rules: [所有事实性内容保留证据或来源标识, 不得调用 Skill tools 目录以外的 Tool 或虚构论文内容]

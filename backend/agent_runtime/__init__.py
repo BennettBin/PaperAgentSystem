@@ -6,6 +6,11 @@ from backend.agent_runtime.dynamic_executor import DynamicPlanExecutor
 from backend.agent_runtime.executor import ExecutionBudget, PlanExecutor
 from backend.agent_runtime.planner import ExecutionPlan, Planner
 from backend.agent_runtime.requirement_clarifier import RequirementClarifier
+from backend.agent_runtime.skill_planner import (
+    DeterministicSkillPlanner,
+    SkillExecutionPlan,
+    SkillPlanBudget,
+)
 from backend.agent_runtime.skill_selector import SkillSelector
 from backend.agent_runtime.strategy_replanner import StrategyReplanner
 from backend.agent_runtime.verifier import Verifier
@@ -19,6 +24,9 @@ __all__ = [
     "PlanExecutor",
     "Planner",
     "RequirementClarifier",
+    "DeterministicSkillPlanner",
+    "SkillExecutionPlan",
+    "SkillPlanBudget",
     "SkillSelector",
     "StrategyReplanner",
     "Verifier",

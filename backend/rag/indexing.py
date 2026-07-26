@@ -8,7 +8,7 @@ from uuid import uuid4
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.core.ports.llm_client import EmbeddingClient
+from backend.core.ports.llm_client import EmbeddingClient, EmbeddingProfile
 from backend.document_processing.schema import (
     BoundingBox,
     DocumentSection,
@@ -22,7 +22,7 @@ from backend.infrastructure.postgres.models import (
 )
 from backend.rag.schema import DocumentChunk
 
-CURRENT_INDEX_VERSION = 3
+CURRENT_INDEX_VERSION = 4
 CURRENT_SECTION_SCHEMA_VERSION = 1
 
 
@@ -126,7 +126,7 @@ class DocumentIndexer:
         session_factory: sessionmaker[Session],
         embeddings: EmbeddingClient,
         *,
-        embedding_model: str,
+        embedding_model: str | None = None,
         chunker: StructureAwareChunker | None = None,
     ) -> None:
         self._sessions = session_factory
@@ -160,7 +160,7 @@ class DocumentIndexer:
                 and _stored_index_is_current(
                     session,
                     document,
-                    embedding_model=self._embedding_model,
+                    embedding_fingerprint=self._fingerprint(),
                 )
             )
 
@@ -184,7 +184,7 @@ class DocumentIndexer:
                 if _stored_index_is_current(
                     session,
                     existing,
-                    embedding_model=self._embedding_model,
+                    embedding_fingerprint=self._fingerprint(),
                 ):
                     return _load_chunks(session, existing.id)
                 session.execute(
@@ -208,11 +208,25 @@ class DocumentIndexer:
         )
         texts = [chunk.text for chunk in chunks]
         vectors = await self._embeddings.embed_batch(texts)
+        if len(vectors) != len(chunks):
+            raise RuntimeError("Embedding provider returned an unexpected vector count")
+        profile = self._profile()
+        fingerprint = self._fingerprint()
+        strict_dimension = getattr(self._embeddings, "profile", None) is not None
         indexed = [
             chunk.model_copy(
                 update={
-                    "embedding": _pad(vector),
-                    "embedding_model": self._embedding_model,
+                    "embedding": _coerce_vector(
+                        vector, profile.dimension, strict=strict_dimension
+                    ),
+                    "embedding_model": profile.model_name,
+                    "embedding_provider": profile.provider,
+                    "embedding_version": profile.model_version,
+                    "embedding_dimension": profile.dimension,
+                    "embedding_max_length": profile.max_length,
+                    "embedding_normalized": profile.normalized,
+                    "embedding_fingerprint": fingerprint,
+                    "embedding_status": "ready",
                 }
             )
             for chunk, vector in zip(chunks, vectors)
@@ -232,6 +246,15 @@ class DocumentIndexer:
                         "filename": document.filename,
                         "index_version": CURRENT_INDEX_VERSION,
                         "section_schema_version": CURRENT_SECTION_SCHEMA_VERSION,
+                        "embedding_profile": {
+                            "provider": profile.provider,
+                            "model_name": profile.model_name,
+                            "model_version": profile.model_version,
+                            "dimension": profile.dimension,
+                            "max_length": profile.max_length,
+                            "normalized": profile.normalized,
+                            "fingerprint": fingerprint,
+                        },
                         "page_layouts": [
                             {
                                 "page": page.page_number,
@@ -261,6 +284,29 @@ class DocumentIndexer:
                 session.add(_chunk_model(chunk))
             session.commit()
         return indexed
+
+    def _profile(self) -> EmbeddingProfile:
+        profile = getattr(self._embeddings, "profile", None)
+        if isinstance(profile, EmbeddingProfile):
+            return profile
+        if self._embedding_model is None:
+            raise ValueError("Versioned embedding metadata is required for indexing")
+        return EmbeddingProfile(
+            provider="legacy",
+            model_name=self._embedding_model,
+            model_version="unknown",
+            dimension=1024,
+            max_length=0,
+            normalized=False,
+        )
+
+    def _fingerprint(self) -> str:
+        profile = getattr(self._embeddings, "profile", None)
+        if isinstance(profile, EmbeddingProfile):
+            return profile.fingerprint
+        if self._embedding_model is None:
+            raise ValueError("Versioned embedding metadata is required for indexing")
+        return self._embedding_model
 
     def delete(self, workspace_id: str, file_id: str) -> None:
         with self._sessions() as session:
@@ -324,7 +370,7 @@ def _stored_index_is_current(
     session: Session,
     document: ParsedDocumentModel,
     *,
-    embedding_model: str,
+    embedding_fingerprint: str,
 ) -> bool:
     metadata = document.metadata_json or {}
     if metadata.get("index_version") != CURRENT_INDEX_VERSION:
@@ -340,7 +386,9 @@ def _stored_index_is_current(
     return bool(
         chunks
         and all(
-            chunk.embedding_model == embedding_model
+            (chunk.embedding_fingerprint or chunk.embedding_model)
+            == embedding_fingerprint
+            and chunk.embedding_status == "ready"
             and chunk.section_id != "unknown"
             for chunk in chunks
         )
@@ -383,7 +431,13 @@ def _chunk_from_blocks(
     )
 
 
-def _pad(vector: list[float], dimension: int = 1024) -> list[float]:
+def _coerce_vector(
+    vector: list[float], dimension: int = 1024, *, strict: bool
+) -> list[float]:
+    if strict and len(vector) != dimension:
+        raise RuntimeError(
+            f"Embedding provider returned {len(vector)} dimensions; expected {dimension}"
+        )
     return (vector + [0.0] * dimension)[:dimension]
 
 
@@ -414,6 +468,13 @@ def _chunk_model(chunk: DocumentChunk) -> DocumentChunkModel:
         next_chunk_id=chunk.next_chunk_id,
         embedding=chunk.embedding,
         embedding_model=chunk.embedding_model,
+        embedding_provider=chunk.embedding_provider,
+        embedding_version=chunk.embedding_version,
+        embedding_dimension=chunk.embedding_dimension,
+        embedding_max_length=chunk.embedding_max_length,
+        embedding_normalized=chunk.embedding_normalized,
+        embedding_fingerprint=chunk.embedding_fingerprint,
+        embedding_status=chunk.embedding_status,
         searchable_text=f"{' / '.join(chunk.section_path)}\n{chunk.text}",
     )
 
@@ -453,6 +514,13 @@ def _load_chunks(session: Session, document_id: str) -> list[DocumentChunk]:
             next_chunk_id=model.next_chunk_id,
             embedding=model.embedding,
             embedding_model=model.embedding_model,
+            embedding_provider=model.embedding_provider,
+            embedding_version=model.embedding_version,
+            embedding_dimension=model.embedding_dimension,
+            embedding_max_length=model.embedding_max_length,
+            embedding_normalized=model.embedding_normalized,
+            embedding_fingerprint=model.embedding_fingerprint,
+            embedding_status=model.embedding_status,
         )
         for model in models
     ]

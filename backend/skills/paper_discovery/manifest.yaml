@@ -1,0 +1,20 @@
+name: paper_discovery
+version: 1.0.0
+description: 按研究主题从多个学术元数据源检索论文，合并并去重候选结果。
+model_profile: development
+input_contract:
+  format: object
+  schema: input.schema.json
+output_contract:
+  format: markdown
+  min_length: 8
+  required_markers: ["## 论文检索结果"]
+trigger_conditions: [按主题查找论文或文献, 从外部学术数据库发现候选论文]
+non_trigger_conditions: [检索已上传论文正文中的证据, 回答某篇已选论文的具体内容]
+routing_keywords: [找论文, 搜索论文, 检索论文, 相关文献, 文献检索, papers about, literature search, Crossref, Semantic Scholar, OpenAlex, arXiv]
+clarification_conditions: [没有提供可用于检索的研究主题]
+termination_conditions: [已返回去重后的论文元数据列表或明确说明未检索到结果]
+acceptance_rules: [每条结果保留元数据来源和可访问链接, 不得把外部摘要当作已核验的论文正文证据, 单个来源失败时允许其余来源继续]
+routing_policy:
+  min_files: 0
+  exclusive: true

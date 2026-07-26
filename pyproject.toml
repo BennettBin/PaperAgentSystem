@@ -19,6 +19,9 @@ paperagent-eval = "evaluation.cli:main"
 paperagent-experiment-smoke = "evaluation.experiment_cli:smoke_main"
 paperagent-experiment-real = "evaluation.experiment_cli:real_main"
 paperagent-l05-baselines = "evaluation.l05_cli:main"
+paperagent-reindex = "backend.rag.reindex:main"
+paperagent-embedding-benchmark = "backend.rag.benchmark_embeddings:main"
+paperagent-embedding-eval = "backend.rag.evaluate_embeddings:main"
 
 dependencies = [
     "fastapi>=0.104.0",
@@ -40,7 +43,11 @@ dependencies = [
     "opentelemetry-exporter-otlp>=0.42b0",
     "python-multipart>=0.0.6",
     "aiofiles>=23.2.0",
+    "httpx>=0.27.0,<1.0",
     "pyyaml>=6.0.0",
+    "torch>=2.2.0",
+    "sentence-transformers>=3.0.0",
+    "psutil>=5.9.0",
 ]
 
 [project.optional-dependencies]

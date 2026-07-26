@@ -99,6 +99,7 @@ class ShortTermMemoryService:
                 conversation_id=str(conversation_id),
                 summary=summary,
                 embedding=embedding,
+                embedding_fingerprint=_embedding_fingerprint(self.embeddings),
                 source_message_ids=source_ids,
                 source_start_at=messages[0].created_at,
                 source_end_at=messages[-1].created_at,
@@ -129,7 +130,13 @@ class ShortTermMemoryService:
                 lexical = len(query_terms & set(_terms(segment.summary))) / max(
                     1, len(query_terms)
                 )
-                score = lexical * 2 + _cosine(query_embedding, segment.embedding)
+                vector_score = (
+                    _cosine(query_embedding, segment.embedding)
+                    if segment.embedding_fingerprint
+                    == _embedding_fingerprint(self.embeddings)
+                    else 0.0
+                )
+                score = lexical * 2 + vector_score
                 ranked.append((score, segment))
             selected = sorted(ranked, key=lambda item: -item[0])[:top_k]
             results = []
@@ -189,3 +196,8 @@ def _cosine(left: list[float], right: list[float]) -> float:
     a, b = left + [0.0] * (size - len(left)), right + [0.0] * (size - len(right))
     denominator = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(x * x for x in b))
     return 0 if denominator == 0 else sum(x * y for x, y in zip(a, b)) / denominator
+
+
+def _embedding_fingerprint(embeddings: EmbeddingClient) -> str:
+    profile = getattr(embeddings, "profile", None)
+    return profile.fingerprint if profile is not None else ""

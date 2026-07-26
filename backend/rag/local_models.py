@@ -7,7 +7,7 @@ import math
 import re
 from collections import Counter
 
-from backend.core.ports.llm_client import EmbeddingClient, RerankerClient
+from backend.core.ports.llm_client import EmbeddingClient, EmbeddingProfile, RerankerClient
 
 
 def retrieval_terms(value: str) -> list[str]:
@@ -21,11 +21,22 @@ def retrieval_terms(value: str) -> list[str]:
     return [*latin, *cjk]
 
 
-class MultilingualHashEmbeddingClient(EmbeddingClient):
+class HashEmbedding(EmbeddingClient):
     """Stable hashing-vector baseline that handles Chinese and English terms."""
 
     def __init__(self, dimension: int = 1024) -> None:
         self._dimension = dimension
+
+    @property
+    def profile(self) -> EmbeddingProfile:
+        return EmbeddingProfile(
+            provider="hash",
+            model_name="multilingual-hash",
+            model_version="v1",
+            dimension=self._dimension,
+            max_length=0,
+            normalized=True,
+        )
 
     async def embed(self, text: str) -> list[float]:
         vector = [0.0] * self._dimension
@@ -40,6 +51,10 @@ class MultilingualHashEmbeddingClient(EmbeddingClient):
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         return [await self.embed(text) for text in texts]
+
+
+# Backward-compatible production and test import.
+MultilingualHashEmbeddingClient = HashEmbedding
 
 
 class MultilingualLexicalReranker(RerankerClient):

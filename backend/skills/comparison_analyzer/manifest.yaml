@@ -12,6 +12,8 @@ output_contract:
 trigger_conditions: [比较多篇论文的方法、数据或结果, 生成结构化对比表]
 non_trigger_conditions: [只阅读一篇论文, 跨文献叙事综述]
 routing_keywords: [比较, 对比, compare]
+routing_policy:
+  min_files: 2
 clarification_conditions: [缺少完成任务所需的论文、范围或目标]
 termination_conditions: [已返回通过结构化契约校验的结果或明确失败原因]
 acceptance_rules: [所有事实性内容保留证据或来源标识, 不得调用 Skill tools 目录以外的 Tool 或虚构论文内容]

@@ -11,6 +11,9 @@ output_contract:
 trigger_conditions: [综合多篇文献, 撰写有证据映射的文献综述]
 non_trigger_conditions: [只比较几个字段, 只总结单篇论文]
 routing_keywords: [综合, 综述, synthesi]
+routing_policy:
+  min_files: 2
+  runs_after: [summary_generator, methodology_reviewer, limitation_analyst, insight_extractor]
 clarification_conditions: [缺少完成任务所需的论文、范围或目标]
 termination_conditions: [已返回通过结构化契约校验的结果或明确失败原因]
 acceptance_rules: [所有事实性内容保留证据或来源标识, 不得调用 Skill tools 目录以外的 Tool 或虚构论文内容]

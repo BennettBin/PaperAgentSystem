@@ -13,10 +13,14 @@ TOOLS = {
     "save_artifact",
     "build_literature_review",
     "extract_paper_card",
+    "search_crossref",
+    "search_semantic_scholar",
+    "search_openalex",
+    "search_arxiv",
 }
 
 
-def test_all_eleven_skill_manifests_load():
+def test_all_twelve_skill_manifests_load():
     loader = SkillManifestLoader(
         ROOT / "backend" / "skills",
         registered_tools=TOOLS,
@@ -24,8 +28,8 @@ def test_all_eleven_skill_manifests_load():
     )
     loaded = loader.discover()
 
-    assert len(loaded) == 11
-    assert len({skill.name for skill in loaded}) == 11
+    assert len(loaded) == 12
+    assert len({skill.name for skill in loaded}) == 12
     assert all(skill.input_contract.format == "object" for skill in loaded)
     assert {skill.output_contract.format for skill in loaded} == {
         "object", "markdown", "markdown_table"

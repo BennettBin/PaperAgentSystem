@@ -16,6 +16,10 @@ REAL_TOOLS = {
     "build_comparison_table",
     "build_literature_review",
     "save_artifact",
+    "search_crossref",
+    "search_semantic_scholar",
+    "search_openalex",
+    "search_arxiv",
 }
 
 

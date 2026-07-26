@@ -41,6 +41,8 @@ def _skill_runtime() -> tuple[SkillRuntime, FakeTraceWriter]:
                 "build_comparison_table",
                 "save_artifact",
                 "build_literature_review", "extract_paper_card",
+                "search_crossref", "search_semantic_scholar",
+                "search_openalex", "search_arxiv",
             },
             available_profiles={"development", "paper_reader_v1"},
         )

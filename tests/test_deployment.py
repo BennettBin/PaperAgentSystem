@@ -78,8 +78,52 @@ def test_windows_startup_probe_does_not_abort_when_docker_engine_is_stopped() ->
     assert "if (-not (Test-DockerEngine))" in script
     assert "if (-not (docker info" not in script
     assert '$ErrorActionPreference = "SilentlyContinue"' in script
-    assert "if (-not $NoBuild)" in script
+    assert "if ($Build)" in script
     assert 'Test-HttpEndpoint "http://127.0.0.1:8080/health/ready"' in script
+
+
+def test_python_image_caches_dependencies_and_bge_before_source_copy() -> None:
+    dockerfile = (ROOT / "infrastructure" / "docker" / "Dockerfile.python").read_text(
+        encoding="utf-8"
+    )
+
+    dependency_install = "RUN pip install --no-cache-dir torch sentence-transformers psutil"
+    model_prefetch = "SentenceTransformer("
+    source_copy = "COPY . ."
+    assert "ARG EMBEDDING_MODEL_NAME=BAAI/bge-m3" in dockerfile
+    assert "ARG EMBEDDING_MODEL_VERSION=main" in dockerfile
+    assert "HF_HOME=/opt/huggingface" in dockerfile
+    assert "SENTENCE_TRANSFORMERS_HOME=/opt/huggingface/sentence-transformers" in dockerfile
+    assert dockerfile.index(dependency_install) < dockerfile.index(source_copy)
+    assert dockerfile.index(model_prefetch) < dockerfile.index(source_copy)
+
+
+def test_worker_uses_the_bge_cache_baked_into_the_python_image() -> None:
+    payload = yaml.safe_load(
+        (ROOT / "infrastructure" / "docker" / "compose.yaml").read_text(encoding="utf-8")
+    )
+    python_build = payload["x-python-service"]["build"]
+    worker_environment = payload["services"]["worker"]["environment"]
+
+    assert python_build["args"]["EMBEDDING_MODEL_NAME"] == "${EMBEDDING_MODEL_NAME:-BAAI/bge-m3}"
+    assert python_build["args"]["EMBEDDING_MODEL_VERSION"] == "${EMBEDDING_MODEL_VERSION:-main}"
+    assert worker_environment["HF_HOME"] == "/opt/huggingface"
+    assert worker_environment["SENTENCE_TRANSFORMERS_HOME"] == (
+        "/opt/huggingface/sentence-transformers"
+    )
+    assert worker_environment["EMBEDDING_MODEL_NAME"] == (
+        "${EMBEDDING_MODEL_NAME:-BAAI/bge-m3}"
+    )
+
+
+def test_windows_cmd_defaults_to_cached_start_and_forwards_explicit_build() -> None:
+    launcher = (ROOT / "start-paperagent.cmd").read_text(encoding="utf-8")
+    script = (ROOT / "scripts" / "start-paperagent.ps1").read_text(encoding="utf-8")
+
+    assert 'start-paperagent.ps1" %*' in launcher
+    assert "[switch]$Build" in script
+    assert "[switch]$NoBuild" not in script
+    assert 'if ($Build)' in script
 
 
 def test_windows_startup_preserves_data_and_syncs_persisted_database_password() -> None:

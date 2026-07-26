@@ -1,0 +1,11 @@
+[
+  {
+    "input": {
+      "request": "帮我找几篇关于 retrieval augmented generation 的论文",
+      "file_ids": [],
+      "conversation_id": "conversation-001",
+      "parameters": {}
+    },
+    "output": "## 论文检索结果\n\n以下候选项来自外部学术元数据服务，并已按 DOI 或标题去重。"
+  }
+]

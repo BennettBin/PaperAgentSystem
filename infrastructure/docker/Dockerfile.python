@@ -1,13 +1,23 @@
 FROM python:3.12-slim
 
+ARG EMBEDDING_MODEL_NAME=BAAI/bge-m3
+ARG EMBEDDING_MODEL_VERSION=main
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    HF_HOME=/opt/huggingface \
+    SENTENCE_TRANSFORMERS_HOME=/opt/huggingface/sentence-transformers \
+    EMBEDDING_MODEL_NAME=${EMBEDDING_MODEL_NAME} \
+    EMBEDDING_MODEL_VERSION=${EMBEDDING_MODEL_VERSION}
 
 WORKDIR /app
-COPY . .
 RUN pip install --no-cache-dir \
     fastapi uvicorn pydantic pydantic-settings sqlalchemy alembic "psycopg[binary]" \
     pgvector redis celery minio pymupdf langfuse opentelemetry-api \
     opentelemetry-sdk opentelemetry-exporter-otlp python-multipart aiofiles pyyaml
+RUN pip install --no-cache-dir torch sentence-transformers psutil
+RUN python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['EMBEDDING_MODEL_NAME'], revision=os.environ['EMBEDDING_MODEL_VERSION'], device='cpu')"
+
+COPY . .
 
 EXPOSE 8000

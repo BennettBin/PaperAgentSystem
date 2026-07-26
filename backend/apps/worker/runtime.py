@@ -44,6 +44,12 @@ from backend.infrastructure.postgres.blackboard import (
 from backend.infrastructure.postgres.database import Database
 from backend.infrastructure.postgres.schema import ensure_database_schema
 from backend.infrastructure.redis.queue import RedisTaskQueue
+from backend.infrastructure.scholarly import (
+    ArxivSearchProvider,
+    CrossrefSearchProvider,
+    OpenAlexSearchProvider,
+    SemanticScholarSearchProvider,
+)
 from backend.infrastructure.sse.service import TaskEventStore
 from backend.memory import (
     ConversationMemoryCoordinator,
@@ -57,10 +63,8 @@ from backend.models.runtime import (
 )
 from backend.observability.task_audit_log import JsonlTaskAuditLogWriter
 from backend.observability.tracing import SqlAlchemyTraceWriter
-from backend.rag.local_models import (
-    MultilingualHashEmbeddingClient,
-    MultilingualLexicalReranker,
-)
+from backend.rag.embeddings import build_embedding_client
+from backend.rag.local_models import MultilingualLexicalReranker
 from backend.rag.retrieval import HybridRetriever
 from backend.skills.loader import SkillManifestLoader, SkillRegistry
 from backend.skills.runtime import SkillRuntime
@@ -77,6 +81,7 @@ from backend.tool_runtime.runtime import (
     ToolRegistry,
     ToolRuntime,
 )
+from backend.tool_runtime.scholarly_search_tools import register_scholarly_search_tools
 
 LOGGER = logging.getLogger(__name__)
 
@@ -213,15 +218,23 @@ def main() -> None:
                 "parse_document", "get_document_section", "search_document",
                 "build_comparison_table", "save_artifact",
                 "build_literature_review", "extract_paper_card",
+                "search_crossref", "search_semantic_scholar",
+                "search_openalex", "search_arxiv",
             },
             available_profiles={"development", "paper_reader_v1"},
         )
     )
+    embeddings = build_embedding_client(settings)
     skill_runtime = SkillRuntime(
-        SkillSelector(skill_registry, fallback_skill="paper_reader"),
+        SkillSelector(
+            skill_registry,
+            fallback_skill="paper_reader",
+            decision_llm=decision_llm,
+            embeddings=embeddings,
+            top_k=5,
+        ),
         skill_registry,
     )
-    embeddings = MultilingualHashEmbeddingClient()
     reranker = MultilingualLexicalReranker()
     retriever = HybridRetriever(database.session_factory, embeddings, reranker)
     role_registry = RoleProtocolRegistry.load(
@@ -242,6 +255,25 @@ def main() -> None:
 
     tool_registry = ToolRegistry()
     tool_registry.register(SearchDocumentTool(retriever))
+    register_scholarly_search_tools(
+        tool_registry,
+        crossref=CrossrefSearchProvider(
+            mailto=settings.crossref_mailto,
+            timeout_seconds=settings.scholarly_api_timeout_seconds,
+        ),
+        semantic_scholar=SemanticScholarSearchProvider(
+            api_key=settings.semantic_scholar_api_key,
+            timeout_seconds=settings.scholarly_api_timeout_seconds,
+        ),
+        openalex=OpenAlexSearchProvider(
+            api_key=settings.openalex_api_key,
+            mailto=settings.openalex_mailto,
+            timeout_seconds=settings.scholarly_api_timeout_seconds,
+        ),
+        arxiv=ArxivSearchProvider(
+            timeout_seconds=settings.scholarly_api_timeout_seconds,
+        ),
+    )
     tool_runtime = ToolRuntime(
         tool_registry,
         idempotency_store=InMemoryIdempotencyStore(),
@@ -275,7 +307,8 @@ def main() -> None:
     )
     planner_skill_names = sorted(skill.name for skill in skill_registry.list_all())
     planner_tool_schemas: dict[str, dict[str, object]] = {
-        "search_document": SearchDocumentTool.input_model.model_json_schema(),
+        tool.name: tool.input_model.model_json_schema()
+        for tool in tool_registry.list_all()
     }
     planner_registry = RegistrySnapshot(
         skills=set(planner_skill_names),
@@ -329,6 +362,7 @@ def main() -> None:
         short_term_memory=short_term_memory,
         long_term_memory=long_term_memory,
         memory_task_queue=queue,
+        tool_runtime=tool_runtime,
     )
     register_worker_handlers(
         queue,

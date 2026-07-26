@@ -329,6 +329,7 @@ class WorkspaceSearchModel(Base, LifecycleMixin, VersionedMixin):
     extracted_text: Mapped[str] = mapped_column(Text)
     summary: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float]] = mapped_column(JSON, default=list)
+    embedding_fingerprint: Mapped[str] = mapped_column(String(512), default="")
     source_type: Mapped[str] = mapped_column(String(64))
     source_id: Mapped[str | None] = mapped_column(String(64))
 
@@ -418,6 +419,13 @@ class DocumentChunkModel(Base, LifecycleMixin, VersionedMixin):
     next_chunk_id: Mapped[str | None] = mapped_column(String(64))
     embedding: Mapped[list[float]] = mapped_column(EmbeddingType())
     embedding_model: Mapped[str] = mapped_column(String(200))
+    embedding_provider: Mapped[str] = mapped_column(String(32), default="legacy")
+    embedding_version: Mapped[str] = mapped_column(String(200), default="unknown")
+    embedding_dimension: Mapped[int] = mapped_column(Integer, default=1024)
+    embedding_max_length: Mapped[int] = mapped_column(Integer, default=0)
+    embedding_normalized: Mapped[bool] = mapped_column(Boolean, default=True)
+    embedding_fingerprint: Mapped[str] = mapped_column(String(512), default="")
+    embedding_status: Mapped[str] = mapped_column(String(32), default="ready")
     searchable_text: Mapped[str] = mapped_column(Text)
     __table_args__ = (
         Index("ix_document_chunks_workspace_file", "workspace_id", "file_id"),
@@ -431,6 +439,7 @@ class MemorySegmentModel(Base, LifecycleMixin, VersionedMixin):
     conversation_id: Mapped[str] = mapped_column(String(36), index=True)
     summary: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float]] = mapped_column(JSON, default=list)
+    embedding_fingerprint: Mapped[str] = mapped_column(String(512), default="")
     source_message_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
     source_start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     source_end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -443,6 +452,7 @@ class ConversationSummaryModel(Base, LifecycleMixin, VersionedMixin):
     workspace_id: Mapped[str] = mapped_column(String(36), index=True)
     summary: Mapped[str] = mapped_column(Text)
     embedding: Mapped[list[float]] = mapped_column(JSON, default=list)
+    embedding_fingerprint: Mapped[str] = mapped_column(String(512), default="")
     source_message_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
     invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

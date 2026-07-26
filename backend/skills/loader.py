@@ -26,6 +26,26 @@ class SkillManifestModel(BaseModel):
     clarification_conditions: list[str] = Field(min_length=1)
     termination_conditions: list[str] = Field(min_length=1)
     acceptance_rules: list[str] = Field(min_length=1)
+    routing_policy: "SkillRoutingPolicyModel" = Field(
+        default_factory=lambda: SkillRoutingPolicyModel()
+    )
+
+
+class SkillRoutingPolicyModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    min_files: int = Field(default=0, ge=0)
+    max_files: int | None = Field(default=None, ge=1)
+    exclusive: bool = False
+    runs_after: list[str] = Field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class SkillRoutingPolicy:
+    min_files: int
+    max_files: int | None
+    exclusive: bool
+    runs_after: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -45,6 +65,7 @@ class LoadedSkill:
     clarification_conditions: tuple[str, ...]
     termination_conditions: tuple[str, ...]
     acceptance_rules: tuple[str, ...]
+    routing_policy: SkillRoutingPolicy
 
     @property
     def allowed_tools(self) -> tuple[str, ...]:
@@ -183,6 +204,12 @@ class SkillManifestLoader:
             clarification_conditions=tuple(manifest.clarification_conditions),
             termination_conditions=tuple(manifest.termination_conditions),
             acceptance_rules=tuple(manifest.acceptance_rules),
+            routing_policy=SkillRoutingPolicy(
+                min_files=manifest.routing_policy.min_files,
+                max_files=manifest.routing_policy.max_files,
+                exclusive=manifest.routing_policy.exclusive,
+                runs_after=tuple(manifest.routing_policy.runs_after),
+            ),
         )
 
 

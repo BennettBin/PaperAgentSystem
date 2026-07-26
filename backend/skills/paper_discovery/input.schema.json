@@ -1,0 +1,1 @@
+{"type":"object","additionalProperties":false,"required":["request","file_ids","conversation_id","parameters"],"properties":{"request":{"type":"string","minLength":2},"file_ids":{"type":"array","items":{"type":"string"}},"conversation_id":{"type":["string","null"]},"parameters":{"type":"object"}}}

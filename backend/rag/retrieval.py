@@ -195,6 +195,7 @@ class HybridRetriever:
         rewrites = await self._rewriter.rewrite(query)
         query_text = " ".join([*rewrites, section_hint or ""]).strip()
         query_vector = _pad(await self._embeddings.embed(query_text))
+        embedding_fingerprint = _embedding_fingerprint(self._embeddings)
         with self._sessions() as session:
             models = self._load_filtered(session, workspace_id, file_ids)
             models = self._sections.scope(models, section_hint)
@@ -205,6 +206,7 @@ class HybridRetriever:
             models,
             limit=limit,
             expand_section=expand_section,
+            embedding_fingerprint=embedding_fingerprint,
         )
 
     async def search_section(
@@ -275,6 +277,7 @@ class HybridRetriever:
         rewrites = await self._rewriter.rewrite(query)
         query_text = " ".join(rewrites).strip()
         query_vector = _pad(await self._embeddings.embed(query_text))
+        embedding_fingerprint = _embedding_fingerprint(self._embeddings)
         qa_hits = await self._rank_models(
             query,
             query_text,
@@ -282,6 +285,7 @@ class HybridRetriever:
             chunks,
             limit=limit,
             expand_section=False,
+            embedding_fingerprint=embedding_fingerprint,
         )
         qa_hits = _expand_adjacent_context(
             chunks,
@@ -307,10 +311,21 @@ class HybridRetriever:
         *,
         limit: int | None,
         expand_section: bool,
+        embedding_fingerprint: str | None,
     ) -> list[RetrievalHit]:
         exact_rank = self._exact.retrieve(query_text, models, self._candidate_limit)
+        vector_models = (
+            models
+            if embedding_fingerprint is None
+            else [
+                model
+                for model in models
+                if model.embedding_status == "ready"
+                and model.embedding_fingerprint == embedding_fingerprint
+            ]
+        )
         vector_rank = self._vectors.retrieve(
-            query_vector, models, self._candidate_limit
+            query_vector, vector_models, self._candidate_limit
         )
         bm25_rank = self._bm25.retrieve(query_text, models, self._candidate_limit)
         scores = self._merger.merge([exact_rank, vector_rank, bm25_rank])
@@ -430,6 +445,11 @@ def _cosine(left: list[float], right: list[float]) -> float:
 
 def _pad(vector: list[float], dimension: int = 1024) -> list[float]:
     return (vector + [0.0] * dimension)[:dimension]
+
+
+def _embedding_fingerprint(embeddings: EmbeddingClient) -> str | None:
+    profile = getattr(embeddings, "profile", None)
+    return profile.fingerprint if profile is not None else None
 
 
 def _section_record(model: DocumentSectionModel) -> SectionRecord:

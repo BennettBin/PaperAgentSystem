@@ -18,7 +18,7 @@ PaperAgentSystem 将版式感知 PDF 解析、混合检索、对话记忆、结�
 - **证据优先 RAG**：组合精确匹配、章节检索、向量检索、BM25、RRF 和重排，生成带页码与证据片段的回答。
 - **可区分的多论文对比**：对比任务按文件分别保留证据配额，提示上下文使用论文文件名标识来源，避免全局 Top-K 被单篇论文占满或把两篇论文混为一篇。
 - **多轮会话记忆**：回答完成后异步更新短期 `MemorySegment` 与长期 `ConversationSummary`；当前会话按相关性回读原始消息，只有用户明确引用历史会话时才扩大到跨会话检索。
-- **结构化 Skill/Tool 链路**：Skill 通过 Manifest 声明触发规则、输入输出契约和可调用 Tool，运行时统一执行参数校验、权限控制和结果检查。
+- **混合 Skill/Tool 链路**：先做文件数与权限硬过滤，再用规则分 + Embedding 语义分召回 Top-K，由 1.7B 小模型在候选内结构化选择 0～N 个 Skill；确定性 Planner 负责 DAG、并行组、权限和预算校验，运行时继续执行 Tool 与输出契约检查。
 - **答案核验**：对 Claim、数字、引用和证据关系进行验证；证据不足时明确说明限制。
 - **任务进度监控**：实时展示问题判断、Skill 激活、证据检索、回答生成和 Verifier 核验等公开阶段。
 - **本地化部署**：支持 Ollama、本地模型、PostgreSQL、Redis、MinIO 和 Docker Compose，论文数据无需发送到第三方模型服务。
@@ -135,7 +135,17 @@ Windows 用户也可以直接运行：
 start-paperagent.cmd
 ```
 
-停止时运行 `stop-paperagent.cmd`。该方式会使用 Docker 构建缓存同步当前代码、复用持久卷，并在服务健康后打开 Web 页面。
+停止时运行 `stop-paperagent.cmd`。默认启动会直接复用已有 Docker 镜像和持久卷，不再每次强制
+执行镜像构建。首次安装或修改 Dockerfile、Python 依赖、BGE-M3 版本后，显式运行：
+
+```text
+start-paperagent.cmd -Build
+```
+
+Python 镜像在构建阶段安装 PyTorch/CUDA 和 Sentence Transformers，并把配置的 BGE-M3 快照
+预下载到 `/opt/huggingface`。依赖层和模型层位于源码 `COPY` 之前，因此普通代码修改不会使这些
+大文件的构建缓存失效；新 Worker 容器直接读取镜像内缓存。变更 `EMBEDDING_MODEL_NAME` 或
+`EMBEDDING_MODEL_VERSION` 后需要执行一次 `-Build`，使新模型进入镜像。
 
 ## 基本使用
 
@@ -199,10 +209,20 @@ skill-name/
 运行时链路为：
 
 ```text
-SkillManifestLoader → SkillRegistry → SkillSelector → SkillRuntime → ToolRuntime
+硬规则过滤 → 规则/语义 Top-K → 1.7B 结构化多选
+→ 确定性 Skill DAG Planner → Registry/权限/预算校验
+→ SkillRuntime → ToolRuntime → 输出契约/引用核验 → 有限重规划
 ```
 
-Tool 参数与返回结果由 Pydantic 模型校验，非法调用会被拒绝并写入 Trace。
+Skill 描述向量在 Worker 生命周期内批量计算并缓存；Embedding 或小模型异常时退回规则候选和
+`paper_reader` 安全基线。Tool 参数与返回结果由 Pydantic 模型校验，非法调用会被拒绝并写入
+Trace。当前 Safe RAG 会按拓扑顺序合并多个 Skill 的约束并执行一次共享检索/生成；DAG
+`parallel_group` 已可观测，但尚未为每个 Skill 启动独立并行 LLM。
+
+系统另提供 `paper_discovery` Skill 处理“按主题找论文”请求，无需先上传 PDF。它通过统一
+Tool Runtime 并行调用 `search_crossref`、`search_semantic_scholar`、`search_openalex` 和
+`search_arxiv`，统一标题、作者、年份、DOI、摘要、引用数与开放获取链接，并按 DOI/规范化标题
+去重。单个来源失败只会产生部分降级；外部元数据不会被标记为已核验的 PDF 正文证据。
 
 ## Memory
 
@@ -215,7 +235,9 @@ Tool 参数与返回结果由 Pydantic 模型校验，非法调用会被拒绝�
 | Agent 工作状态 | Task、Plan、Observation、预算和执行状态 | `backend/agent_runtime/` |
 | Redis 协调状态 | 队列、取消、锁、事件通知和短期协调 | `backend/infrastructure/redis/` |
 
-每次助手回答保存后，Worker 会投递幂等的 `memory_summary` 任务。短期 Memory 达到消息数或 Token 阈值后创建带 Embedding 和原始消息 ID 的 `MemorySegment`；长期 Memory 更新会话级 `ConversationSummary`。下一轮回答先检索摘要，再从 `source_message_ids` 回读仍未删除的原始消息，摘要本身不作为事实来源。跨会话检索只在“以前”“其他会话”“历史”等明确意图出现时启用，并排除当前会话。
+原始消息存于 PostgreSQL `messages`，是事实来源。`MemorySegment` 存于 `memory_segments`，虽然持久化但只服务当前 Conversation，因此语义上仍是短期 Memory；`ConversationSummary` 存于 `conversation_summaries`，与 `memory_preferences` 中用户明确保存的偏好一起构成跨会话长期 Memory。历史文件的元数据和检索文本存于 `workspace_entries`/`workspace_search`，文件对象存于 MinIO/S3。Redis 只负责调度和短期协调。
+
+每次助手回答保存后，Worker 会投递幂等的 `memory_summary` 任务。当前实现达到 8 条未删除消息或约 1200 个正则词项时创建带 Embedding、Embedding 指纹和原始消息 ID 的 `MemorySegment`；长期 Memory 同步 upsert 会话级 `ConversationSummary`。下一轮回答先检索摘要，再从 `source_message_ids` 回读仍未删除的原始消息，摘要本身不作为事实来源。跨会话检索只在“以前”“其他会话”“历史”等明确意图出现时启用，并排除当前会话。
 
 详细边界见 [`backend/memory/README.md`](./backend/memory/README.md)。
 
@@ -269,10 +291,14 @@ Reader 单篇失败会显式列为缺失论文，Critic 不可用可降级，Evi
 
 系统通过 OpenAI-compatible 接口连接 Ollama，并区分小模型和大模型职责：
 
-- 小模型：意图判断、路由和低成本决策；
-- 大模型：证据约束下的回答生成与复杂任务处理；
-- Embedding：默认使用 BGE-M3；
+- 小模型：默认 `qwen3:1.7b`，实际用于 `ReActSelfRAGController` 的 `clarify/retrieve/answer` 结构化决策、`ConstrainedLLMPlanner` 的 Plan V2 生成，以及 Top-K 候选内的 0～N Skill 结构化选择；
+- 大模型：默认 `qwen3.5:4b`，用于 Safe RAG 最终回答，并驱动多 Agent 分支中的 Paper Reader、Evidence、Critic、Writer 和 Verifier；
+- Coordinator、Unified Runtime Router、Requirement Clarifier、Skill 硬过滤/混合召回/DAG Planner 和 Safe RAG 规则 Verifier 都是确定性组件；只有 Skill 候选集内的最终多标签判断调用小模型。
+- 多 Agent 角色 Manifest 已声明独立逻辑 Profile，但当前 Worker 的 role resolver 将五个执行角色统一映射到同一个运行时 Large Client，尚未部署角色专用权重；
+- Embedding：默认使用 BGE-M3 Dense Embedding（1024 维），加载或推理失败时可降级到 Hash；
 - Reranker：通过独立服务端点接入。
+
+当前模型选择保存在 PostgreSQL `model_runtime_configs`。Worker 每次调用前按 `small`/`large` 角色解析当前 Ollama 模型，因此切换已安装模型不需要重建 Docker 镜像。逻辑 Model Profile 用于版本、Trace、评测和未来 Adapter 晋级，不在 Skill 或 Agent 中硬编码物理权重路径。
 
 主要环境变量：
 
@@ -283,13 +309,39 @@ Reader 单篇失败会显式列为缺失论文，Critic 不可用可降级，Evi
 | `DATABASE_URL` | PostgreSQL 连接地址 | 见 `.env.example` |
 | `REDIS_URL` | Redis 连接地址 | `redis://localhost:6379/0` |
 | `MINIO_ENDPOINT` | MinIO 地址 | `localhost:9000` |
-| `EMBEDDING_MODEL_NAME` | Embedding 模型 | `bge-m3` |
+| `EMBEDDING_PROVIDER` | `hash`、`bge_m3` 或 `auto` | `bge_m3` |
+| `EMBEDDING_MODEL_NAME` | BGE-M3 模型 | `BAAI/bge-m3` |
+| `EMBEDDING_DEVICE` | `auto`、`cpu` 或 `cuda` | `auto` |
+| `EMBEDDING_BATCH_SIZE` | Chunk 推理批次 | `32` |
+| `EMBEDDING_MAX_LENGTH` | 最大 Token 长度 | `512` |
+| `EMBEDDING_USE_FP16` | CUDA 推理优先使用 FP16 | `true` |
+| `EMBEDDING_QUERY_TIMEOUT_MS` | Query 性能熔断阈值 | `300` |
+| `EMBEDDING_BATCH_TIMEOUT_SECONDS` | Batch 性能熔断阈值 | `30` |
+| `EMBEDDING_FALLBACK_ENABLED` | 允许异常或超阈值后降级 Hash | `true` |
 | `AGENT_LOG_DIR` | Agent 审计日志目录 | `runtime/logs/agent` |
 | `MULTI_AGENT_ENABLED` | 允许合格多论文任务进入多 Agent | `true` |
 | `ALLOW_EXPERIMENTAL_NO_GO` | 多 Agent 第二运行门禁（兼容旧变量名） | `true` |
 | `DYNAMIC_PLANNER_ENABLED` | 论文任务默认生成并展示受约束 Plan | `true` |
 
 完整配置见 [`.env.example`](./.env.example)。
+
+切换 Embedding Provider 后，旧向量不会参与新模型的向量检索，Exact Match 和 BM25 仍可工作。使用以下命令只重新向量化已有 Chunk，不重新解析 PDF：
+
+```bash
+python -m backend.rag.reindex --provider bge_m3 --only-stale
+```
+
+Embedding 性能基准命令：
+
+```bash
+python -m backend.rag.benchmark_embeddings --providers hash,bge_m3 --devices cpu,cuda
+```
+
+六类固定检索样例的 Hash/BGE-M3 Top-K 对比：
+
+```bash
+python -m backend.rag.evaluate_embeddings --providers hash,bge_m3 --device auto
+```
 
 ## 项目结构
 
@@ -357,6 +409,7 @@ Manifest。旧代码生成的基线、Planner、多 Agent 和最终效果报告�
 
 - [产品架构](./docs/development/02-产品架构文档.md)
 - [项目面试完整介绍](./docs/项目面试完整介绍.md)
+- [MCP Client 外部能力接入修改计划](./docs/MCP%20Client外部能力接入修改计划.md)（待实施，仅规划出站 Client Gateway）
 - [Model Card](./docs/MODEL_CARD.md)
 - [Dataset Card](./evaluation/datasets/DATASET_CARD.md)
 - [Demo Runbook](./docs/DEMO_RUNBOOK.md)

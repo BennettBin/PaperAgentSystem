@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [switch]$NoBuild,
+    [switch]$Build,
     [switch]$WithModels,
     [switch]$NoBrowser,
     [int]$TimeoutSeconds = 180
@@ -174,7 +174,7 @@ if ($WithModels) {
 Sync-PostgresPassword -ComposeArguments $composeArguments
 
 $composeArguments += @("up", "-d")
-if (-not $NoBuild) {
+if ($Build) {
     $composeArguments += "--build"
 }
 

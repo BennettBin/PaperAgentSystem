@@ -70,11 +70,13 @@ class LongTermMemoryService:
                     workspace_id=workspace_id,
                     summary=summary,
                     embedding=embedding,
+                    embedding_fingerprint=_embedding_fingerprint(self.embeddings),
                     source_message_ids=[message.id for message in messages],
                 )
             else:
                 model.summary = summary
                 model.embedding = embedding
+                model.embedding_fingerprint = _embedding_fingerprint(self.embeddings)
                 model.source_message_ids = [message.id for message in messages]
                 model.invalidated_at = None
             session.add(model)
@@ -147,6 +149,10 @@ class LongTermMemoryService:
                     embedding,
                     conversation_summary.summary,
                     conversation_summary.embedding,
+                    vector_compatible=(
+                        conversation_summary.embedding_fingerprint
+                        == _embedding_fingerprint(self.embeddings)
+                    ),
                 )
                 candidates.append(
                     LongTermRecall(
@@ -174,7 +180,16 @@ class LongTermMemoryService:
                     f"{workspace_file.filename} {workspace_file.summary} "
                     f"{workspace_file.extracted_text}"
                 )
-                score = _score(terms, embedding, text, workspace_file.embedding)
+                score = _score(
+                    terms,
+                    embedding,
+                    text,
+                    workspace_file.embedding,
+                    vector_compatible=(
+                        workspace_file.embedding_fingerprint
+                        == _embedding_fingerprint(self.embeddings)
+                    ),
+                )
                 candidates.append(
                     LongTermRecall(
                         "workspace_entry",
@@ -246,10 +261,21 @@ def _terms(text: str) -> list[str]:
 
 
 def _score(
-    query_terms: set[str], query_embedding: list[float], text: str, embedding: list[float]
+    query_terms: set[str],
+    query_embedding: list[float],
+    text: str,
+    embedding: list[float],
+    *,
+    vector_compatible: bool,
 ) -> float:
     lexical = len(query_terms & set(_terms(text))) / max(1, len(query_terms))
-    return lexical * 2 + _cosine(query_embedding, embedding)
+    vector_score = _cosine(query_embedding, embedding) if vector_compatible else 0.0
+    return lexical * 2 + vector_score
+
+
+def _embedding_fingerprint(embeddings: EmbeddingClient) -> str:
+    profile = getattr(embeddings, "profile", None)
+    return profile.fingerprint if profile is not None else ""
 
 
 def _cosine(left: list[float], right: list[float]) -> float:
