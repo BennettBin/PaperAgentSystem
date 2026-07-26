@@ -52,7 +52,24 @@ class SkillRuntime:
                 raise ValueError(f"Skill not found: {requested_skill}")
             selection = SkillSelection(selected, (), False, (selected,))
         else:
-            selection = await self._selector.select(requirement, selection_context)
+            selection = await self.select(requirement, selection_context)
+        return await self.activate_selection(selection, input_data, trace_id)
+
+    async def select(
+        self,
+        requirement: str,
+        selection_context: SkillSelectionContext | None = None,
+    ) -> SkillSelection:
+        """Run the single structured routing call without activating a Skill."""
+        return await self._selector.select(requirement, selection_context)
+
+    async def activate_selection(
+        self,
+        selection: SkillSelection,
+        input_data: Any,
+        trace_id: str,
+    ) -> SkillActivation:
+        """Activate a previously validated selection without invoking the model again."""
         selected_skills = selection.selected_skills or (selection.selected,)
         activated: list[LoadedSkill] = []
         for selected_skill in selected_skills:

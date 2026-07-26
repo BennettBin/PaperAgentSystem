@@ -29,6 +29,7 @@ class SkillManifestModel(BaseModel):
     routing_policy: "SkillRoutingPolicyModel" = Field(
         default_factory=lambda: SkillRoutingPolicyModel()
     )
+    input_policy: "SkillInputPolicyModel | None" = None
 
 
 class SkillRoutingPolicyModel(BaseModel):
@@ -40,12 +41,33 @@ class SkillRoutingPolicyModel(BaseModel):
     runs_after: list[str] = Field(default_factory=list)
 
 
+class SkillInputPolicyModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    accepted_sources: list[Literal["inline_text", "conversation_material", "uploaded_files", "external"]] = Field(default_factory=list)
+    source_required: bool = False
+    min_files: int = Field(default=0, ge=0)
+    max_files: int | None = Field(default=None, ge=1)
+    memory_policy: Literal["none", "constraints_only", "specific_material", "recent_context", "cross_conversation"] = "none"
+    missing_source_prompt: str = "请提供完成该任务所需的材料。"
+
+
 @dataclass(frozen=True)
 class SkillRoutingPolicy:
     min_files: int
     max_files: int | None
     exclusive: bool
     runs_after: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class SkillInputPolicy:
+    accepted_sources: tuple[str, ...]
+    source_required: bool
+    min_files: int
+    max_files: int | None
+    memory_policy: str
+    missing_source_prompt: str
 
 
 @dataclass(frozen=True)
@@ -66,6 +88,7 @@ class LoadedSkill:
     termination_conditions: tuple[str, ...]
     acceptance_rules: tuple[str, ...]
     routing_policy: SkillRoutingPolicy
+    input_policy: SkillInputPolicy
 
     @property
     def allowed_tools(self) -> tuple[str, ...]:
@@ -188,6 +211,15 @@ class SkillManifestLoader:
                 raise ValueError("Each Skill example requires input and output")
             _validate_structured_value(example["input"], input_contract)
             _validate_structured_value(example["output"], output_contract)
+        input_policy = manifest.input_policy or SkillInputPolicyModel(
+            accepted_sources=(
+                ["uploaded_files"] if manifest.routing_policy.min_files else []
+            ),
+            source_required=manifest.routing_policy.min_files > 0,
+            min_files=manifest.routing_policy.min_files,
+            max_files=manifest.routing_policy.max_files,
+            missing_source_prompt="请上传或选择完成该任务所需的论文。",
+        )
         return LoadedSkill(
             name=manifest.name,
             version=manifest.version,
@@ -209,6 +241,14 @@ class SkillManifestLoader:
                 max_files=manifest.routing_policy.max_files,
                 exclusive=manifest.routing_policy.exclusive,
                 runs_after=tuple(manifest.routing_policy.runs_after),
+            ),
+            input_policy=SkillInputPolicy(
+                accepted_sources=tuple(input_policy.accepted_sources),
+                source_required=input_policy.source_required,
+                min_files=input_policy.min_files,
+                max_files=input_policy.max_files,
+                memory_policy=input_policy.memory_policy,
+                missing_source_prompt=input_policy.missing_source_prompt,
             ),
         )
 

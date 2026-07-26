@@ -17,8 +17,8 @@ PaperAgentSystem 将版式感知 PDF 解析、混合检索、对话记忆、结�
 - **图表与算法证据**：独立裁剪图片、表格和算法区域，保存章节、页码、边界框和来源关系；回答引用相关内容时展示对应截图。
 - **证据优先 RAG**：组合精确匹配、章节检索、向量检索、BM25、RRF 和重排，生成带页码与证据片段的回答。
 - **可区分的多论文对比**：对比任务按文件分别保留证据配额，提示上下文使用论文文件名标识来源，避免全局 Top-K 被单篇论文占满或把两篇论文混为一篇。
-- **多轮会话记忆**：回答完成后异步更新短期 `MemorySegment` 与长期 `ConversationSummary`；当前会话按相关性回读原始消息，只有用户明确引用历史会话时才扩大到跨会话检索。
-- **混合 Skill/Tool 链路**：先做文件数与权限硬过滤，再用规则分 + Embedding 语义分召回 Top-K，由 1.7B 小模型在候选内结构化选择 0～N 个 Skill；确定性 Planner 负责 DAG、并行组、权限和预算校验，运行时继续执行 Tool 与输出契约检查。
+- **按需会话记忆**：回答完成后异步更新短期 `MemorySegment` 与长期 `ConversationSummary`；结构化路由先判断本轮是新任务还是延续任务，新任务默认不注入旧 Memory，明确引用历史材料时才按 message ID 回读原文。
+- **结构化需求与混合 Skill/Tool 链路**：权限和负触发条件先做硬过滤，规则分 + Embedding 语义分召回 Top-K；1.7B 小模型在一次调用中同时输出任务类型、轮次关系、来源、Memory 策略和 0～N 个 Skill。确定性 Preflight 再检查材料是否就绪，Planner 负责 DAG、权限和预算。
 - **答案核验**：对 Claim、数字、引用和证据关系进行验证；证据不足时明确说明限制。
 - **任务进度监控**：实时展示问题判断、Skill 激活、证据检索、回答生成和 Verifier 核验等公开阶段。
 - **本地化部署**：支持 Ollama、本地模型、PostgreSQL、Redis、MinIO 和 Docker Compose，论文数据无需发送到第三方模型服务。
@@ -209,8 +209,8 @@ skill-name/
 运行时链路为：
 
 ```text
-硬规则过滤 → 规则/语义 Top-K → 1.7B 结构化多选
-→ 确定性 Skill DAG Planner → Registry/权限/预算校验
+硬规则过滤 → 规则/语义 Top-K → 1.7B 一次输出结构化需求与 0～N Skill
+→ 确定性 Skill Input Preflight → Skill DAG Planner → Registry/权限/预算校验
 → SkillRuntime → ToolRuntime → 输出契约/引用核验 → 有限重规划
 ```
 
@@ -218,6 +218,11 @@ Skill 描述向量在 Worker 生命周期内批量计算并缓存；Embedding �
 `paper_reader` 安全基线。Tool 参数与返回结果由 Pydantic 模型校验，非法调用会被拒绝并写入
 Trace。当前 Safe RAG 会按拓扑顺序合并多个 Skill 的约束并执行一次共享检索/生成；DAG
 `parallel_group` 已可观测，但尚未为每个 Skill 启动独立并行 LLM。
+
+`academic_rewriter` 支持本轮粘贴文本、明确引用的历史消息和上传文件。存在本轮或历史原文时
+不会要求上传论文；历史材料以 message ID 和 SHA-256 引用，摘要只用于定位。数字、公式、术语、
+实体和引用在生成前提取、生成后回归检查，失败最多修复一次。缺少材料时由该 Skill 的
+`input_policy` 提出精确问题，而不是退回统一的“上传要检索的论文”。
 
 系统另提供 `paper_discovery` Skill 处理“按主题找论文”请求，无需先上传 PDF。它通过统一
 Tool Runtime 并行调用 `search_crossref`、`search_semantic_scholar`、`search_openalex` 和
@@ -409,6 +414,7 @@ Manifest。旧代码生成的基线、Planner、多 Agent 和最终效果报告�
 
 - [产品架构](./docs/development/02-产品架构文档.md)
 - [项目面试完整介绍](./docs/项目面试完整介绍.md)
+- [结构化需求理解与跨任务 Skill 路由修改计划](./docs/结构化需求理解与跨任务Skill路由修改计划.md)（已按最小闭环实施）
 - [MCP Client 外部能力接入修改计划](./docs/MCP%20Client外部能力接入修改计划.md)（待实施，仅规划出站 Client Gateway）
 - [Model Card](./docs/MODEL_CARD.md)
 - [Dataset Card](./evaluation/datasets/DATASET_CARD.md)

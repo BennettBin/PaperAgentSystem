@@ -32,6 +32,7 @@ SKILL_NAMES = {
     "methodology_reviewer",
     "limitation_analyst",
     "paper_discovery",
+    "academic_rewriter",
 }
 
 
@@ -44,13 +45,13 @@ def loader(root: Path = ROOT / "backend" / "skills") -> SkillManifestLoader:
 
 
 @pytest.mark.asyncio
-async def test_all_twelve_skills_are_complete_and_version_is_traced() -> None:
+async def test_all_thirteen_skills_are_complete_and_version_is_traced() -> None:
     traces = FakeTraceWriter()
     registry = SkillRegistry(traces)
     registry.load_all(loader())
 
     skills = registry.list_all()
-    assert len(skills) == 12
+    assert len(skills) == 13
     assert all(skill.input_contract for skill in skills)
     assert all(skill.output_contract for skill in skills)
     assert all(skill.trigger_conditions for skill in skills)

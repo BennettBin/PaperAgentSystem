@@ -123,7 +123,7 @@ async def test_skill_selector_meets_top1_and_top3_thresholds() -> None:
 
 
 @pytest.mark.asyncio
-async def test_hybrid_recall_caches_skill_vectors_and_hard_filters_file_count() -> None:
+async def test_hybrid_recall_caches_vectors_without_hiding_skill_for_missing_input() -> None:
     service = selector()
     embeddings = SemanticEmbedding()
     service._embeddings = embeddings
@@ -138,7 +138,7 @@ async def test_hybrid_recall_caches_skill_vectors_and_hard_filters_file_count() 
     )
 
     assert first.candidates[0].name == "comparison_analyzer"
-    assert "comparison_analyzer" not in {item.name for item in second.candidates}
+    assert "comparison_analyzer" in {item.name for item in second.candidates}
     assert embeddings.batch_calls == 1
 
 

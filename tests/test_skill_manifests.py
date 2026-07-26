@@ -20,7 +20,7 @@ TOOLS = {
 }
 
 
-def test_all_twelve_skill_manifests_load():
+def test_all_thirteen_skill_manifests_load():
     loader = SkillManifestLoader(
         ROOT / "backend" / "skills",
         registered_tools=TOOLS,
@@ -28,8 +28,8 @@ def test_all_twelve_skill_manifests_load():
     )
     loaded = loader.discover()
 
-    assert len(loaded) == 12
-    assert len({skill.name for skill in loaded}) == 12
+    assert len(loaded) == 13
+    assert len({skill.name for skill in loaded}) == 13
     assert all(skill.input_contract.format == "object" for skill in loaded)
     assert {skill.output_contract.format for skill in loaded} == {
         "object", "markdown", "markdown_table"

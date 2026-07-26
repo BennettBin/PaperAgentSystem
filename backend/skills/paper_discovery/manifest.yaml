@@ -18,3 +18,9 @@ acceptance_rules: [每条结果保留元数据来源和可访问链接, 不得�
 routing_policy:
   min_files: 0
   exclusive: true
+input_policy:
+  accepted_sources: [external]
+  source_required: false
+  min_files: 0
+  memory_policy: constraints_only
+  missing_source_prompt: 请补充要检索的论文主题或关键词。

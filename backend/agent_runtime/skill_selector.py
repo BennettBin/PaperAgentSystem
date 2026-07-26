@@ -13,6 +13,14 @@ from backend.agent_runtime.skill_planner import (
     SkillExecutionPlan,
     SkillPlanBudget,
 )
+from backend.agent_runtime.structured_requirement import (
+    MemoryMode,
+    SourceMode,
+    StructuredRequirement,
+    TaskType,
+    TurnRelation,
+    infer_structured_requirement,
+)
 from backend.core.errors import ProjectError
 from backend.core.ports.llm_client import EmbeddingClient, LLMClient
 from backend.skills.loader import LoadedSkill, SkillRegistry
@@ -24,6 +32,10 @@ class SkillSelectionContext:
     permitted_skills: frozenset[str] | None = None
     permitted_tools: frozenset[str] | None = None
     budget: SkillPlanBudget = SkillPlanBudget()
+    has_inline_text: bool = False
+    has_conversation_material: bool = False
+    pending_clarification: bool = False
+    previous_request: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +56,9 @@ class SkillSelection:
     plan: SkillExecutionPlan | None = None
     reason_summary: str = ""
     model_used: bool = False
+    requirement: StructuredRequirement = StructuredRequirement(
+        task_type=TaskType.DOCUMENT_QA
+    )
 
 
 class _ModelSkillChoice(BaseModel):
@@ -52,6 +67,14 @@ class _ModelSkillChoice(BaseModel):
     selected_skills: list[str] = Field(default_factory=list, max_length=3)
     primary_skill: str | None = None
     reason_summary: str = Field(default="", max_length=240)
+    task_type: TaskType | None = None
+    turn_relation: TurnRelation = TurnRelation.NEW_TASK
+    source_mode: SourceMode = SourceMode.NONE
+    memory_mode: MemoryMode = MemoryMode.NONE
+    needs_clarification: bool = False
+    clarification_questions: list[str] = Field(default_factory=list, max_length=5)
+    missing_inputs: list[str] = Field(default_factory=list)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
 class SkillSelector:
@@ -82,8 +105,8 @@ class SkillSelector:
         eligible = self._hard_filter(requirement, selection_context)
         ranked = await self._hybrid_rank(requirement, eligible)
         candidates = tuple(ranked[: self._top_k])
-        names, primary, reason, model_failed = await self._model_select(
-            requirement, candidates, selection_context.budget.max_skills
+        names, primary, reason, model_failed, model_choice = await self._model_select(
+            requirement, candidates, selection_context
         )
         model_used = self._decision_llm is not None and bool(candidates)
         used_fallback = False
@@ -128,6 +151,34 @@ class SkillSelector:
         ordered = plan.topological_order()
         selected_skills = tuple(self._load_selected(name) for name in ordered)
         primary_skill = next(skill for skill in selected_skills if skill.name == plan.primary_skill)
+        structured = infer_structured_requirement(
+            requirement,
+            file_count=selection_context.file_count or 0,
+            has_inline_text=selection_context.has_inline_text,
+            has_conversation_material=selection_context.has_conversation_material,
+            pending_clarification=selection_context.pending_clarification,
+        )
+        if model_choice is not None and model_choice.task_type is not None:
+            structured = StructuredRequirement(
+                task_type=model_choice.task_type,
+                turn_relation=model_choice.turn_relation,
+                source_mode=model_choice.source_mode,
+                memory_mode=model_choice.memory_mode,
+                selected_skills=[skill.name for skill in selected_skills],
+                primary_skill=primary_skill.name,
+                needs_clarification=model_choice.needs_clarification,
+                clarification_questions=model_choice.clarification_questions,
+                missing_inputs=model_choice.missing_inputs,
+                confidence=model_choice.confidence,
+                reason_summary=model_choice.reason_summary,
+            )
+        else:
+            structured = structured.model_copy(
+                update={
+                    "selected_skills": [skill.name for skill in selected_skills],
+                    "primary_skill": primary_skill.name,
+                }
+            )
         return SkillSelection(
             selected=primary_skill,
             selected_skills=selected_skills,
@@ -136,6 +187,7 @@ class SkillSelector:
             plan=plan,
             reason_summary=reason,
             model_used=model_used,
+            requirement=structured,
         )
 
     def _hard_filter(
@@ -151,11 +203,14 @@ class SkillSelector:
                 continue
             if context.permitted_tools is not None and not set(skill.allowed_tools) <= set(context.permitted_tools):
                 continue
-            if context.file_count is not None:
-                if context.file_count < policy.min_files:
-                    continue
-                if policy.max_files is not None and context.file_count > policy.max_files:
-                    continue
+            # Missing material is an execution-readiness concern, not a reason to
+            # hide an otherwise suitable Skill from semantic/rule recall.
+            if (
+                context.file_count is not None
+                and policy.max_files is not None
+                and context.file_count > policy.max_files
+            ):
+                continue
             if any(condition.casefold() in normalized for condition in skill.non_trigger_conditions):
                 continue
             eligible.append(skill)
@@ -210,19 +265,26 @@ class SkillSelector:
         self,
         requirement: str,
         candidates: tuple[SkillCandidate, ...],
-        max_skills: int,
-    ) -> tuple[list[str], str | None, str, bool]:
+        context: SkillSelectionContext,
+    ) -> tuple[list[str], str | None, str, bool, _ModelSkillChoice | None]:
         if self._decision_llm is None or not candidates:
-            return [], None, "", True
+            return [], None, "", True, None
         candidate_payload = [
             {"name": item.name, "description": item.description, "score": round(item.score, 4)}
             for item in candidates
         ]
         prompt = (
-            "根据用户需求从候选 Skill 中选择 0 到 "
-            f"{max_skills} 个。只能返回候选名称；不需要专用 Skill 时返回空数组。"
+            "一次完成结构化需求理解和 Skill 选择。不要把出现‘论文’一词等同于必须检索文件；"
+            "润色/改写可使用用户本轮粘贴文本或明确指向的历史原文。"
+            "先判断当前轮是新任务、延续、修改上一输出还是回答澄清，再判断材料来源和 Memory 范围。"
+            "从候选 Skill 中选择 0 到 "
+            f"{context.budget.max_skills} 个。只能返回候选名称；不需要专用 Skill 时返回空数组。"
             "primary_skill 必须属于 selected_skills。只给简短可公开理由，不输出思维过程。\n"
-            f"用户需求：{requirement}\n候选：{json.dumps(candidate_payload, ensure_ascii=False)}"
+            f"用户需求：{requirement}\n"
+            f"待回答的上一澄清任务：{context.previous_request or '无'}\n"
+            f"当前有文件：{bool(context.file_count)}；当前有较长粘贴文本：{context.has_inline_text}；"
+            f"会话内有可定位原文：{context.has_conversation_material}\n"
+            f"候选：{json.dumps(candidate_payload, ensure_ascii=False)}"
         )
         try:
             raw = await self._decision_llm.generate_with_schema(
@@ -233,11 +295,11 @@ class SkillSelector:
                 temperature=0.0,
             )
             choice = _ModelSkillChoice.model_validate_json(raw)
-            names = list(dict.fromkeys(choice.selected_skills))[:max_skills]
+            names = list(dict.fromkeys(choice.selected_skills))[: context.budget.max_skills]
             primary = choice.primary_skill if choice.primary_skill in names else (names[0] if names else None)
-            return names, primary, choice.reason_summary, False
+            return names, primary, choice.reason_summary, False, choice
         except (RuntimeError, ValueError, ValidationError, json.JSONDecodeError):
-            return [], None, "", True
+            return [], None, "", True, None
 
     @staticmethod
     def _routing_text(skill: LoadedSkill) -> str:

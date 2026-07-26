@@ -1,0 +1,6 @@
+[
+  {
+    "input": {"request": "润色下面这段文字", "file_ids": [], "conversation_id": "conversation-1", "parameters": {"source_text": "业务流程运行具有动态性。"}},
+    "output": "业务流程运行呈现出显著的动态特征。"
+  }
+]

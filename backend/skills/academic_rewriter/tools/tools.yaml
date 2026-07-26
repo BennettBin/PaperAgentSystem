@@ -1,0 +1,6 @@
+tools:
+  - name: search_document
+    purpose: 仅在用户明确要求参考上传论文时检索相关证据或术语。
+    when_to_use: 改写目标明确依赖已上传论文，而本轮或历史消息没有足够材料时调用。
+    implementation: backend.tool_runtime.document_tools.SearchDocumentTool
+    example_input: {"query":"需要参考的术语和上下文","file_ids":["file-001"],"limit":8}

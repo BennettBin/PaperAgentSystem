@@ -249,6 +249,16 @@ class MemoryAnswerLLM(RecordingLLM):
         )
 
 
+class AcademicRewriteLLM(RecordingLLM):
+    async def generate(self, prompt: str, **_kwargs) -> str:
+        self.prompt = prompt
+        return (
+            "随着企业数字化转型与人工智能技术的深入发展，复杂业务环境中的流程运行管理"
+            "正由经验驱动逐步转向数据驱动。事件日志为流程状态感知、偏差识别与资源优化"
+            "提供了重要基础。由此，流程监控、诊断和优化能够形成连贯的智能化管理体系。"
+        )
+
+
 def _skill_runtime() -> SkillRuntime:
     registry = SkillRegistry(FakeTraceWriter())
     registry.load_all(
@@ -2039,6 +2049,133 @@ async def test_application_requeues_the_same_waiting_task_after_user_answer(
     resumed_task = queue.tasks[root_task_id]
     assert resumed_task.payload["question"] == "深入分析论文"
     assert resumed_task.payload["clarification_answer"] == "实验章节"
+
+
+@pytest.mark.asyncio
+async def test_inline_academic_rewrite_does_not_require_uploaded_paper(
+    product_database,
+) -> None:
+    llm = AcademicRewriteLLM()
+    processor = PaperAgentProcessor(
+        product_database,
+        FakeObjectStore(),
+        FakeEmbeddingClient(),
+        FakeRerankerClient(),
+        llm,
+        skill_runtime=_skill_runtime(),
+    )
+    request = (
+        "随着企业数字化转型和人工智能技术的深入发展，业务流程运行管理正在由经验驱动、"
+        "人工监督和事后分析，逐步转向数据驱动、实时感知和智能决策。复杂运营情境会受到"
+        "客户需求变化、资源状态波动、组织协同关系和异常事件扰动等多种因素影响。\n\n"
+        "请把‘复杂业务环境下’这一背景自然、连贯地融入上面的学术段落并完成润色。"
+    )
+
+    result = await processor.answer(
+        {
+            "_task_id": "rewrite-inline",
+            "conversation_id": "conversation-1",
+            "question": request,
+            "message_id": "current-rewrite-message",
+            "file_ids": [],
+        }
+    )
+
+    assert result["status"] == "completed"
+    assert "上传" not in result["answer"]
+    assert "<SOURCE_TEXT>" in llm.prompt
+    with product_database() as session:
+        answer = session.scalar(select(MessageModel).where(MessageModel.role == "assistant"))
+        assert answer.metadata_json["rag"]["decision"] == "academic_rewrite"
+        assert answer.metadata_json["rag"]["source_mode"] == "inline_text"
+
+
+@pytest.mark.asyncio
+async def test_new_rewrite_request_replaces_pending_document_task(
+    product_database,
+) -> None:
+    llm = AcademicRewriteLLM()
+    processor = PaperAgentProcessor(
+        product_database,
+        FakeObjectStore(),
+        FakeEmbeddingClient(),
+        FakeRerankerClient(),
+        llm,
+        skill_runtime=_skill_runtime(),
+    )
+    new_request = (
+        "请润色下面这段学术文字：复杂业务环境中的流程运行受到需求变化、资源波动、"
+        "组织协同和异常事件的共同影响，因此需要形成面向实时监控、风险诊断和动态优化"
+        "的一体化方法体系，并保证段落表达自然连贯且不增加新的研究事实。"
+    )
+
+    result = await processor.answer(
+        {
+            "_task_id": "old-root-task",
+            "conversation_id": "conversation-1",
+            "question": "请总结这篇论文的实验章节",
+            "clarification_answer": new_request,
+            "clarification_round": 1,
+            "message_id": "new-task-message",
+            "file_ids": [],
+        }
+    )
+
+    assert result["status"] == "completed"
+    assert "请上传或选择" not in result["answer"]
+
+
+@pytest.mark.asyncio
+async def test_rewrite_follow_up_rereads_exact_historical_message(
+    product_database,
+) -> None:
+    source = (
+        "业务流程运行受到客户需求变化、资源状态波动、组织协同关系和异常事件扰动的"
+        "共同影响，呈现出高度动态性、情境耦合性和目标冲突性，因此传统事后统计方法"
+        "难以满足复杂业务环境中的实时监控、风险诊断和动态优化需求。"
+    )
+    with product_database() as session:
+        session.add(
+            MessageModel(
+                id="historical-rewrite-source",
+                workspace_id="local-workspace",
+                conversation_id="conversation-1",
+                role="user",
+                type="text",
+                content=source,
+                metadata_json={},
+            )
+        )
+        session.commit()
+    llm = AcademicRewriteLLM()
+    processor = PaperAgentProcessor(
+        product_database,
+        FakeObjectStore(),
+        FakeEmbeddingClient(),
+        FakeRerankerClient(),
+        llm,
+        skill_runtime=_skill_runtime(),
+    )
+
+    result = await processor.answer(
+        {
+            "_task_id": "rewrite-history",
+            "conversation_id": "conversation-1",
+            "question": "继续润色之前那段，让逻辑更连贯。",
+            "message_id": "current-follow-up",
+            "file_ids": [],
+        }
+    )
+
+    assert result["status"] == "completed"
+    assert source in llm.prompt
+    with product_database() as session:
+        answer = session.scalar(
+            select(MessageModel).where(MessageModel.role == "assistant")
+        )
+        material_ref = answer.metadata_json["rag"]["material_refs"][0]
+        assert material_ref["message_id"] == "historical-rewrite-source"
+        assert material_ref["sha256"] == hashlib.sha256(source.encode("utf-8")).hexdigest()
 
 
 @pytest.mark.asyncio
