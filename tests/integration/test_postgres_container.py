@@ -155,7 +155,7 @@ def test_postgres_empty_database_migration_upgrade_downgrade():
                 )
             )
             session.commit()
-            for index in range(8):
+            for index in range(13):
                 session.add(
                     MessageModel(
                         id=f"memory-message-{index}",
@@ -171,7 +171,6 @@ def test_postgres_empty_database_migration_upgrade_downgrade():
         memory = ShortTermMemoryService(
             factory,
             IntegrationEmbeddings(),
-            message_threshold=8,
         )
         first_segment = asyncio.run(
             memory.summarize_if_needed(

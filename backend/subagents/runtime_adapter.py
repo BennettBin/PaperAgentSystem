@@ -167,7 +167,12 @@ class MultiAgentRuntimeAdapter:
                 {
                     "roles": [
                         record.role.value for record in result.failed
-                    ]
+                    ],
+                    "errors": {
+                        record.role.value: record.error[:500]
+                        for record in result.failed
+                        if record.error
+                    },
                 },
             )
             raise ProjectError(
@@ -314,6 +319,7 @@ class MultiAgentRuntimeAdapter:
                 ErrorCode.INSUFFICIENT_EVIDENCE,
                 "Multi-Agent final draft is missing answer text or citations",
             )
+        writer_degraded = bool(draft.payload.get("degraded"))
         roles = [AgentRole.COORDINATOR.value]
         roles.extend(record.role.value for record in result.completed)
         revision_ids = (
@@ -323,7 +329,7 @@ class MultiAgentRuntimeAdapter:
         )
         completion_event = (
             "multi_agent_degraded"
-            if result.status is CoordinationStatus.DEGRADED
+            if result.status is CoordinationStatus.DEGRADED or writer_degraded
             else "multi_agent_completed"
         )
         self._emit(
@@ -333,6 +339,8 @@ class MultiAgentRuntimeAdapter:
                 "status": result.status.value,
                 "roles": list(dict.fromkeys(roles)),
                 "missing_file_ids": result.missing_paper_ids,
+                "writer_degraded": writer_degraded,
+                "degradation_reason": draft.payload.get("degradation_reason"),
             },
         )
         return AdvancedRuntimeResult(
@@ -351,7 +359,9 @@ class MultiAgentRuntimeAdapter:
             ]
             + revision_ids,
             blackboard_entry_ids=[entry.entry_id for entry in entries],
-            degraded=result.status is CoordinationStatus.DEGRADED,
+            degraded=(
+                result.status is CoordinationStatus.DEGRADED or writer_degraded
+            ),
             revision_rounds=revision_rounds,
             missing_file_ids=result.missing_paper_ids,
         )
@@ -399,6 +409,7 @@ class MultiAgentRuntimeAdapter:
             agent_roles=list(dict.fromkeys(roles)),
             subagent_run_ids=[entry.entry_id for entry in entries],
             blackboard_entry_ids=[entry.entry_id for entry in entries],
+            degraded=bool(draft.payload.get("degraded")),
             revision_rounds=int(
                 any(entry.entry_id == "writer:revision" for entry in entries)
             ),

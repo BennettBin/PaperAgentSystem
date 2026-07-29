@@ -8,7 +8,16 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from backend.core.domain.ids import ConversationId, WorkspaceId
 from backend.core.ports.llm_client import EmbeddingClient
-from backend.infrastructure.postgres.models import MemorySegmentModel, MessageModel, utc_now
+from backend.infrastructure.postgres.models import (
+    MemorySegmentModel,
+    MessageFileModel,
+    MessageModel,
+    utc_now,
+)
+from backend.memory.summarizer import (
+    StructuredMemorySummarizer,
+    StructuredMemorySummary,
+)
 
 
 @dataclass(frozen=True)
@@ -26,11 +35,18 @@ class ShortTermMemoryService:
         embeddings: EmbeddingClient,
         message_threshold: int = 8,
         token_threshold: int = 1200,
+        *,
+        summarizer: StructuredMemorySummarizer | None = None,
+        recent_window: int = 12,
+        segment_size: int = 12,
     ) -> None:
         self.session_factory = session_factory
         self.embeddings = embeddings
         self.message_threshold = message_threshold
         self.token_threshold = token_threshold
+        self.summarizer = summarizer or StructuredMemorySummarizer(None)
+        self.recent_window = recent_window
+        self.segment_size = segment_size
 
     def recent_messages(
         self, workspace_id: WorkspaceId, conversation_id: ConversationId, limit: int = 12
@@ -44,7 +60,7 @@ class ShortTermMemoryService:
                         MessageModel.conversation_id == str(conversation_id),
                         MessageModel.deleted_at.is_(None),
                     )
-                    .order_by(MessageModel.created_at.desc())
+                    .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
                     .limit(limit)
                 )
             )
@@ -68,45 +84,127 @@ class ShortTermMemoryService:
                     .order_by(MessageModel.created_at)
                 )
             )
-            token_count = sum(len(_terms(message.content)) for message in messages)
-            if len(messages) < self.message_threshold and token_count < self.token_threshold:
+            if len(messages) <= self.recent_window:
                 return None
-            source_ids = [message.id for message in messages]
-            existing_segments = session.scalars(
+            eligible = messages[: -self.recent_window]
+            existing_segments = list(
+                session.scalars(
                 select(MemorySegmentModel).where(
                     MemorySegmentModel.workspace_id == str(workspace_id),
                     MemorySegmentModel.conversation_id == str(conversation_id),
                     MemorySegmentModel.invalidated_at.is_(None),
                 )
+                .order_by(MemorySegmentModel.source_start_at)
+                )
             )
-            existing = next(
-                (
-                    segment
-                    for segment in existing_segments
-                    if segment.source_message_ids == source_ids
-                ),
-                None,
-            )
-            if existing is not None:
-                return existing.id
-            summary = " | ".join(
-                f"{message.role}: {' '.join(message.content.split())}" for message in messages
-            )
-            embedding = await self.embeddings.embed(summary)
-            segment = MemorySegmentModel(
-                id=uuid4().hex,
-                workspace_id=str(workspace_id),
-                conversation_id=str(conversation_id),
-                summary=summary,
-                embedding=embedding,
-                embedding_fingerprint=_embedding_fingerprint(self.embeddings),
-                source_message_ids=source_ids,
-                source_start_at=messages[0].created_at,
-                source_end_at=messages[-1].created_at,
-            )
-            session.add(segment)
+            recent_ids = {message.id for message in messages[-self.recent_window :]}
+            seen_ids: set[str] = set()
+            active_segments: list[MemorySegmentModel] = []
+            for segment in existing_segments:
+                structured = StructuredMemorySummary.from_storage_text(segment.summary)
+                segment_ids = set(segment.source_message_ids)
+                if (
+                    structured is None
+                    or segment_ids & recent_ids
+                    or segment_ids & seen_ids
+                    or len(segment.source_message_ids) > self.segment_size
+                ):
+                    segment.invalidated_at = utc_now()
+                    continue
+                seen_ids.update(segment_ids)
+                active_segments.append(segment)
+
+            eligible_by_id = {message.id: message for message in eligible}
+            assigned_ids = {
+                message_id
+                for segment in active_segments
+                for message_id in segment.source_message_ids
+                if message_id in eligible_by_id
+            }
+            unassigned = [
+                message for message in eligible if message.id not in assigned_ids
+            ]
+            last_changed_id: str | None = None
+            if active_segments and unassigned:
+                tail = active_segments[-1]
+                capacity = self.segment_size - len(tail.source_message_ids)
+                appendable = [
+                    message
+                    for message in unassigned
+                    if message.created_at >= tail.source_end_at
+                ][:capacity]
+                if appendable:
+                    await self._update_segment(session, tail, appendable)
+                    appended_ids = {message.id for message in appendable}
+                    unassigned = [
+                        message for message in unassigned if message.id not in appended_ids
+                    ]
+                    last_changed_id = tail.id
+
+            for start in range(0, len(unassigned), self.segment_size):
+                window = unassigned[start : start + self.segment_size]
+                if not window:
+                    continue
+                segment = await self._new_segment(
+                    session,
+                    str(workspace_id),
+                    str(conversation_id),
+                    window,
+                )
+                active_segments.append(segment)
+                last_changed_id = segment.id
             session.commit()
-            return segment.id
+            return last_changed_id or (active_segments[-1].id if active_segments else None)
+
+    async def _new_segment(
+        self,
+        session: Session,
+        workspace_id: str,
+        conversation_id: str,
+        messages: list[MessageModel],
+    ) -> MemorySegmentModel:
+        source_ids = [message.id for message in messages]
+        inputs, file_ids = _summary_inputs(session, messages)
+        structured = await self.summarizer.summarize(
+            inputs,
+            source_message_ids=source_ids,
+            referenced_files=file_ids,
+        )
+        summary = structured.to_storage_text()
+        segment = MemorySegmentModel(
+            id=uuid4().hex,
+            workspace_id=workspace_id,
+            conversation_id=conversation_id,
+            summary=summary,
+            embedding=await self.embeddings.embed(summary),
+            embedding_fingerprint=_embedding_fingerprint(self.embeddings),
+            source_message_ids=source_ids,
+            source_start_at=messages[0].created_at,
+            source_end_at=messages[-1].created_at,
+        )
+        session.add(segment)
+        return segment
+
+    async def _update_segment(
+        self,
+        session: Session,
+        segment: MemorySegmentModel,
+        messages: list[MessageModel],
+    ) -> None:
+        source_ids = [*segment.source_message_ids, *(message.id for message in messages)]
+        inputs, file_ids = _summary_inputs(session, messages)
+        structured = await self.summarizer.summarize(
+            inputs,
+            previous_summary=segment.summary,
+            source_message_ids=source_ids,
+            referenced_files=file_ids,
+        )
+        summary = structured.to_storage_text()
+        segment.summary = summary
+        segment.embedding = await self.embeddings.embed(summary)
+        segment.embedding_fingerprint = _embedding_fingerprint(self.embeddings)
+        segment.source_message_ids = source_ids
+        segment.source_end_at = messages[-1].created_at
 
     async def recall(
         self,
@@ -201,3 +299,32 @@ def _cosine(left: list[float], right: list[float]) -> float:
 def _embedding_fingerprint(embeddings: EmbeddingClient) -> str:
     profile = getattr(embeddings, "profile", None)
     return profile.fingerprint if profile is not None else ""
+
+
+def _summary_inputs(
+    session: Session, messages: list[MessageModel]
+) -> tuple[list[dict[str, object]], list[str]]:
+    message_ids = [message.id for message in messages]
+    links = list(
+        session.execute(
+            select(MessageFileModel.message_id, MessageFileModel.file_id).where(
+                MessageFileModel.message_id.in_(message_ids),
+                MessageFileModel.deleted_at.is_(None),
+            )
+        )
+    )
+    files_by_message: dict[str, list[str]] = {}
+    for message_id, file_id in links:
+        files_by_message.setdefault(message_id, []).append(file_id)
+    return (
+        [
+            {
+                "message_id": message.id,
+                "role": message.role,
+                "content": message.content,
+                "file_ids": files_by_message.get(message.id, []),
+            }
+            for message in messages
+        ],
+        list(dict.fromkeys(file_id for _, file_id in links)),
+    )

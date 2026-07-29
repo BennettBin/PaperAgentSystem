@@ -11,11 +11,13 @@ from backend.infrastructure.postgres.models import (
     ConversationModel,
     ConversationSummaryModel,
     MemoryPreferenceModel,
+    MessageFileModel,
     MessageModel,
     WorkspaceEntryModel,
     WorkspaceSearchModel,
     utc_now,
 )
+from backend.memory.summarizer import StructuredMemorySummarizer
 
 
 @dataclass(frozen=True)
@@ -30,10 +32,15 @@ class LongTermRecall:
 
 class LongTermMemoryService:
     def __init__(
-        self, session_factory: sessionmaker[Session], embeddings: EmbeddingClient
+        self,
+        session_factory: sessionmaker[Session],
+        embeddings: EmbeddingClient,
+        *,
+        summarizer: StructuredMemorySummarizer | None = None,
     ) -> None:
         self.session_factory = session_factory
         self.embeddings = embeddings
+        self.summarizer = summarizer or StructuredMemorySummarizer(None)
 
     async def summarize_conversation(
         self, workspace_id: str, conversation_id: str
@@ -48,6 +55,8 @@ class LongTermMemoryService:
             )
             if conversation is None:
                 return None
+            model = session.get(ConversationSummaryModel, conversation_id)
+            covered_ids = set(model.source_message_ids if model is not None else [])
             messages = list(
                 session.scalars(
                     select(MessageModel)
@@ -56,14 +65,43 @@ class LongTermMemoryService:
                         MessageModel.conversation_id == conversation_id,
                         MessageModel.deleted_at.is_(None),
                     )
-                    .order_by(MessageModel.created_at)
+                    .order_by(MessageModel.created_at, MessageModel.id)
                 )
             )
             if not messages:
                 return None
-            summary = " | ".join(message.content for message in messages)
+            new_messages = [message for message in messages if message.id not in covered_ids]
+            if not new_messages and model is not None:
+                return conversation_id
+            message_ids = [message.id for message in messages]
+            new_ids = [message.id for message in new_messages]
+            links = list(
+                session.execute(
+                    select(MessageFileModel.message_id, MessageFileModel.file_id).where(
+                        MessageFileModel.message_id.in_(new_ids),
+                        MessageFileModel.deleted_at.is_(None),
+                    )
+                )
+            ) if new_ids else []
+            files_by_message: dict[str, list[str]] = {}
+            for message_id, file_id in links:
+                files_by_message.setdefault(message_id, []).append(file_id)
+            structured = await self.summarizer.summarize(
+                [
+                    {
+                        "message_id": message.id,
+                        "role": message.role,
+                        "content": message.content,
+                        "file_ids": files_by_message.get(message.id, []),
+                    }
+                    for message in new_messages
+                ],
+                previous_summary=model.summary if model is not None else None,
+                source_message_ids=message_ids,
+                referenced_files=[file_id for _, file_id in links],
+            )
+            summary = structured.to_storage_text()
             embedding = await self.embeddings.embed(summary)
-            model = session.get(ConversationSummaryModel, conversation_id)
             if model is None:
                 model = ConversationSummaryModel(
                     conversation_id=conversation_id,
@@ -71,13 +109,13 @@ class LongTermMemoryService:
                     summary=summary,
                     embedding=embedding,
                     embedding_fingerprint=_embedding_fingerprint(self.embeddings),
-                    source_message_ids=[message.id for message in messages],
+                    source_message_ids=message_ids,
                 )
             else:
                 model.summary = summary
                 model.embedding = embedding
                 model.embedding_fingerprint = _embedding_fingerprint(self.embeddings)
-                model.source_message_ids = [message.id for message in messages]
+                model.source_message_ids = message_ids
                 model.invalidated_at = None
             session.add(model)
             session.commit()

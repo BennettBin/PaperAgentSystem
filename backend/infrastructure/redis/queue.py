@@ -9,6 +9,7 @@ from redis import Redis
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from backend.core.errors import ProjectError
 from backend.core.ports.storage import EventPublisher, TaskQueue
 from backend.infrastructure.postgres.models import QueueJobModel
 
@@ -133,7 +134,7 @@ class RedisTaskQueue(TaskQueue):
                 session.commit()
             except Exception as exc:
                 job.error = str(exc)
-                if job.attempts <= job.max_retries:
+                if _should_retry(exc) and job.attempts <= job.max_retries:
                     job.status = "queued"
                     session.commit()
                     delay = min(2 ** (job.attempts - 1), 60)
@@ -171,6 +172,12 @@ class RedisTaskQueue(TaskQueue):
         finally:
             if acquired:
                 lock.release()
+
+
+def _should_retry(exc: Exception) -> bool:
+    """Project errors carry explicit retry semantics; unknown failures keep legacy retries."""
+
+    return not isinstance(exc, ProjectError) or exc.is_retryable
 
 
 class RedisEventPublisher(EventPublisher):

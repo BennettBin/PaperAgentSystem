@@ -56,6 +56,7 @@ from backend.memory import (
     LongTermMemoryService,
     ShortTermMemoryService,
 )
+from backend.memory.summarizer import StructuredMemorySummarizer
 from backend.models.runtime import (
     ModelRuntimeService,
     OllamaRuntime,
@@ -338,10 +339,12 @@ def main() -> None:
     short_term_memory = ShortTermMemoryService(
         database.session_factory,
         embeddings,
+        summarizer=StructuredMemorySummarizer(decision_llm),
     )
     long_term_memory = LongTermMemoryService(
         database.session_factory,
         embeddings,
+        summarizer=StructuredMemorySummarizer(decision_llm),
     )
     memory_coordinator = ConversationMemoryCoordinator(
         short_term_memory,
@@ -412,6 +415,7 @@ def _runtime_event_title(event_type: str) -> str:
         "coordinator_agent_failed": "Coordinator Agent 编排失败",
         "paper_reader_agent_started": "Paper Reader 开始读取指定论文",
         "paper_reader_agent_completed": "Paper Reader 已生成论文卡片",
+        "paper_reader_evidence_normalized": "Paper Reader 证据引用已按检索命中规范化",
         "paper_reader_agent_failed": "Paper Reader 执行失败",
         "evidence_agent_started": "Evidence Agent 开始构建证据矩阵",
         "evidence_agent_completed": "Evidence Agent 已完成证据矩阵",
@@ -422,9 +426,15 @@ def _runtime_event_title(event_type: str) -> str:
         "writer_agent_started": "Writer Agent 开始生成回答",
         "writer_agent_completed": "Writer Agent 已生成引用草稿",
         "writer_agent_failed": "Writer Agent 执行失败",
+        "writer_citations_normalized": "Writer 引用列表已按正文规范化",
+        "writer_agent_repair_started": "Writer 开始定向修复引用",
+        "writer_agent_repair_completed": "Writer 已完成定向修复",
+        "writer_agent_repair_failed": "Writer 定向修复未通过结构校验",
+        "writer_agent_degraded": "Writer 已进入严格证据降级",
         "verifier_agent_started": "Verifier Agent 开始独立核验",
         "verifier_agent_completed": "Verifier Agent 已完成核验",
         "verifier_agent_passed": "Verifier Agent 核验通过",
+        "verifier_deterministic_degraded_pass": "严格原文证据表已通过确定性核验",
         "verifier_agent_failed": "Verifier Agent 核验失败",
     }.get(event_type, "Agent 进度更新")
 

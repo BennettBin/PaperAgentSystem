@@ -19,6 +19,8 @@ import { ConversationList } from "./ConversationList";
 import { MessageComposer } from "./MessageComposer";
 import { ModelProfileManager } from "./ModelProfileManager";
 
+const TASK_INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+
 const Icon = ({ children, size = 20 }: { children: React.ReactNode; size?: number }) => (
   <svg aria-hidden="true" className="icon" height={size} viewBox="0 0 24 24" width={size}>
     {children}
@@ -692,7 +694,14 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
   const waitForTask = async (taskId: string, conversationId: string) => {
     setActiveTaskId(taskId);
     setTaskLogPath(`runtime/logs/agent/${taskId}.jsonl`);
+    let lastProgressAt = Date.now();
+    let lastSequence = -1;
+    let lastStatus = "";
     const recordEvent = (event: TaskProgressEvent) => {
+      if (event.sequence > lastSequence) {
+        lastSequence = event.sequence;
+        lastProgressAt = Date.now();
+      }
       setTaskEvents((current) => {
         const withoutDuplicate = current.filter(
           (item) => item.event_id !== event.event_id,
@@ -706,6 +715,13 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
       if (mountedRef.current) {
         setTaskEvents(Array.isArray(snapshot.events) ? snapshot.events : []);
         setTaskLogPath(snapshot.log_path || `runtime/logs/agent/${taskId}.jsonl`);
+        lastSequence = Math.max(
+          -1,
+          ...(Array.isArray(snapshot.events)
+            ? snapshot.events.map((event) => event.sequence)
+            : []),
+        );
+        if (lastSequence >= 0) lastProgressAt = Date.now();
       }
     } catch {
       // SSE and task polling remain authoritative if history hydration is unavailable.
@@ -717,10 +733,14 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
       },
     );
     try {
-      for (let attempt = 0; attempt < 180; attempt += 1) {
+      while (mountedRef.current) {
         await new Promise((resolve) => window.setTimeout(resolve, 1000));
         if (!mountedRef.current) return;
         const task = await paperApi.task(taskId);
+        if (task.status !== lastStatus) {
+          lastStatus = task.status;
+          lastProgressAt = Date.now();
+        }
         void refreshUsage(conversationId);
         if (task.status === "completed") {
           setStatus("回答已生成");
@@ -736,11 +756,13 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
         if (task.status === "failed" || task.status === "cancelled") {
           throw new Error(task.error ?? `任务${task.status}`);
         }
-        if (attempt === 0) {
+        if (lastSequence < 0) {
           setStatus(task.status === "running" ? "正在执行 Agent 任务…" : "任务排队中…");
         }
+        if (Date.now() - lastProgressAt >= TASK_INACTIVITY_TIMEOUT_MS) {
+          throw new Error("任务长时间没有进度，请检查 Worker 和模型服务");
+        }
       }
-      throw new Error("任务等待超时");
     } finally {
       closeEvents();
     }

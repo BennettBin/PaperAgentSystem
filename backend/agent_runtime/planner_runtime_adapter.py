@@ -26,11 +26,12 @@ class DynamicPlannerRuntimeAdapter:
         self._tool_schemas = dict(tool_schemas)
 
     async def create_plan(self, request: RuntimeRequest) -> PublicExecutionPlan:
+        candidate_skills = request.candidate_skills or self._skill_names[:10]
         outcome = await self._planner.plan(
             PlannerContext(
                 requirement_brief=request.question,
                 difficulty=_difficulty(request),
-                candidate_skills=self._skill_names,
+                candidate_skills=candidate_skills,
                 allowed_tool_schemas=self._tool_schemas,
                 budget=PlanBudget(
                     max_tokens=16_000,

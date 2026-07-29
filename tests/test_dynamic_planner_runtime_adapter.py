@@ -14,6 +14,11 @@ from backend.agent_runtime.unified import RuntimeRequest
 
 
 class InvalidPlannerLLM:
+    prompts: list[str]
+
+    def __init__(self) -> None:
+        self.prompts = []
+
     async def generate_with_schema(
         self,
         prompt: str,
@@ -22,6 +27,7 @@ class InvalidPlannerLLM:
         max_tokens: int = 2048,
         temperature: float = 0.0,
     ) -> str:
+        self.prompts.append(prompt)
         return "{}"
 
 
@@ -62,3 +68,42 @@ async def test_adapter_exposes_bounded_public_fallback_plan_without_reasoning() 
     serialized = plan.model_dump_json().casefold()
     assert "chain_of_thought" not in serialized
     assert "hidden_reasoning" not in serialized
+
+
+@pytest.mark.asyncio
+async def test_adapter_bounds_registry_fallback_and_prefers_routed_skills() -> None:
+    skills = [f"skill-{index:02d}" for index in range(13)]
+    llm = InvalidPlannerLLM()
+    registry = RegistrySnapshot(
+        skills=set(skills),
+        tools={"search_document"},
+        permitted_skills=set(skills),
+        permitted_tools={"search_document"},
+    )
+    adapter = DynamicPlannerRuntimeAdapter(
+        ConstrainedLLMPlanner(
+            llm=llm,
+            registry=registry,
+            model=PlannerModelMetadata(
+                model="small",
+                profile="small",
+                version="test",
+                prompt_version="planner-v2",
+            ),
+        ),
+        skill_names=skills,
+        tool_schemas={"search_document": {"type": "object"}},
+    )
+
+    plan = await adapter.create_plan(
+        RuntimeRequest(
+            task_id="task-many-skills",
+            question="这篇文章主要讲了什么",
+            file_ids=["paper-1"],
+            candidate_skills=["skill-12"],
+        )
+    )
+
+    assert plan.fallback_used is True
+    assert any(step.title == "Resolve paper and requested section" for step in plan.steps)
+    assert '"candidate_skills": ["skill-12"]' in llm.prompts[0]

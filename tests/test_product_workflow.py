@@ -494,7 +494,6 @@ async def test_answer_recalls_short_term_memory_and_schedules_summary(
     short_memory = ShortTermMemoryService(
         product_database,
         embeddings,
-        message_threshold=8,
     )
     long_memory = LongTermMemoryService(product_database, embeddings)
     coordinator = ConversationMemoryCoordinator(short_memory, long_memory)
@@ -611,7 +610,7 @@ async def test_memory_summary_coordinator_persists_both_memory_levels(
     product_database,
 ) -> None:
     with product_database() as session:
-        for index in range(8):
+        for index in range(13):
             session.add(
                 MessageModel(
                     id=f"summary-source-{index}",
@@ -626,11 +625,10 @@ async def test_memory_summary_coordinator_persists_both_memory_levels(
         session.commit()
     embeddings = FakeEmbeddingClient()
     coordinator = ConversationMemoryCoordinator(
-        ShortTermMemoryService(
-            product_database,
-            embeddings,
-            message_threshold=8,
-        ),
+            ShortTermMemoryService(
+                product_database,
+                embeddings,
+            ),
         LongTermMemoryService(product_database, embeddings),
     )
 

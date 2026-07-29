@@ -1283,6 +1283,14 @@ class PaperAgentProcessor:
                     task_id=task_id or "unpersisted-task",
                     question=question,
                     file_ids=file_ids,
+                    candidate_skills=(
+                        [
+                            skill.name
+                            for skill in routed_selection.selected_skills
+                        ]
+                        if routed_selection is not None
+                        else []
+                    ),
                     workspace_id=LOCAL_WORKSPACE_ID,
                     conversation_id=conversation_id,
                 )
@@ -2975,7 +2983,7 @@ def _related_conversation_context(
     question: str,
     *,
     exclude_message_id: str = "",
-    max_messages: int = 8,
+    max_messages: int = 12,
     max_characters: int = 3600,
 ) -> dict[str, Any]:
     with sessions() as session:
@@ -2989,7 +2997,7 @@ def _related_conversation_context(
                     MessageModel.id != exclude_message_id,
                 )
                 .order_by(MessageModel.created_at.desc(), MessageModel.id.desc())
-                .limit(24)
+                .limit(12)
             )
         )
     messages.reverse()

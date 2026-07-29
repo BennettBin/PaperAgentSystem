@@ -190,6 +190,24 @@ class RevisionRoleRunner(BlackboardRoleRunner):
         )
 
 
+class DegradedWriterRoleRunner(BlackboardRoleRunner):
+    def _entry(self, assignment: RoleAssignment) -> BlackboardEntry:
+        entry = super()._entry(assignment)
+        if assignment.role is not AgentRole.WRITER:
+            return entry
+        return entry.model_copy(
+            update={
+                "payload": {
+                    **entry.payload,
+                    "degraded": True,
+                    "degradation_reason": (
+                        "writer_validation_failed_evidence_only_fallback"
+                    ),
+                }
+            }
+        )
+
+
 @pytest.mark.asyncio
 async def test_adapter_executes_existing_role_dag_and_returns_verified_result() -> None:
     registry = RoleProtocolRegistry.load(Path("backend/subagents/roles"))
@@ -281,6 +299,43 @@ async def test_adapter_allows_exactly_one_writer_verifier_revision() -> None:
     assert result.revision_rounds == 1
     assert [call.assignment_id for call in calls].count("writer:revision") == 1
     assert [call.assignment_id for call in calls].count("verifier:revision") == 1
+
+
+@pytest.mark.asyncio
+async def test_adapter_exposes_strict_writer_degradation_in_result_and_events() -> None:
+    registry = RoleProtocolRegistry.load(Path("backend/subagents/roles"))
+    board = InMemoryBlackboardRepository()
+    calls: list[RoleAssignment] = []
+    progress: list[dict[str, object]] = []
+    adapter = MultiAgentRuntimeAdapter(
+        registry=registry,
+        blackboard_factory=lambda: board,
+        runner_factory=lambda context: DegradedWriterRoleRunner(
+            context.workspace_id,
+            context.task_id,
+            calls,
+        ),
+        progress_sink=progress.append,
+    )
+
+    request = RuntimeRequest(
+        task_id="task-degraded",
+        workspace_id="ws-1",
+        conversation_id="conversation-1",
+        question="比较两篇论文",
+        file_ids=["paper-a", "paper-b"],
+    )
+    result = await adapter.execute(request)
+
+    assert result.degraded is True
+    completed = progress[-1]
+    assert completed["type"] == "multi_agent_degraded"
+    assert completed["data"]["writer_degraded"] is True
+
+    replayed = await adapter.execute(request)
+
+    assert replayed.degraded is True
+    assert len(calls) == 6
 
 
 @pytest.mark.asyncio

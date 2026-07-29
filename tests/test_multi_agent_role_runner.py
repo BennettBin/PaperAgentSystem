@@ -27,8 +27,23 @@ class ScriptedRoleLLM(LLMClient):
         *,
         input_tokens: int = 0,
         output_tokens: int = 20,
+        writer_payloads: list[dict[str, Any] | str] | None = None,
+        evidence_conflict_ids: list[str] | None = None,
+        critic_severity: str = "warning",
+        reader_evidence_id: str | None = None,
+        reader_quote: str | None = None,
+        reader_empty_evidence: bool = False,
+        verifier_payload: dict[str, Any] | str | None = None,
     ) -> None:
         self.requested_profiles = requested_profiles
+        self.writer_payloads = list(writer_payloads or [])
+        self.writer_calls = 0
+        self.evidence_conflict_ids = evidence_conflict_ids or []
+        self.critic_severity = critic_severity
+        self.reader_evidence_id = reader_evidence_id
+        self.reader_quote = reader_quote
+        self.reader_empty_evidence = reader_empty_evidence
+        self.verifier_payload = verifier_payload
         self.last_usage = SimpleNamespace(
             input_tokens=input_tokens,
             output_tokens=output_tokens,
@@ -68,11 +83,17 @@ class ScriptedRoleLLM(LLMClient):
                     "results": ["Accuracy 90%"],
                     "contributions": ["贡献"],
                     "limitations": ["局限"],
-                    "evidence": [
+                    "evidence": [] if self.reader_empty_evidence else [
                         {
-                            "evidence_id": f"{file_id}-chunk",
+                            "evidence_id": (
+                                self.reader_evidence_id
+                                or f"{file_id}-chunk"
+                            ),
                             "field": "methodology",
-                            "quote": f"{file_id} Accuracy 90%",
+                            "quote": (
+                                self.reader_quote
+                                or f"{file_id} Accuracy 90%"
+                            ),
                             "page": 1,
                         }
                     ],
@@ -98,7 +119,7 @@ class ScriptedRoleLLM(LLMClient):
                             "inferred": False,
                         },
                     ],
-                    "conflict_ids": [],
+                    "conflict_ids": self.evidence_conflict_ids,
                     "missing_items": [],
                 }
             )
@@ -112,12 +133,22 @@ class ScriptedRoleLLM(LLMClient):
                             "claim_ids": ["C1"],
                             "evidence_refs": ["E1"],
                             "description": "说明比较维度",
-                            "severity": "warning",
+                            "severity": self.critic_severity,
                         }
                     ]
                 }
             )
         if prompt.startswith("ROLE: writer"):
+            self.writer_calls += 1
+            if self.writer_payloads:
+                payload = self.writer_payloads[
+                    min(self.writer_calls - 1, len(self.writer_payloads) - 1)
+                ]
+                return (
+                    payload
+                    if isinstance(payload, str)
+                    else json.dumps(payload)
+                )
             return json.dumps(
                 {
                     "answer": "论文 A 与论文 B 的结果均为 90% [E1][E2]",
@@ -132,6 +163,12 @@ class ScriptedRoleLLM(LLMClient):
                 }
             )
         if prompt.startswith("ROLE: verifier"):
+            if self.verifier_payload is not None:
+                return (
+                    self.verifier_payload
+                    if isinstance(self.verifier_payload, str)
+                    else json.dumps(self.verifier_payload)
+                )
             return json.dumps({"status": "passed", "findings": []})
         raise AssertionError(f"unexpected prompt: {prompt[:40]}")
 
@@ -275,6 +312,133 @@ async def test_paper_reader_rejects_multiple_assigned_files() -> None:
 
 
 @pytest.mark.asyncio
+async def test_paper_reader_canonicalizes_uniquely_grounded_model_evidence_id() -> None:
+    registry = RoleProtocolRegistry.load(Path("backend/subagents/roles"))
+    events: list[dict[str, object]] = []
+    runner = ProductionRoleRunner(
+        registry,
+        RoleExecutionContext(
+            workspace_id="ws-1",
+            conversation_id="conversation-1",
+            task_id="task-reader-canonical",
+            question="这篇文章主要讲了什么",
+            blackboard=InMemoryBlackboardRepository(),
+        ),
+        llm_resolver=lambda _: ScriptedRoleLLM(
+            [],
+            reader_evidence_id="model-invented-id",
+        ),
+        tool_runtime=RecordingSearchTool(),
+        progress_sink=events.append,
+    )
+
+    result = await runner.invoke(
+        _assignment(AgentRole.PAPER_READER, "reader:paper-a", ["paper-a"]),
+        idempotency_key="task-reader-canonical:reader:paper-a",
+    )
+
+    evidence = result.blackboard_entries[0].payload["card"]["evidence"][0]
+    assert evidence["evidence_id"] == "paper-a-chunk"
+    assert evidence["page"] == 1
+    assert any(
+        event["type"] == "paper_reader_evidence_normalized"
+        for event in events
+    )
+
+
+@pytest.mark.asyncio
+async def test_paper_reader_falls_back_to_raw_hits_without_guessing_chunk_id() -> None:
+    registry = RoleProtocolRegistry.load(Path("backend/subagents/roles"))
+    events: list[dict[str, object]] = []
+    runner = ProductionRoleRunner(
+        registry,
+        RoleExecutionContext(
+            workspace_id="ws-1",
+            conversation_id="conversation-1",
+            task_id="task-reader-raw",
+            question="这篇文章主要讲了什么",
+            blackboard=InMemoryBlackboardRepository(),
+        ),
+        llm_resolver=lambda _: ScriptedRoleLLM(
+            [],
+            reader_evidence_id="model-invented-id",
+            reader_quote="a generated paraphrase absent from every source hit",
+        ),
+        tool_runtime=RecordingSearchTool(),
+        progress_sink=events.append,
+    )
+
+    result = await runner.invoke(
+        _assignment(AgentRole.PAPER_READER, "reader:paper-a", ["paper-a"]),
+        idempotency_key="task-reader-raw:reader:paper-a",
+    )
+
+    evidence = result.blackboard_entries[0].payload["card"]["evidence"]
+    assert evidence == [
+        {
+            "evidence_id": "paper-a-chunk",
+            "field": "retrieved_evidence",
+            "quote": "paper-a Accuracy 90%",
+            "page": 1,
+        }
+    ]
+    normalized_event = next(
+        event
+        for event in events
+        if event["type"] == "paper_reader_evidence_normalized"
+    )
+    assert normalized_event["data"]["raw_hit_fallback_used"] is True
+
+
+@pytest.mark.asyncio
+async def test_paper_reader_falls_back_to_raw_hits_when_model_returns_no_evidence() -> None:
+    registry = RoleProtocolRegistry.load(Path("backend/subagents/roles"))
+    events: list[dict[str, object]] = []
+    runner = ProductionRoleRunner(
+        registry,
+        RoleExecutionContext(
+            workspace_id="ws-1",
+            conversation_id="conversation-1",
+            task_id="task-reader-empty",
+            question="请比较两篇文章",
+            blackboard=InMemoryBlackboardRepository(),
+        ),
+        llm_resolver=lambda _: ScriptedRoleLLM(
+            [],
+            reader_empty_evidence=True,
+        ),
+        tool_runtime=RecordingSearchTool(),
+        progress_sink=events.append,
+    )
+
+    result = await runner.invoke(
+        _assignment(AgentRole.PAPER_READER, "reader:paper-a", ["paper-a"]),
+        idempotency_key="task-reader-empty:reader:paper-a",
+    )
+
+    evidence = result.blackboard_entries[0].payload["card"]["evidence"]
+    assert evidence == [
+        {
+            "evidence_id": "paper-a-chunk",
+            "field": "retrieved_evidence",
+            "quote": "paper-a Accuracy 90%",
+            "page": 1,
+        }
+    ]
+    normalized_event = next(
+        event
+        for event in events
+        if event["type"] == "paper_reader_evidence_normalized"
+    )
+    assert normalized_event["data"] == {
+        "assignment_id": "reader:paper-a",
+        "role": "paper_reader",
+        "normalized_evidence_count": 1,
+        "raw_hit_fallback_used": True,
+    }
+
+
+@pytest.mark.asyncio
 async def test_role_budget_applies_to_generated_tokens_not_prompt_tokens() -> None:
     registry = RoleProtocolRegistry.load(Path("backend/subagents/roles"))
     llm = ScriptedRoleLLM([], input_tokens=3200, output_tokens=200)
@@ -303,3 +467,277 @@ async def test_role_budget_applies_to_generated_tokens_not_prompt_tokens() -> No
     )
 
     assert result.token_usage == 200
+
+
+def _writer_payload(
+    answer: str,
+    citation_ids: list[str],
+) -> dict[str, Any]:
+    return {
+        "answer": answer,
+        "citation_ids": citation_ids,
+        "issue_resolutions": [
+            {
+                "issue_id": "I1",
+                "status": "accepted",
+                "rationale": "已补充比较维度",
+            }
+        ],
+    }
+
+
+async def _prepared_writer(
+    llm: ScriptedRoleLLM,
+) -> tuple[ProductionRoleRunner, InMemoryBlackboardRepository, list[dict[str, object]]]:
+    registry = RoleProtocolRegistry.load(Path("backend/subagents/roles"))
+    board = InMemoryBlackboardRepository()
+    events: list[dict[str, object]] = []
+    runner = ProductionRoleRunner(
+        registry,
+        RoleExecutionContext(
+            workspace_id="ws-1",
+            conversation_id="conversation-1",
+            task_id="task-writer",
+            question="比较两篇论文",
+            blackboard=board,
+        ),
+        llm_resolver=lambda _: llm,
+        tool_runtime=RecordingSearchTool(),
+        progress_sink=events.append,
+    )
+    for assignment in (
+        _assignment(AgentRole.PAPER_READER, "reader:paper-a", ["paper-a"]),
+        _assignment(AgentRole.PAPER_READER, "reader:paper-b", ["paper-b"]),
+        _assignment(AgentRole.EVIDENCE, "evidence", ["paper-a", "paper-b"]),
+        _assignment(AgentRole.CRITIC, "critic", ["paper-a", "paper-b"]),
+    ):
+        result = await runner.invoke(
+            assignment,
+            idempotency_key=f"task-writer:{assignment.assignment_id}",
+        )
+        for entry in result.blackboard_entries:
+            await board.append(entry, expected_version=0)
+    return runner, board, events
+
+
+@pytest.mark.asyncio
+async def test_writer_canonicalizes_valid_inline_citations_without_model_repair() -> None:
+    llm = ScriptedRoleLLM(
+        [],
+        writer_payloads=[
+            _writer_payload(
+                "论文 A 与论文 B 的结果均为 90% [E1, E2]",
+                ["E1"],
+            )
+        ],
+    )
+    runner, board, events = await _prepared_writer(llm)
+
+    result = await runner.invoke(
+        _assignment(AgentRole.WRITER, "writer", ["paper-a", "paper-b"]),
+        idempotency_key="task-writer:writer",
+    )
+    for entry in result.blackboard_entries:
+        await board.append(entry, expected_version=0)
+
+    assert llm.writer_calls == 1
+    assert result.output["citation_refs"] == [
+        "artifact://citation/E1",
+        "artifact://citation/E2",
+    ]
+    draft = next(
+        entry
+        for entry in await board.list_active("ws-1", "task-writer")
+        if entry.kind is BlackboardEntryKind.DRAFT_SECTION
+    )
+    assert draft.payload["citation_ids"] == ["E1", "E2"]
+    assert any(event["type"] == "writer_citations_normalized" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_writer_runs_one_targeted_repair_before_degradation() -> None:
+    llm = ScriptedRoleLLM(
+        [],
+        writer_payloads=[
+            _writer_payload("不合法引用 [E99]", ["E99"]),
+            _writer_payload("修复后的比较 [E1][E2]", ["E1", "E2"]),
+        ],
+    )
+    runner, _, events = await _prepared_writer(llm)
+
+    result = await runner.invoke(
+        _assignment(AgentRole.WRITER, "writer", ["paper-a", "paper-b"]),
+        idempotency_key="task-writer:writer",
+    )
+
+    assert llm.writer_calls == 2
+    assert result.output["citation_refs"] == [
+        "artifact://citation/E1",
+        "artifact://citation/E2",
+    ]
+    assert any(event["type"] == "writer_agent_repair_started" for event in events)
+    assert any(event["type"] == "writer_agent_repair_completed" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_writer_strictly_degrades_only_from_complete_conflict_free_evidence() -> None:
+    llm = ScriptedRoleLLM(
+        [],
+        writer_payloads=[_writer_payload("不合法引用 [E99]", ["E99"])],
+    )
+    runner, _, events = await _prepared_writer(llm)
+
+    result = await runner.invoke(
+        _assignment(AgentRole.WRITER, "writer", ["paper-a", "paper-b"]),
+        idempotency_key="task-writer:writer",
+    )
+
+    assert llm.writer_calls == 2
+    assert result.blackboard_entries[0].payload["degraded"] is True
+    assert result.output["citation_refs"] == [
+        "artifact://citation/E1",
+        "artifact://citation/E2",
+    ]
+    assert any(event["type"] == "writer_agent_degraded" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_writer_schema_invalid_repair_still_uses_strict_degradation() -> None:
+    llm = ScriptedRoleLLM(
+        [],
+        writer_payloads=[
+            _writer_payload("不合法引用 [E99]", ["E99"]),
+            "not schema-valid writer json",
+        ],
+    )
+    runner, _, events = await _prepared_writer(llm)
+
+    result = await runner.invoke(
+        _assignment(AgentRole.WRITER, "writer", ["paper-a", "paper-b"]),
+        idempotency_key="task-writer:writer",
+    )
+
+    assert llm.writer_calls == 2
+    assert result.blackboard_entries[0].payload["degraded"] is True
+    assert any(event["type"] == "writer_agent_repair_failed" for event in events)
+    assert any(event["type"] == "writer_agent_degraded" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_writer_schema_invalid_revision_retains_strict_evidence_draft() -> None:
+    llm = ScriptedRoleLLM(
+        [],
+        writer_payloads=[
+            _writer_payload("不合法引用 [E99]", ["E99"]),
+            "not schema-valid repair json",
+        ],
+    )
+    runner, board, events = await _prepared_writer(llm)
+
+    initial = await runner.invoke(
+        _assignment(AgentRole.WRITER, "writer", ["paper-a", "paper-b"]),
+        idempotency_key="task-writer:writer",
+    )
+    for entry in initial.blackboard_entries:
+        await board.append(entry, expected_version=0)
+    verification = await runner.invoke(
+        _assignment(AgentRole.VERIFIER, "verifier", ["paper-a", "paper-b"]),
+        idempotency_key="task-writer:verifier",
+    )
+    for entry in verification.blackboard_entries:
+        await board.append(entry, expected_version=0)
+
+    revision = await runner.invoke(
+        _assignment(
+            AgentRole.WRITER,
+            "writer:revision",
+            ["paper-a", "paper-b"],
+        ),
+        idempotency_key="task-writer:writer:revision",
+    )
+
+    payload = revision.blackboard_entries[0].payload
+    assert payload["degraded"] is True
+    assert payload["degradation_reason"] == (
+        "writer_revision_generation_failed_evidence_only_fallback"
+    )
+    assert "| 论文 A |" in payload["answer"]
+    assert "| 论文 B |" in payload["answer"]
+    assert "只并列展示两篇论文各自的原文证据" in payload["answer"]
+    assert "paper-a Accuracy 90%" in payload["answer"]
+    assert "paper-b Accuracy 90%" in payload["answer"]
+    assert "论文 1" not in payload["answer"]
+    assert any(
+        event["type"] == "writer_agent_degraded"
+        and event["data"]["assignment_id"] == "writer:revision"
+        for event in events
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "verifier_payload",
+    [
+        {
+            "status": "failed",
+            "findings": [
+                {
+                    "finding_type": "unsupported",
+                    "description": "Side-by-side facts are not a direct comparison",
+                    "severity": "severe",
+                }
+            ],
+        },
+        "not schema-valid verifier json",
+    ],
+)
+async def test_canonical_evidence_only_draft_has_strict_deterministic_verifier_fallback(
+    verifier_payload: dict[str, Any] | str,
+) -> None:
+    llm = ScriptedRoleLLM(
+        [],
+        writer_payloads=[
+            _writer_payload("不合法引用 [E99]", ["E99"]),
+            "not schema-valid repair json",
+        ],
+        verifier_payload=verifier_payload,
+    )
+    runner, board, events = await _prepared_writer(llm)
+    writer = await runner.invoke(
+        _assignment(AgentRole.WRITER, "writer", ["paper-a", "paper-b"]),
+        idempotency_key="task-writer:writer",
+    )
+    for entry in writer.blackboard_entries:
+        await board.append(entry, expected_version=0)
+
+    verification = await runner.invoke(
+        _assignment(AgentRole.VERIFIER, "verifier", ["paper-a", "paper-b"]),
+        idempotency_key="task-writer:verifier",
+    )
+
+    assert verification.output["status"] == "passed"
+    payload = verification.blackboard_entries[0].payload
+    assert payload["deterministic_evidence_only_pass"] is True
+    assert any(
+        event["type"] == "verifier_deterministic_degraded_pass"
+        for event in events
+    )
+
+
+@pytest.mark.asyncio
+async def test_writer_refuses_degradation_when_evidence_has_conflicts() -> None:
+    llm = ScriptedRoleLLM(
+        [],
+        writer_payloads=[_writer_payload("不合法引用 [E99]", ["E99"])],
+        evidence_conflict_ids=["conflict-1"],
+    )
+    runner, _, events = await _prepared_writer(llm)
+
+    with pytest.raises(Exception, match="strict degradation requirements"):
+        await runner.invoke(
+            _assignment(AgentRole.WRITER, "writer", ["paper-a", "paper-b"]),
+            idempotency_key="task-writer:writer",
+        )
+
+    assert llm.writer_calls == 2
+    assert not any(event["type"] == "writer_agent_degraded" for event in events)

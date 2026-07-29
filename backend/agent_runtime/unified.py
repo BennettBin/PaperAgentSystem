@@ -36,6 +36,7 @@ class RuntimeRequest(_StrictModel):
     task_id: str = Field(min_length=1)
     question: str = Field(min_length=1)
     file_ids: list[str] = Field(default_factory=list)
+    candidate_skills: list[str] = Field(default_factory=list, max_length=3)
     workspace_id: str = "local-workspace"
     conversation_id: str | None = None
 

@@ -242,13 +242,15 @@ Tool Runtime 并行调用 `search_crossref`、`search_semantic_scholar`、`searc
 
 原始消息存于 PostgreSQL `messages`，是事实来源。`MemorySegment` 存于 `memory_segments`，虽然持久化但只服务当前 Conversation，因此语义上仍是短期 Memory；`ConversationSummary` 存于 `conversation_summaries`，与 `memory_preferences` 中用户明确保存的偏好一起构成跨会话长期 Memory。历史文件的元数据和检索文本存于 `workspace_entries`/`workspace_search`，文件对象存于 MinIO/S3。Redis 只负责调度和短期协调。
 
-每次助手回答保存后，Worker 会投递幂等的 `memory_summary` 任务。当前实现达到 8 条未删除消息或约 1200 个正则词项时创建带 Embedding、Embedding 指纹和原始消息 ID 的 `MemorySegment`；长期 Memory 同步 upsert 会话级 `ConversationSummary`。下一轮回答先检索摘要，再从 `source_message_ids` 回读仍未删除的原始消息，摘要本身不作为事实来源。跨会话检索只在“以前”“其他会话”“历史”等明确意图出现时启用，并排除当前会话。
+每次助手回答保存后，Worker 会投递幂等的 `memory_summary` 任务。最近 12 条未删除消息保留原文；更早消息按固定窗口归入稳定 `MemorySegment`，每条消息最多属于一个有效 Segment。Worker 使用 Small Model Profile 生成包含主题、用户目标、决定、文件范围、未完成事项和来源消息 ID 的结构化 JSON，并保存 Embedding 与 Embedding 指纹。会话级 `ConversationSummary` 只使用“旧摘要 + 尚未覆盖的新消息”增量更新，不再重新拼接整个会话。下一轮回答先检索摘要，再从 `source_message_ids` 回读仍未删除的原始消息；摘要本身不作为事实来源。跨会话检索只在“以前”“其他会话”“历史”等明确意图出现时启用，并排除当前会话。
 
 详细边界见 [`backend/memory/README.md`](./backend/memory/README.md)。
 
 ## 任务监控与审计日志
 
 监控面板通过 SSE 展示可公开的执行阶段，不展示隐藏推理、完整 Prompt 或论文全文。重新打开面板时，已持久化事件可从任务监控接口回读。
+
+页面不再使用固定 180 秒总等待上限；只在任务状态和 SSE 事件连续 15 分钟都没有进展时提示检查 Worker/模型服务。必需 Agent 的确定性业务失败直接进入失败终态，不再由队列把完整 Multi-Agent DAG 重跑三遍；显式可重试的服务不可用、Deadline 和资源异常仍保留有界重试。
 
 Worker 会为每个任务生成 UTF-8 JSONL 审计日志：
 
@@ -289,11 +291,23 @@ ALLOW_EXPERIMENTAL_NO_GO=true
 Prompt 的输入 Token 重复计入同一个生成上限。Coordinator 的 84000 Token 全局上限覆盖正常
 2/5/10 篇论文协作规模，实际消耗仍以模型 usage 为准，并继续受角色 Manifest 和全局预算双重限制。
 Verifier 发现严重问题时最多允许一次 Writer 定向修订和一次复验，复验仍失败则不保存回答。
-Reader 单篇失败会显式列为缺失论文，Critic 不可用可降级，Evidence、Writer 或 Verifier 失败
-则任务失败。关闭任一开关即可恢复原 Safe RAG 路径，不需要回滚数据库。
+Writer 正文中的 `[E#]` 是引用真值，支持 `[E1]`、`[E1, E2]` 和全角括号写法；程序会按正文
+确定性规范化重复的 `citation_ids`。未知引用、论文覆盖缺失或 Critic 问题未处理时只允许一次
+带校验差异的 Writer 定向修复。修复仍失败时，只有无缺失论文、无证据冲突、无严重 Critic
+问题且每篇论文都有可回指 Evidence Matrix 的非推断 Claim，才允许生成明确标记的证据机械
+汇总。Reader 会把模型返回的证据重新映射到当前论文的真实 Chunk/Page；无法安全映射的改用
+该论文检索命中的原文片段，不猜测 Chunk ID。证据机械汇总只有与程序生成的规范版本完全一致
+并通过引用、覆盖和数字确定性检查时，才允许在模型 Verifier 输出无效或把逐篇并列原文误判为
+跨论文推断时严格降级通过；任意自由文本都不能使用这一通道。Reader 单篇失败会显式列为缺失论文，
+Critic 不可用可降级，Evidence、Writer 或 Verifier 角色不可用则任务失败。关闭任一开关即可
+恢复原 Safe RAG 路径，不需要回滚数据库。
 
 单论文和普通论文问答仍走 Dynamic Planner + Safe RAG。旧代码评测结果不再作为当前结论；
 当前默认多 Agent 的质量、Token 和 P95 需要基于新代码重新评测。
+
+Dynamic Planner 只接收结构化路由已经选中的 Skill；兼容调用未提供选择结果时，最多从 Registry
+取前 10 项。因此新增 Skill 不会再把 13 项完整注册表直接传入 `PlannerContext` 并触发 Pydantic
+长度校验失败。
 
 ## 模型配置
 
@@ -399,7 +413,8 @@ PaperAgentSystem/
 
 | 检查 | 结果 |
 |---|---:|
-| Python 非 Docker 单元、契约与组件测试 | 421 passed |
+| Python 全量非 Docker 测试 | 当前 commit 需重新生成，不沿用旧固定数量 |
+| Reader/Runtime/Coordinator/Worker 聚焦回归 | 17 passed |
 | 前端组件测试 | 22 passed（本次未改前端） |
 | TypeScript 类型检查 | 通过 |
 | Next.js 生产构建 | 通过 |
@@ -425,8 +440,9 @@ Manifest。旧代码生成的基线、Planner、多 Agent 和最终效果报告�
 - [Failure Postmortems](./docs/FAILURE_POSTMORTEMS.md)
 
 面试介绍中的两条关键链路已逐步标明真实责任主体：上传链路区分 Ingestion Worker 与确定性
-解析/索引组件，问答链路区分主 Agent、Dynamic Planner、Safe RAG、Skill/Tool Runtime、
-确定性 Verifier 和默认合格多 Agent 分支；文档每个二级标题均先说明本节目的。
+解析/索引组件，问答链路按真实顺序区分结构化 Requirement、条件 Memory、问答编排器、
+Dynamic Planner、Safe RAG、外部论文发现、学术改写、Skill/Tool Runtime、确定性 Verifier 和
+默认合格 Multi-Agent 分支；文档同时校准默认 BGE-M3/Hash 降级、Reader 预算及当前未完成能力。
 
 ## 隐私与安全
 
