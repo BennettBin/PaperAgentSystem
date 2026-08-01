@@ -9,8 +9,10 @@ from typing import Any
 import pytest
 
 from backend.core.domain.blackboard import BlackboardEntryKind
+from backend.core.errors import ProjectError
 from backend.core.ports.llm_client import LLMClient
 from backend.infrastructure.fake.blackboard import InMemoryBlackboardRepository
+from backend.infrastructure.fake.observability import FakeTraceWriter
 from backend.subagents.coordinator import RoleAssignment
 from backend.subagents.protocol import AgentRole, RoleProtocolRegistry
 from backend.subagents.role_runner import (
@@ -33,6 +35,7 @@ class ScriptedRoleLLM(LLMClient):
         reader_evidence_id: str | None = None,
         reader_quote: str | None = None,
         reader_empty_evidence: bool = False,
+        critic_payload: dict[str, Any] | str | None = None,
         verifier_payload: dict[str, Any] | str | None = None,
     ) -> None:
         self.requested_profiles = requested_profiles
@@ -43,6 +46,9 @@ class ScriptedRoleLLM(LLMClient):
         self.reader_evidence_id = reader_evidence_id
         self.reader_quote = reader_quote
         self.reader_empty_evidence = reader_empty_evidence
+        self.critic_payload = critic_payload
+        self.critic_prompt = ""
+        self.critic_response_schema: dict[str, Any] | None = None
         self.verifier_payload = verifier_payload
         self.last_usage = SimpleNamespace(
             input_tokens=input_tokens,
@@ -70,7 +76,7 @@ class ScriptedRoleLLM(LLMClient):
         max_tokens: int = 2048,
         temperature: float = 0.7,
     ) -> str:
-        del system_prompt, response_schema, max_tokens, temperature
+        del system_prompt, max_tokens, temperature
         if prompt.startswith("ROLE: paper_reader"):
             file_id = re.search(r"ASSIGNED_FILE_ID=([^\n]+)", prompt).group(1)  # type: ignore[union-attr]
             return json.dumps(
@@ -124,6 +130,14 @@ class ScriptedRoleLLM(LLMClient):
                 }
             )
         if prompt.startswith("ROLE: critic"):
+            self.critic_prompt = prompt
+            self.critic_response_schema = response_schema
+            if self.critic_payload is not None:
+                return (
+                    self.critic_payload
+                    if isinstance(self.critic_payload, str)
+                    else json.dumps(self.critic_payload)
+                )
             return json.dumps(
                 {
                     "issues": [
@@ -282,6 +296,81 @@ async def test_builtin_roles_are_file_scoped_structured_and_traceable() -> None:
     event_types = [event["type"] for event in events]
     assert "paper_reader_agent_started" in event_types
     assert "verifier_agent_passed" in event_types
+
+
+@pytest.mark.asyncio
+async def test_critic_constrains_ids_and_records_invalid_raw_output_details() -> None:
+    registry = RoleProtocolRegistry.load(Path("backend/subagents/roles"))
+    board = InMemoryBlackboardRepository()
+    events: list[dict[str, object]] = []
+    traces = FakeTraceWriter()
+    invalid_payload = {
+        "issues": [
+            {
+                "issue_id": "I-invalid",
+                "issue_type": "unsupported",
+                "claim_ids": ["C1", "C99"],
+                "evidence_refs": ["E2", "E99"],
+                "description": "引用了不存在的标识符",
+                "severity": "severe",
+            }
+        ]
+    }
+    llm = ScriptedRoleLLM([], critic_payload=invalid_payload)
+    runner = ProductionRoleRunner(
+        registry,
+        RoleExecutionContext(
+            workspace_id="ws-1",
+            conversation_id="conversation-1",
+            task_id="task-critic-invalid",
+            question="比较两篇论文",
+            blackboard=board,
+        ),
+        llm_resolver=lambda _: llm,
+        tool_runtime=RecordingSearchTool(),
+        trace_writer=traces,
+        progress_sink=events.append,
+    )
+    for assignment in (
+        _assignment(AgentRole.PAPER_READER, "reader:paper-a", ["paper-a"]),
+        _assignment(AgentRole.PAPER_READER, "reader:paper-b", ["paper-b"]),
+        _assignment(AgentRole.EVIDENCE, "evidence", ["paper-a", "paper-b"]),
+    ):
+        result = await runner.invoke(
+            assignment,
+            idempotency_key=f"task-critic-invalid:{assignment.assignment_id}",
+        )
+        for entry in result.blackboard_entries:
+            await board.append(entry, expected_version=0)
+
+    with pytest.raises(ProjectError) as captured:
+        await runner.invoke(
+            _assignment(AgentRole.CRITIC, "critic", ["paper-a", "paper-b"]),
+            idempotency_key="task-critic-invalid:critic",
+        )
+
+    assert captured.value.details == {
+        "issue_id": "I-invalid",
+        "unknown_claim_ids": ["C99"],
+        "unknown_evidence_refs": ["E99"],
+        "allowed_claim_ids": ["C1", "C2"],
+        "allowed_evidence_refs": ["E1", "E2"],
+    }
+    issue_schema = llm.critic_response_schema["$defs"]["CriticIssuePayload"][
+        "properties"
+    ]
+    assert issue_schema["claim_ids"]["items"]["enum"] == ["C1", "C2"]
+    assert issue_schema["evidence_refs"]["items"]["enum"] == ["E1", "E2"]
+    assert 'ALLOWED_CLAIM_IDS=["C1", "C2"]' in llm.critic_prompt
+    assert 'ALLOWED_EVIDENCE_REFS=["E1", "E2"]' in llm.critic_prompt
+    failure = next(event for event in events if event["type"] == "critic_agent_failed")
+    assert failure["data"]["error_details"] == captured.value.details
+    raw_trace = next(
+        trace
+        for trace in traces.traces
+        if trace["span_name"] == "subagent.critic.model_output"
+    )
+    assert json.loads(raw_trace["data"]["raw_response"]) == invalid_payload
 
 
 @pytest.mark.asyncio

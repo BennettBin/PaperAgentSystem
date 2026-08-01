@@ -225,6 +225,7 @@ class ProductionRoleRunner:
     ) -> RoleRunResult:
         started = monotonic()
         error: str | None = None
+        error_details: dict[str, Any] = {}
         self._preflight(assignment)
         self._emit(
             f"{assignment.role.value}_agent_started",
@@ -266,31 +267,36 @@ class ProductionRoleRunner:
             return result
         except Exception as exc:
             error = str(exc)
+            error_details = exc.details if isinstance(exc, ProjectError) else {}
             self._emit(
                 f"{assignment.role.value}_agent_failed",
                 assignment,
                 {
                     "error_code": _safe_error_code(exc),
                     "error": error[:500],
+                    "error_details": error_details,
                 },
             )
             raise
         finally:
             if self._traces is not None:
                 manifest = self._registry.manifests[assignment.role]
+                trace_data: dict[str, Any] = {
+                    "task_id": self._context.task_id,
+                    "assignment_id": assignment.assignment_id,
+                    "role": assignment.role.value,
+                    "role_version": manifest.version,
+                    "model_profile": manifest.model_profile,
+                    "paper_ids": assignment.paper_ids,
+                    "depth": assignment.depth,
+                    "requested_tokens": assignment.requested_tokens,
+                }
+                if error_details:
+                    trace_data["error_details"] = error_details
                 await self._traces.write_trace(
                     self._context.task_id,
                     f"subagent.{assignment.role.value}",
-                    {
-                        "task_id": self._context.task_id,
-                        "assignment_id": assignment.assignment_id,
-                        "role": assignment.role.value,
-                        "role_version": manifest.version,
-                        "model_profile": manifest.model_profile,
-                        "paper_ids": assignment.paper_ids,
-                        "depth": assignment.depth,
-                        "requested_tokens": assignment.requested_tokens,
-                    },
+                    trace_data,
                     duration_ms=int((monotonic() - started) * 1000),
                     error=error,
                 )
@@ -596,6 +602,16 @@ class ProductionRoleRunner:
         _idempotency_key: str,
     ) -> RoleRunResult:
         evidence = await self._latest(BlackboardEntryKind.EVIDENCE)
+        claim_ids = {
+            str(item["claim_id"])
+            for item in evidence.payload.get("claims", [])
+            if isinstance(item, dict)
+        }
+        citation_ids = {
+            str(item["citation_id"])
+            for item in evidence.payload.get("evidence", [])
+            if isinstance(item, dict)
+        }
         role_input = {
             "evidence_bundle_ref": self._blackboard_ref(evidence.entry_id),
         }
@@ -604,7 +620,10 @@ class ProductionRoleRunner:
             "ROLE: critic\n"
             "Review the Evidence Matrix before writing. Report only coverage gaps, "
             "conflicts, non-comparable items, or unsupported claims. Reference only "
-            "known claim IDs and citation IDs.\n"
+            "known claim IDs and citation IDs. Copy every ID exactly from the "
+            "corresponding allowed list; never invent, transform, or continue an ID.\n"
+            f"ALLOWED_CLAIM_IDS={json.dumps(sorted(claim_ids))}\n"
+            f"ALLOWED_EVIDENCE_REFS={json.dumps(sorted(citation_ids))}\n"
             f"USER_TASK={self._context.question}\n"
             f"EVIDENCE_MATRIX={json.dumps(evidence.payload, ensure_ascii=False)}"
         )
@@ -616,26 +635,22 @@ class ProductionRoleRunner:
                 "You are a bounded Critic Agent. Return only schema-valid JSON. "
                 "Do not rewrite evidence or draft an answer."
             ),
+            response_schema=_critic_response_schema(claim_ids, citation_ids),
         )
-        claim_ids = {
-            str(item["claim_id"])
-            for item in evidence.payload.get("claims", [])
-            if isinstance(item, dict)
-        }
-        citation_ids = {
-            str(item["citation_id"])
-            for item in evidence.payload.get("evidence", [])
-            if isinstance(item, dict)
-        }
         for issue in critique.issues:
-            if (
-                not set(issue.claim_ids) <= claim_ids
-                or not set(issue.evidence_refs) <= citation_ids
-            ):
+            unknown_claim_ids = sorted(set(issue.claim_ids) - claim_ids)
+            unknown_evidence_refs = sorted(set(issue.evidence_refs) - citation_ids)
+            if unknown_claim_ids or unknown_evidence_refs:
                 raise ProjectError(
                     ErrorCode.VERIFICATION_FAILED,
                     "Critic referenced an unknown claim or citation",
-                    {"issue_id": issue.issue_id},
+                    {
+                        "issue_id": issue.issue_id,
+                        "unknown_claim_ids": unknown_claim_ids,
+                        "unknown_evidence_refs": unknown_evidence_refs,
+                        "allowed_claim_ids": sorted(claim_ids),
+                        "allowed_evidence_refs": sorted(citation_ids),
+                    },
                 )
         entry = self._entry(
             assignment,
@@ -1051,6 +1066,8 @@ class ProductionRoleRunner:
         model: type[PayloadT],
         prompt: str,
         system_prompt: str,
+        *,
+        response_schema: dict[str, Any] | None = None,
     ) -> tuple[PayloadT, int]:
         manifest = self._registry.manifests[assignment.role]
         assert self._llm_resolver is not None
@@ -1058,10 +1075,21 @@ class ProductionRoleRunner:
         raw = await client.generate_with_schema(
             prompt,
             system_prompt=system_prompt,
-            response_schema=model.model_json_schema(),
+            response_schema=response_schema or model.model_json_schema(),
             max_tokens=max(1, assignment.requested_tokens),
             temperature=0,
         )
+        if assignment.role is AgentRole.CRITIC and self._traces is not None:
+            await self._traces.write_trace(
+                self._context.task_id,
+                "subagent.critic.model_output",
+                {
+                    "task_id": self._context.task_id,
+                    "assignment_id": assignment.assignment_id,
+                    "role": assignment.role.value,
+                    "raw_response": raw,
+                },
+            )
         try:
             value = model.model_validate_json(raw)
         except ValidationError as exc:
@@ -1524,6 +1552,17 @@ def _is_canonical_evidence_only_draft(
         and actual.citation_ids == expected.citation_ids
         and actual.issue_resolutions == expected.issue_resolutions
     )
+
+
+def _critic_response_schema(
+    claim_ids: set[str],
+    citation_ids: set[str],
+) -> dict[str, Any]:
+    schema = CriticPayload.model_json_schema()
+    properties = schema["$defs"]["CriticIssuePayload"]["properties"]
+    properties["claim_ids"]["items"]["enum"] = sorted(claim_ids)
+    properties["evidence_refs"]["items"]["enum"] = sorted(citation_ids)
+    return schema
 
 
 def _inline_citation_ids(answer: str) -> list[str]:
