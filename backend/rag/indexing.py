@@ -171,6 +171,7 @@ class DocumentIndexer:
         file_data: bytes,
         document: ParsedDocument,
     ) -> list[DocumentChunk]:
+        document = _remove_postgresql_nul_characters(document)
         checksum = hashlib.sha256(file_data).hexdigest()
         with self._sessions() as session:
             existing = session.scalar(
@@ -334,6 +335,56 @@ class DocumentIndexer:
                     )
                 )
             session.commit()
+
+
+def _remove_postgresql_nul_characters(document: ParsedDocument) -> ParsedDocument:
+    """Remove NUL characters from parsed PDF text before indexing."""
+
+    def clean(value: str) -> str:
+        return value.replace("\x00", "")
+
+    return document.model_copy(
+        update={
+            "pages": [
+                page.model_copy(
+                    update={
+                        "text": clean(page.text),
+                        "blocks": [
+                            block.model_copy(update={"text": clean(block.text)})
+                            for block in page.blocks
+                        ],
+                    }
+                )
+                for page in document.pages
+            ],
+            "sections": [
+                section.model_copy(
+                    update={
+                        "number": clean(section.number) if section.number else None,
+                        "title": clean(section.title),
+                        "normalized_title": clean(section.normalized_title),
+                        "section_path": [clean(value) for value in section.section_path],
+                    }
+                )
+                for section in document.sections
+            ],
+            "headers": [clean(value) for value in document.headers],
+            "footers": [clean(value) for value in document.footers],
+            "full_text": clean(document.full_text),
+            "visual_artifacts": [
+                artifact.model_copy(
+                    update={
+                        "label": clean(artifact.label),
+                        "caption": clean(artifact.caption),
+                        "section_path": [
+                            clean(value) for value in artifact.section_path
+                        ],
+                    }
+                )
+                for artifact in document.visual_artifacts
+            ],
+        }
+    )
 
 
 def _fallback_section(

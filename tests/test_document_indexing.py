@@ -35,6 +35,7 @@ def paper_pdf() -> bytes:
 class CountingEmbeddings:
     def __init__(self) -> None:
         self.calls = 0
+        self.texts: list[str] = []
 
     async def embed(self, text: str) -> list[float]:
         self.calls += 1
@@ -42,6 +43,7 @@ class CountingEmbeddings:
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
         self.calls += len(texts)
+        self.texts.extend(texts)
         return [[float(len(text))] for text in texts]
 
 
@@ -93,6 +95,50 @@ async def test_parent_child_chunks_are_fully_traceable(database) -> None:
         assert len(catalog) == len(parsed.sections)
         assert catalog[0].heading_block_id == parsed.sections[0].heading_block_id
         assert all(model.section_id for model in stored_chunks)
+
+
+@pytest.mark.asyncio
+async def test_indexer_removes_postgresql_nul_characters_before_indexing(database) -> None:
+    data = paper_pdf()
+    parsed = await PyMuPDFParser().parse(data, "paper.pdf")
+    page = parsed.pages[0]
+    blocks = [
+        block.model_copy(update={"text": f"{block.text}\x00"})
+        for block in page.blocks
+    ]
+    section = parsed.sections[0].model_copy(
+        update={
+            "title": "1 Intro\x00duction",
+            "normalized_title": "1 intro\x00duction",
+            "section_path": ["1 Intro\x00duction"],
+        }
+    )
+    parsed = parsed.model_copy(
+        update={
+            "pages": [
+                page.model_copy(
+                    update={"blocks": blocks, "text": f"{page.text}\x00"}
+                )
+            ],
+            "sections": [section],
+            "full_text": f"{parsed.full_text}\x00",
+        }
+    )
+    embeddings = CountingEmbeddings()
+    indexer = DocumentIndexer(database, embeddings, embedding_model="fake-v1")
+
+    chunks = await indexer.index("ws-1", "file-1", data, parsed)
+
+    assert chunks
+    assert all("\x00" not in text for text in embeddings.texts)
+    assert all("\x00" not in chunk.text for chunk in chunks)
+    assert all("\x00" not in part for chunk in chunks for part in chunk.section_path)
+    with database() as session:
+        stored_sections = session.query(DocumentSectionModel).all()
+        stored_chunks = session.query(DocumentChunkModel).all()
+        assert all("\x00" not in item.title for item in stored_sections)
+        assert all("\x00" not in item.text for item in stored_chunks)
+        assert all("\x00" not in item.searchable_text for item in stored_chunks)
 
 
 @pytest.mark.asyncio
