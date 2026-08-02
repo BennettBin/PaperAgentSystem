@@ -69,6 +69,8 @@ flowchart LR
 - Plan 的步骤、依赖和实时状态通过任务监控展示，Prompt 与隐藏推理不进入事件；
 - 至少两篇论文且具有比较、综述或综合意图时，默认执行受约束多智能体 DAG；两个门禁可用于显式关闭和回退。
 
+面试口径可归纳为三条问答链：**直接回答、Safe RAG、多 Agent**。结构化意图/Skill 选择、Dynamic Planner 和异步 Memory 摘要使用 Small Profile（小模型）；直接回答、Safe RAG 生成与格式修复，以及 Paper Reader、Evidence、Critic、Writer、Verifier 五类角色 Agent 使用 Large Profile（大模型）。路由、检索、Coordinator 调度、规则 Verifier 和持久化均不调用 LLM。
+
 ## 快速开始
 
 ### 环境要求
@@ -218,6 +220,11 @@ Skill 描述向量在 Worker 生命周期内批量计算并缓存；Embedding �
 `paper_reader` 安全基线。Tool 参数与返回结果由 Pydantic 模型校验，非法调用会被拒绝并写入
 Trace。当前 Safe RAG 会按拓扑顺序合并多个 Skill 的约束并执行一次共享检索/生成；DAG
 `parallel_group` 已可观测，但尚未为每个 Skill 启动独立并行 LLM。
+
+在产品主链路中需要区分两种 Tool 参与方式：上传解析与普通 Safe RAG 会通过
+`SkillRuntime.start_tool()/complete_tool()` 校验 Tool 契约并记录 Trace，但解析和检索仍由
+`PaperAgentProcessor` 直接编排确定性组件；外部论文发现与 Multi-Agent Paper Reader 才会通过
+`ToolRuntime.invoke()` 执行真实 Tool 调用。`main_agent` 只是 Redis 队列名，不代表独立 Agent 角色。
 
 `academic_rewriter` 支持本轮粘贴文本、明确引用的历史消息和上传文件。存在本轮或历史原文时
 不会要求上传论文；历史材料以 message ID 和 SHA-256 引用，摘要只用于定位。数字、公式、术语、
