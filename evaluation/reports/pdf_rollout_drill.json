@@ -1,0 +1,77 @@
+{
+  "checks": {
+    "existing_v2_indexes_preserved": true,
+    "rollback_new_tasks_v1": true,
+    "shadow_user_visible_v1": true,
+    "stages_monotonic": true,
+    "task_snapshot_stable": true
+  },
+  "evidence_class": "controlled_rollout_drill_not_real_upload",
+  "recommendation": "pass",
+  "rollback": {
+    "existing_v2_preserved_count": 12,
+    "new_task_v2_count": 0
+  },
+  "sample_count": 20,
+  "schema_version": "1.0",
+  "shadow": {
+    "user_visible_v2_count": 0
+  },
+  "stages": {
+    "10": {
+      "percentage": 10,
+      "snapshot_fingerprint": "344295b4945bd69a9b9131613aeea1553da5fbc69f9ba8830ea4d6c70a6c8b6b",
+      "v2_case_ids": [
+        "case-08",
+        "case-18"
+      ],
+      "v2_count": 2
+    },
+    "100": {
+      "percentage": 100,
+      "snapshot_fingerprint": "6e23231305bcc83b5beeffd425a2844ae0bd3c372f2dcec5f4b9e05f32a32328",
+      "v2_case_ids": [
+        "case-00",
+        "case-01",
+        "case-02",
+        "case-03",
+        "case-04",
+        "case-05",
+        "case-06",
+        "case-07",
+        "case-08",
+        "case-09",
+        "case-10",
+        "case-11",
+        "case-12",
+        "case-13",
+        "case-14",
+        "case-15",
+        "case-16",
+        "case-17",
+        "case-18",
+        "case-19"
+      ],
+      "v2_count": 20
+    },
+    "50": {
+      "percentage": 50,
+      "snapshot_fingerprint": "81eb84d7e8e1a1b26ec24d9adcf6d6c1eb81ba5e1b678c5f82c020d4ec4c7117",
+      "v2_case_ids": [
+        "case-00",
+        "case-01",
+        "case-03",
+        "case-04",
+        "case-05",
+        "case-07",
+        "case-08",
+        "case-09",
+        "case-14",
+        "case-16",
+        "case-18",
+        "case-19"
+      ],
+      "v2_count": 12
+    }
+  }
+}

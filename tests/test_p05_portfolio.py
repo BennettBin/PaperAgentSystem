@@ -20,9 +20,9 @@ def test_portfolio_deliverables_exist_and_readme_links_versioned_evidence() -> N
 
     readme = (root / "README.md").read_text("utf-8")
     assert "python -m evaluation.p05_demo" in readme
-    assert "evaluation/reports/p04_final_v1/report.md" in readme
-    assert "M06" in readme and "N05" in readme
-    assert "NO-GO" in readme
+    assert "旧代码生成的基线" in readme
+    assert "待重新评测" in readme
+    assert "no-go" in readme.casefold()
     assert "不可用" in readme
 
 
@@ -33,10 +33,10 @@ def test_resume_and_postmortems_keep_negative_results_and_no_sft_claim() -> None
     model_card = (root / "docs" / "MODEL_CARD.md").read_text("utf-8")
 
     assert resume.count("- ") >= 5
-    assert "1,800" in resume
-    assert "96.84%" in resume
-    assert "+398.03%" in resume
-    assert "6.33%–8.0%" in resume
+    assert "待重新评测" in resume
+    assert "不声称 SFT/Cascade 效果" in resume
+    for retired_metric in ("1,800", "96.84%", "+398.03%", "6.33%–8.0%"):
+        assert retired_metric not in resume
     assert failures.count("## ") == 3
     assert "NO-GO" in model_card
     assert "No project SFT/RL Adapter is claimed" in model_card

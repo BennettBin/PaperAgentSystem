@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from enum import StrEnum
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -54,6 +54,10 @@ class AdvancedEvidence(_StrictModel):
     id: str = Field(min_length=1)
     file_id: str = Field(min_length=1)
     page: int = Field(ge=1)
+    locator_type: Literal[
+        "pdf_page", "docx_position", "rendered_page", "pptx_slide"
+    ] = "pdf_page"
+    locator_label: str = ""
     section: list[str] = Field(default_factory=list)
     quote: str = Field(min_length=1)
     bbox: list[float] = Field(default_factory=list)

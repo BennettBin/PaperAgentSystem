@@ -1,0 +1,445 @@
+{
+  "schema_version": "2.0",
+  "build_version": "pdf-v00-1",
+  "sample_policy": "bounded deterministic project-generated corpus; 10-30 samples",
+  "sample_count": 20,
+  "coordinate_contract": "one-based page numbers; canonical PDF point coordinates",
+  "samples": [
+    {
+      "case_id": "native-single-01",
+      "category": "native_single",
+      "path": "native-single-01.pdf",
+      "page_count": 1,
+      "expected_route": "fast_native",
+      "key_spans": [
+        {
+          "text": "NATIVE_SINGLE_TOKEN_1",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "81d9d3f4ce32fc8609e4f95d49ce7e6aabe85da3a4898f92e9a61c5efed8b41f",
+      "file_sha256": "084e906290093f61274675d7176ddbfea9c4bffa4aad5458757b0893de4e0840"
+    },
+    {
+      "case_id": "native-single-02",
+      "category": "native_single",
+      "path": "native-single-02.pdf",
+      "page_count": 1,
+      "expected_route": "fast_native",
+      "key_spans": [
+        {
+          "text": "NATIVE_SINGLE_TOKEN_2",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "de2309773f6db3ca367ad2356ddad782623e0b7ccb8d0d9071feedecdbc9bae1",
+      "file_sha256": "c19bf3a5d2f24b5d73eee2e71140a0d040206b0b795d4c2b096dd5306c707175"
+    },
+    {
+      "case_id": "native-single-03",
+      "category": "native_single",
+      "path": "native-single-03.pdf",
+      "page_count": 1,
+      "expected_route": "fast_native",
+      "key_spans": [
+        {
+          "text": "NATIVE_SINGLE_TOKEN_3",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "549208ecc75e361912a7c22d54bac78faa7545758e41c6db11db115ceb7f44fe",
+      "file_sha256": "2fbfd314e96079b9d8b9e7c9bfb7b089a1ed3a5e8e283f41abdd9e18e64a48d2"
+    },
+    {
+      "case_id": "native-double-01",
+      "category": "native_double",
+      "path": "native-double-01.pdf",
+      "page_count": 1,
+      "expected_route": "layout_native",
+      "key_spans": [
+        {
+          "text": "LEFT_COLUMN_TOKEN_1",
+          "page_number": 1
+        },
+        {
+          "text": "RIGHT_COLUMN_TOKEN_1",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "55ff8f05bd003fd807a276151e2993e4703bfa82042defde2448f12512c92418",
+      "file_sha256": "a905a5c8960be453d4384fd7aecb3547e9b9ba3fb702200129986026facc6fce"
+    },
+    {
+      "case_id": "native-double-02",
+      "category": "native_double",
+      "path": "native-double-02.pdf",
+      "page_count": 1,
+      "expected_route": "layout_native",
+      "key_spans": [
+        {
+          "text": "LEFT_COLUMN_TOKEN_2",
+          "page_number": 1
+        },
+        {
+          "text": "RIGHT_COLUMN_TOKEN_2",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "99291827d055fa5eac329b924d2c646c9527f5ad7ede3bb8d59784bbc5da3f86",
+      "file_sha256": "227df4c86faf8c5a23c2403888605237cdd4d2563def1eb78618d72f61f1601d"
+    },
+    {
+      "case_id": "native-double-03",
+      "category": "native_double",
+      "path": "native-double-03.pdf",
+      "page_count": 1,
+      "expected_route": "layout_native",
+      "key_spans": [
+        {
+          "text": "LEFT_COLUMN_TOKEN_3",
+          "page_number": 1
+        },
+        {
+          "text": "RIGHT_COLUMN_TOKEN_3",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "bd5786007d6e900ddd5bef27dd79d1fbdba2ef496e1a77db87792cbaec5283b9",
+      "file_sha256": "03e3e4efa15097797dff9a5f0ddacde1834f03aff9f30b37a417b989150080dd"
+    },
+    {
+      "case_id": "scan-01",
+      "category": "scanned",
+      "path": "scan-01.pdf",
+      "page_count": 1,
+      "expected_route": "document_vlm",
+      "key_spans": [
+        {
+          "text": "SCANNED_TOKEN_1",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "e2614c7b9589fe79febdbd6af97dfa3d4855ff34e5049c6bcbcf080a63852c6e",
+      "file_sha256": "c10a30740c00c2b3dd885f25d5d0ff2d7caf3be3b9657e92236234edaae8a681"
+    },
+    {
+      "case_id": "scan-02",
+      "category": "scanned",
+      "path": "scan-02.pdf",
+      "page_count": 1,
+      "expected_route": "document_vlm",
+      "key_spans": [
+        {
+          "text": "SCANNED_TOKEN_2",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "724b5d281c969438c9f5681c8e4493857831078a25edc8db9eaa8c6bbb15fc79",
+      "file_sha256": "11207e8c8a0d39ae4027118429e826cd54d7c967692988ed210c2f6af9314348"
+    },
+    {
+      "case_id": "scan-03",
+      "category": "scanned",
+      "path": "scan-03.pdf",
+      "page_count": 1,
+      "expected_route": "document_vlm",
+      "key_spans": [
+        {
+          "text": "SCANNED_TOKEN_3",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "4a821591b78efb63b64e5cefd8a1aa2483e144b13ffa7afa2754d9f51b0f9d03",
+      "file_sha256": "178ac13e957e8f4444ce397a46f7e0797a9eafacac3e439ae98035ef7b7e66ab"
+    },
+    {
+      "case_id": "table-01",
+      "category": "table_dense",
+      "path": "table-01.pdf",
+      "page_count": 1,
+      "expected_route": "layout_native",
+      "key_spans": [
+        {
+          "text": "86.3",
+          "page_number": 1
+        },
+        {
+          "text": "84.1",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "table",
+        "table_cell",
+        "caption"
+      ],
+      "spec_sha256": "6fccfed2d219dec7cd76302b0bc08c00c4ed14112aca74676b4192b66bda0eaf",
+      "file_sha256": "ca653dfcb1ffdeb6537c8fedd7ad8c8a2fb7625bbe5e4a1d07604bff70425a6b"
+    },
+    {
+      "case_id": "table-02",
+      "category": "table_dense",
+      "path": "table-02.pdf",
+      "page_count": 1,
+      "expected_route": "layout_native",
+      "key_spans": [
+        {
+          "text": "87.3",
+          "page_number": 1
+        },
+        {
+          "text": "85.1",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "table",
+        "table_cell",
+        "caption"
+      ],
+      "spec_sha256": "f1e2a6854c5e32997d225866988db6c8cf0cc4166ce7f241b73c5be78119e018",
+      "file_sha256": "d53400ee188c328ce578125919f12788327c95843af849e6e57099caf20809af"
+    },
+    {
+      "case_id": "table-03",
+      "category": "table_dense",
+      "path": "table-03.pdf",
+      "page_count": 1,
+      "expected_route": "layout_native",
+      "key_spans": [
+        {
+          "text": "88.3",
+          "page_number": 1
+        },
+        {
+          "text": "86.1",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "table",
+        "table_cell",
+        "caption"
+      ],
+      "spec_sha256": "bbbfcbfc163af02293b339274348933cd80cbc5e5cd426c842363e0d9b150112",
+      "file_sha256": "635cd576d25cab07bd763d09532cf3ffbb5d8f4b3cda4f5d4737f099a44746eb"
+    },
+    {
+      "case_id": "formula-01",
+      "category": "formula_dense",
+      "path": "formula-01.pdf",
+      "page_count": 1,
+      "expected_route": "layout_native",
+      "key_spans": [
+        {
+          "text": "L_1 = sum_i w_i * x_i",
+          "page_number": 1
+        },
+        {
+          "text": "(1)",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph",
+        "equation"
+      ],
+      "spec_sha256": "d59c865f11b2dd4d400938a4349d03b9c277298b10806e34c23ce62cb52227a6",
+      "file_sha256": "d5e3bab03958b72687cca4cd9a7c803705629c56d81826e1718b9f4c474a2638"
+    },
+    {
+      "case_id": "formula-02",
+      "category": "formula_dense",
+      "path": "formula-02.pdf",
+      "page_count": 1,
+      "expected_route": "layout_native",
+      "key_spans": [
+        {
+          "text": "L_2 = sum_i w_i * x_i",
+          "page_number": 1
+        },
+        {
+          "text": "(2)",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph",
+        "equation"
+      ],
+      "spec_sha256": "ea7b1d768e736653233b327408e3e8d918f99d6731ab7b44addd8e49a78c0a53",
+      "file_sha256": "b9d6c1e47254e320b6b4e10bf7ebfb50bf6b697577e57be370df02d94d2acb1c"
+    },
+    {
+      "case_id": "mixed-01",
+      "category": "mixed_native_scan",
+      "path": "mixed-01.pdf",
+      "page_count": 2,
+      "expected_route": "document_vlm",
+      "key_spans": [
+        {
+          "text": "MIXED_NATIVE_TOKEN_1",
+          "page_number": 1
+        },
+        {
+          "text": "MIXED_SCAN_TOKEN_1",
+          "page_number": 2
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "d4211ca833e9baef1ae392eff1c1c42c5e1989466cc28f38436d9a31156f65a2",
+      "file_sha256": "a020f953d926389023d11ad341aefbf9880974caa4cc1398be148adf2a0258c6"
+    },
+    {
+      "case_id": "mixed-02",
+      "category": "mixed_native_scan",
+      "path": "mixed-02.pdf",
+      "page_count": 2,
+      "expected_route": "document_vlm",
+      "key_spans": [
+        {
+          "text": "MIXED_NATIVE_TOKEN_2",
+          "page_number": 1
+        },
+        {
+          "text": "MIXED_SCAN_TOKEN_2",
+          "page_number": 2
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "bcdf4c1df026796dfc8247382ea1129e122ca65dea96fbbfebd97e93acae37a4",
+      "file_sha256": "58bab7f18b3ebc98354ab5b9afe04e157b2b223f7e75e9e5473cee4de8d827c3"
+    },
+    {
+      "case_id": "rotated-01",
+      "category": "rotated",
+      "path": "rotated-01.pdf",
+      "page_count": 1,
+      "expected_route": "layout_native",
+      "key_spans": [
+        {
+          "text": "ROTATED_PAGE_TOKEN",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "7130b692d9bec5ef8bfb1803606cc371153c48405d4e7a447797dd840c23ce13",
+      "file_sha256": "01f63ed0db9a9f0d8c5c580168c80b10466adbabe8368927f05d4fbe66f4ec38"
+    },
+    {
+      "case_id": "rotated-crop",
+      "category": "cropbox",
+      "path": "rotated-crop.pdf",
+      "page_count": 1,
+      "expected_route": "layout_native",
+      "key_spans": [
+        {
+          "text": "CROPBOX_PAGE_TOKEN",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "section_heading",
+        "paragraph"
+      ],
+      "spec_sha256": "f27f8899d92972eec6fef520a868c7cc4fa9f9493dcbc3befe1ac6029e37e6d8",
+      "file_sha256": "4525a95c3ea9af2d82f1003afcbd2c4f614a55869e2ebe102dd68f5a36c9c039"
+    },
+    {
+      "case_id": "image-dense-01",
+      "category": "image_dense",
+      "path": "image-dense-01.pdf",
+      "page_count": 1,
+      "expected_route": "document_vlm",
+      "key_spans": [
+        {
+          "text": "IMAGE_REGION_TOKEN_1",
+          "page_number": 1
+        },
+        {
+          "text": "image dense sample 1",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "figure",
+        "caption"
+      ],
+      "spec_sha256": "25a6c3d24b0d976cef3c4a8ec26cbffc973a3ef3482b815edded8bc084a688e7",
+      "file_sha256": "392fc667c12103be44d1e94918a8c3b8f44591aaddf055361218019e12f1adea"
+    },
+    {
+      "case_id": "image-dense-02",
+      "category": "image_dense",
+      "path": "image-dense-02.pdf",
+      "page_count": 1,
+      "expected_route": "document_vlm",
+      "key_spans": [
+        {
+          "text": "IMAGE_REGION_TOKEN_2",
+          "page_number": 1
+        },
+        {
+          "text": "image dense sample 2",
+          "page_number": 1
+        }
+      ],
+      "expected_element_types": [
+        "figure",
+        "caption"
+      ],
+      "spec_sha256": "ca9abaf6abdf716a369bcefaea336f45d501d979b88486555d8c9d0dd591e8d7",
+      "file_sha256": "edb0d0ed8b4363d10ddfe4991ef537fbe60d7eaf211dfdaa2c136877a0b5a440"
+    }
+  ]
+}

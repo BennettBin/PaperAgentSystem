@@ -5,12 +5,18 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from backend.document_processing.pipeline import BasicPDFPipeline
+from backend.document_processing.adaptive_pipeline import (
+    AdaptiveDocumentPipeline,
+    ProductionDocumentPipeline,
+)
+from backend.document_processing.docling_adapter import DoclingLayoutAdapter
+from backend.document_processing.paddleocr_vl_adapter import PaddleOCRVLAdapter
+from backend.document_processing.pymupdf_adapter import PyMuPDFV2Adapter
 from backend.infrastructure.fake.adapters import FakeObjectStore
 from backend.infrastructure.fake.observability import FakeTraceWriter
 from backend.infrastructure.postgres.models import Base
-from backend.rag.indexing import DocumentIndexer
 from backend.rag.retrieval import HybridRetriever
+from backend.rag.semantic_indexing_v2 import DocumentIndexerV2
 from backend.tool_runtime import (
     InMemoryDataRefStore,
     InMemoryIdempotencyStore,
@@ -65,13 +71,21 @@ async def test_parse_search_and_section_tools_integrate(tmp_path) -> None:
         task_id="task-1",
     )
     embeddings = Embeddings()
-    indexer = DocumentIndexer(sessions, embeddings, embedding_model="fixture")
+    indexer = DocumentIndexerV2(sessions, embeddings, embedding_model="fixture")
+    parser = ProductionDocumentPipeline(
+        AdaptiveDocumentPipeline(
+            PyMuPDFV2Adapter(),
+            DoclingLayoutAdapter(),
+            PaddleOCRVLAdapter(),
+            document_vlm_enabled=False,
+        )
+    )
     retriever = HybridRetriever(sessions, embeddings, Reranker())
     registry = ToolRegistry()
     register_document_tools(
         registry,
         workspace,
-        BasicPDFPipeline(),
+        parser,
         indexer,
         retriever,
         sessions,

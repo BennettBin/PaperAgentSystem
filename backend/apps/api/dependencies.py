@@ -160,6 +160,7 @@ def build_infrastructure_container(
             database.session_factory,
             object_store,
             queue,
+            document_parse_intake_enabled=settings.document_parse_intake_enabled,
         ),
         model_runtime=ModelRuntimeService(
             database.session_factory,

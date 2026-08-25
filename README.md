@@ -177,6 +177,73 @@ Python 镜像在构建阶段安装 PyTorch/CUDA 和 Sentence Transformers，并�
 
 每个 PDF 页面都会独立进行版式判断。正文解析保留页面、章节路径、文本边界框和阅读顺序，并过滤重复页眉页脚。图、表和算法优先利用 PDF 原生区域、表格检测结果、绘图边框与标题关系确定裁剪范围，以高分辨率 PNG 单独保存。
 
+PDF 混合解析 V2 正在按 `docs/PDF混合解析与文档VLM升级实施计划.md` 实施。PDF-V00 已冻结
+20 个确定性小样本和当前 PyMuPDF V1 基线：页数映射与 bbox 有效率均为 100%，但关键 span
+总体召回为 46.875%，扫描页、表格 Cell 和公式密集页均为 0%。这些结果只用于升级前工程对照，
+不代表真实论文的人审质量。PDF-V01 已新增 CanonicalDocument V2、稳定 pipeline fingerprint、
+确定性元素 ID 和 Parser-neutral Port。PDF-V02 已完成 PDF 安全预检、逐页 PageProfiler 和
+确定性路由：干净页保持 Fast Native，复杂原生页进入 Layout Native 候选，扫描/图片页进入
+Document VLM 候选，并显式限制 VLM 页预算；该阶段生产链仍只使用 PyMuPDF，PDF-V08 后已由
+自适应 V2 取代为默认。PDF-V03 已实现候选态 `PyMuPDFV2Adapter`：保留 block/line/span 层级、原文与 NFKC
+规范化文本、语言/置信度/解析来源，并将旋转、CropBox、渲染缩放和 normalized bbox 统一到
+“可见旋转页、左上角原点、PDF point”坐标系；页眉页脚只按跨页重复信号识别。该 Adapter
+尚未接入生产链，也不会提前生成章节、Chunk 或 artifact 等最终派生结构。PDF-V04 已新增
+离线 `DoclingLayoutAdapter`：只处理确定性路由选中的复杂原生页，支持非连续页内存子 PDF、
+原页码映射、body/furniture、标题层级、阅读顺序、表格 Cell、公式和图片候选；缺依赖、超时、
+模型初始化或单页失败均返回页面级失败供后续融合回退，干净 Fast Native 页面调用次数为 0。
+Docling 依赖位于独立 `document-layout` optional group，运行时要求预取的本地模型目录并关闭远程
+服务、外部插件、OCR 和生成式 enrichment。PDF-V05 已新增 `PaddleOCRVLAdapter` 和
+Provider-neutral 页面契约：只向受限本地/内网 PaddleOCR-VL 1.6 服务发送受预算 PNG，限制页数、
+长边、像素、批量、并发、超时、响应大小和最多一次重试，并把像素 bbox 逆变换回统一 PDF 坐标。
+表格 Cell、公式 LaTeX、OCR 原文和生成式图片描述保持结构化且描述标记 `is_inferred=true`；无服务、
+OOM、超时、低置信度均显式失败或使用可选 CPU OCR V2 降级。PDF 内容只作为不可信数据，契约中
+不存在 system prompt 或 Tool 权限字段。PDF-V06 已新增确定性的 `ResultReconciler` 和
+`QualityGate`：候选按原页、normalized bbox、类型和文本相似度做空间对齐，干净正文、复杂阅读
+顺序、扫描文字与表格结构分别选择 Native、Docling、VLM/OCR 或结构更完整的来源；每个最终元素
+保存唯一 accepted candidate、被拒摘要与可审计决策。最终章节、重复页眉页脚、表格 Cell、公式、
+图片和 caption 全部从融合后的稳定元素 ID 重建；`retry_with_vlm` 与 `failed` 明确不可进入 ready
+索引。PDF-V07 已完成确定性 Markdown、语义多模态切分、逐元素 Evidence Span、V2 幂等索引和
+数据库迁移。PDF-V08 已将 `AdaptiveDocumentPipeline` 接入 Worker 生产组合根：默认按页选择
+PyMuPDF V2、Docling 或受限文档 VLM，经统一融合和质量门禁后写入 V2 索引；V1 仅保留为开关
+回滚链。`document_pipeline_shadow_mode` 下仍由 V1 生成用户可见索引和图片，V2 只写不含原文的
+比较 Trace。文件状态现区分 profiling/parsing/enriching/indexing/parsed/degraded/failed，调试页
+可查看逐页路由、原因、质量告警、元素 bbox 和选中来源。
+
+PDF-V09 已提供固定 20 样本的可重复评测器与机器可读报告。受控契约评测中，关键 span、阅读顺序、
+Citation bbox、表格/公式和 Evidence@5 均为 100%，元素类型 presence F1 为 82.5%，复杂样本相对
+V1 Evidence 指标提升约 58.8 个百分点，Fast Native 的 VLM 调用率为 0。该结果使用明确标注的
+Controlled Layout/VLM Fixture，只证明工程契约，不代表真实 Docling/PaddleOCR-VL 模型质量。
+当前部署门禁结论为 **No-Go**：本环境缺少真实 Docling、文档 VLM、GPU Profile 和人工 Gold bbox。
+报告见 `evaluation/reports/pdf_hybrid_v2_evaluation.json`；在这些证据补齐前不得把受控 P95 当成生产 SLA。
+
+PDF-V10 的 Shadow/灰度控制面属于历史过渡实现；用户随后明确跳过真实部署验收并授权继续清理旧链，
+但该顺序豁免不代表真实 Docling/VLM/GPU 已通过生产门禁。PDF-V12 将生产写入收敛为
+Canonical Document V2/index v5：新 `document_parse` payload 只包含 `file_id`，V2 失败显式失败，
+不再回退或双写 V1。已有 V1 Chunk 在重新解析前保持只读；显式重新解析时，先完成 V2 解析和向量计算，
+再在一个数据库事务中替换旧 Document/Section/Chunk。携带历史 pipeline snapshot 的 queued/running
+任务禁止改写 payload，使用 `backend.apps.worker.document_v2_migration_admin` 在冻结 intake 后检查，
+只允许显式取消 queued 任务，running 任务必须等待结束。删除边界见
+`docs/development/PDF_V12_LEGACY_DELETION_MANIFEST.md`，迁移决策见 ADR-0013。
+
+PDF-V11 在用户明确豁免 V10 真实部署证据后继续实施；该豁免不等于 V10 Go。首轮只批准 DOCX/PPTX。
+上传端在写对象前校验扩展名、MIME、OOXML 主部件、路径逃逸、符号链接、加密项、压缩比例、展开大小和
+外部 Relationship；`document-layout` 固定使用 Docling Slim 2.115.0 的 `format-office` extra。Worker 的
+`DoclingOfficeAdapter` 将原生标题、段落、表格和 Cell 写入同一 CanonicalDocument V2；DOCX Citation
+使用“结构位置”，PPTX 使用“幻灯片”，不会伪装为 PDF 页码。原生 Office 不调用 VLM；只有 OOXML
+内嵌图片区域才调用同一受限 PaddleOCR-VL Provider，并在进入 IR 前与原生文本确定性去重。12 个小型
+DOCX/PPTX 契约样本、受控图片 VLM 和产品级上传→解析→索引均已验证；本机仍未安装可选 Docling 运行时，
+因此真实 Office Docling smoke 明确记为未执行，而不是模型实测通过。
+
+PDF-V07 已新增 `CanonicalMarkdownRenderer`、`SemanticChunkerV2` 与 `DocumentIndexerV2`。
+Markdown 是 CanonicalDocument V2 JSON 的确定性派生视图，包含稳定元素锚点和 pipeline fingerprint；
+正文、表格 caption/Cell/确定性行描述、公式及图片分别形成可检索语义 Chunk。每个 Chunk 通过
+`evidence_spans[]` 保存真实 page、bbox、normalized bbox、element ID 和 source parser，跨页证据不再
+伪造成一个大 bbox；公式保持原子性并携带上下文，生成式图片描述明确标记 inferred。混合检索支持
+元素类型过滤且继续先执行 workspace/file 隔离。索引版本升级为 5、章节 schema 升级为 2，相同
+checksum + pipeline fingerprint + embedding fingerprint 可直接复用，任一 fingerprint 或 Evidence Span
+契约不匹配都会安全重建。V2 JSON、派生 Markdown、Chunk 与 Embedding 同属解析文档记录，删除时随
+workspace/file 作用域事务一起失效；PDF-V12 后它是唯一生产文档写链。
+
 视觉区域中的文字不会混入普通正文 Chunk；标题、章节、页码、边界框和截图 ID 会作为结构化元数据保留。检索命中相关视觉对象时，回答可同时返回文字证据与截图。
 
 RAG 链路包含：

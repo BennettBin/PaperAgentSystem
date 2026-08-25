@@ -1,0 +1,512 @@
+{
+  "schema_version": "1.0",
+  "truth_class": "deterministic_v1_parser_baseline",
+  "corpus_build_version": "pdf-v00-1",
+  "parser_name": "pymupdf",
+  "parser_version": "1.2.0",
+  "sample_count": 20,
+  "metrics": {
+    "key_span_recall": 0.46875,
+    "page_count_accuracy": 1.0,
+    "valid_bbox_rate": 1.0,
+    "category_key_span_recall": {
+      "cropbox": 1.0,
+      "formula_dense": 0.0,
+      "image_dense": 0.5,
+      "mixed_native_scan": 0.5,
+      "native_double": 1.0,
+      "native_single": 1.0,
+      "rotated": 1.0,
+      "scanned": 0.0,
+      "table_dense": 0.0
+    }
+  },
+  "known_limitations": [
+    "production BasicPDFPipeline only invokes PyMuPDFParser",
+    "scanned and image-only page text is unavailable without OCR/VLM",
+    "table artifact body text is excluded from full_text and text chunks",
+    "quality score is dominated by character density and empty-page ratio",
+    "the bounded corpus is deterministic engineering evidence, not a human-quality benchmark"
+  ],
+  "cases": [
+    {
+      "case_id": "native-single-01",
+      "category": "native_single",
+      "expected_route": "fast_native",
+      "page_count_match": true,
+      "span_recall": 1.0,
+      "span_results": [
+        {
+          "text": "NATIVE_SINGLE_TOKEN_1",
+          "page_number": 1,
+          "matched": true
+        }
+      ],
+      "block_count": 5,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 0,
+      "quality_score": 1.0,
+      "warnings": []
+    },
+    {
+      "case_id": "native-single-02",
+      "category": "native_single",
+      "expected_route": "fast_native",
+      "page_count_match": true,
+      "span_recall": 1.0,
+      "span_results": [
+        {
+          "text": "NATIVE_SINGLE_TOKEN_2",
+          "page_number": 1,
+          "matched": true
+        }
+      ],
+      "block_count": 5,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 0,
+      "quality_score": 1.0,
+      "warnings": []
+    },
+    {
+      "case_id": "native-single-03",
+      "category": "native_single",
+      "expected_route": "fast_native",
+      "page_count_match": true,
+      "span_recall": 1.0,
+      "span_results": [
+        {
+          "text": "NATIVE_SINGLE_TOKEN_3",
+          "page_number": 1,
+          "matched": true
+        }
+      ],
+      "block_count": 5,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 0,
+      "quality_score": 1.0,
+      "warnings": []
+    },
+    {
+      "case_id": "native-double-01",
+      "category": "native_double",
+      "expected_route": "layout_native",
+      "page_count_match": true,
+      "span_recall": 1.0,
+      "span_results": [
+        {
+          "text": "LEFT_COLUMN_TOKEN_1",
+          "page_number": 1,
+          "matched": true
+        },
+        {
+          "text": "RIGHT_COLUMN_TOKEN_1",
+          "page_number": 1,
+          "matched": true
+        }
+      ],
+      "block_count": 18,
+      "valid_bbox_rate": 1.0,
+      "section_count": 0,
+      "visual_artifact_count": 0,
+      "quality_score": 1.0,
+      "warnings": []
+    },
+    {
+      "case_id": "native-double-02",
+      "category": "native_double",
+      "expected_route": "layout_native",
+      "page_count_match": true,
+      "span_recall": 1.0,
+      "span_results": [
+        {
+          "text": "LEFT_COLUMN_TOKEN_2",
+          "page_number": 1,
+          "matched": true
+        },
+        {
+          "text": "RIGHT_COLUMN_TOKEN_2",
+          "page_number": 1,
+          "matched": true
+        }
+      ],
+      "block_count": 18,
+      "valid_bbox_rate": 1.0,
+      "section_count": 0,
+      "visual_artifact_count": 0,
+      "quality_score": 1.0,
+      "warnings": []
+    },
+    {
+      "case_id": "native-double-03",
+      "category": "native_double",
+      "expected_route": "layout_native",
+      "page_count_match": true,
+      "span_recall": 1.0,
+      "span_results": [
+        {
+          "text": "LEFT_COLUMN_TOKEN_3",
+          "page_number": 1,
+          "matched": true
+        },
+        {
+          "text": "RIGHT_COLUMN_TOKEN_3",
+          "page_number": 1,
+          "matched": true
+        }
+      ],
+      "block_count": 18,
+      "valid_bbox_rate": 1.0,
+      "section_count": 0,
+      "visual_artifact_count": 0,
+      "quality_score": 1.0,
+      "warnings": []
+    },
+    {
+      "case_id": "scan-01",
+      "category": "scanned",
+      "expected_route": "document_vlm",
+      "page_count_match": true,
+      "span_recall": 0.0,
+      "span_results": [
+        {
+          "text": "SCANNED_TOKEN_1",
+          "page_number": 1,
+          "matched": false
+        }
+      ],
+      "block_count": 0,
+      "valid_bbox_rate": 0.0,
+      "section_count": 0,
+      "visual_artifact_count": 1,
+      "quality_score": 0.0,
+      "warnings": [
+        "one_or_more_pages_have_no_extracted_text",
+        "low_text_extraction_quality"
+      ]
+    },
+    {
+      "case_id": "scan-02",
+      "category": "scanned",
+      "expected_route": "document_vlm",
+      "page_count_match": true,
+      "span_recall": 0.0,
+      "span_results": [
+        {
+          "text": "SCANNED_TOKEN_2",
+          "page_number": 1,
+          "matched": false
+        }
+      ],
+      "block_count": 0,
+      "valid_bbox_rate": 0.0,
+      "section_count": 0,
+      "visual_artifact_count": 1,
+      "quality_score": 0.0,
+      "warnings": [
+        "one_or_more_pages_have_no_extracted_text",
+        "low_text_extraction_quality"
+      ]
+    },
+    {
+      "case_id": "scan-03",
+      "category": "scanned",
+      "expected_route": "document_vlm",
+      "page_count_match": true,
+      "span_recall": 0.0,
+      "span_results": [
+        {
+          "text": "SCANNED_TOKEN_3",
+          "page_number": 1,
+          "matched": false
+        }
+      ],
+      "block_count": 0,
+      "valid_bbox_rate": 0.0,
+      "section_count": 0,
+      "visual_artifact_count": 1,
+      "quality_score": 0.0,
+      "warnings": [
+        "one_or_more_pages_have_no_extracted_text",
+        "low_text_extraction_quality"
+      ]
+    },
+    {
+      "case_id": "table-01",
+      "category": "table_dense",
+      "expected_route": "layout_native",
+      "page_count_match": true,
+      "span_recall": 0.0,
+      "span_results": [
+        {
+          "text": "86.3",
+          "page_number": 1,
+          "matched": false
+        },
+        {
+          "text": "84.1",
+          "page_number": 1,
+          "matched": false
+        }
+      ],
+      "block_count": 14,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 1,
+      "quality_score": 0.615,
+      "warnings": []
+    },
+    {
+      "case_id": "table-02",
+      "category": "table_dense",
+      "expected_route": "layout_native",
+      "page_count_match": true,
+      "span_recall": 0.0,
+      "span_results": [
+        {
+          "text": "87.3",
+          "page_number": 1,
+          "matched": false
+        },
+        {
+          "text": "85.1",
+          "page_number": 1,
+          "matched": false
+        }
+      ],
+      "block_count": 14,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 1,
+      "quality_score": 0.615,
+      "warnings": []
+    },
+    {
+      "case_id": "table-03",
+      "category": "table_dense",
+      "expected_route": "layout_native",
+      "page_count_match": true,
+      "span_recall": 0.0,
+      "span_results": [
+        {
+          "text": "88.3",
+          "page_number": 1,
+          "matched": false
+        },
+        {
+          "text": "86.1",
+          "page_number": 1,
+          "matched": false
+        }
+      ],
+      "block_count": 14,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 1,
+      "quality_score": 0.615,
+      "warnings": []
+    },
+    {
+      "case_id": "formula-01",
+      "category": "formula_dense",
+      "expected_route": "layout_native",
+      "page_count_match": true,
+      "span_recall": 0.0,
+      "span_results": [
+        {
+          "text": "L_1 = sum_i w_i * x_i",
+          "page_number": 1,
+          "matched": false
+        },
+        {
+          "text": "(1)",
+          "page_number": 1,
+          "matched": false
+        }
+      ],
+      "block_count": 4,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 1,
+      "quality_score": 0.9929999999999999,
+      "warnings": []
+    },
+    {
+      "case_id": "formula-02",
+      "category": "formula_dense",
+      "expected_route": "layout_native",
+      "page_count_match": true,
+      "span_recall": 0.0,
+      "span_results": [
+        {
+          "text": "L_2 = sum_i w_i * x_i",
+          "page_number": 1,
+          "matched": false
+        },
+        {
+          "text": "(2)",
+          "page_number": 1,
+          "matched": false
+        }
+      ],
+      "block_count": 4,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 1,
+      "quality_score": 0.9929999999999999,
+      "warnings": []
+    },
+    {
+      "case_id": "mixed-01",
+      "category": "mixed_native_scan",
+      "expected_route": "document_vlm",
+      "page_count_match": true,
+      "span_recall": 0.5,
+      "span_results": [
+        {
+          "text": "MIXED_NATIVE_TOKEN_1",
+          "page_number": 1,
+          "matched": true
+        },
+        {
+          "text": "MIXED_SCAN_TOKEN_1",
+          "page_number": 2,
+          "matched": false
+        }
+      ],
+      "block_count": 2,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 1,
+      "quality_score": 0.45799999999999996,
+      "warnings": [
+        "one_or_more_pages_have_no_extracted_text",
+        "low_text_extraction_quality"
+      ]
+    },
+    {
+      "case_id": "mixed-02",
+      "category": "mixed_native_scan",
+      "expected_route": "document_vlm",
+      "page_count_match": true,
+      "span_recall": 0.5,
+      "span_results": [
+        {
+          "text": "MIXED_NATIVE_TOKEN_2",
+          "page_number": 1,
+          "matched": true
+        },
+        {
+          "text": "MIXED_SCAN_TOKEN_2",
+          "page_number": 2,
+          "matched": false
+        }
+      ],
+      "block_count": 2,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 1,
+      "quality_score": 0.45799999999999996,
+      "warnings": [
+        "one_or_more_pages_have_no_extracted_text",
+        "low_text_extraction_quality"
+      ]
+    },
+    {
+      "case_id": "rotated-01",
+      "category": "rotated",
+      "expected_route": "layout_native",
+      "page_count_match": true,
+      "span_recall": 1.0,
+      "span_results": [
+        {
+          "text": "ROTATED_PAGE_TOKEN",
+          "page_number": 1,
+          "matched": true
+        }
+      ],
+      "block_count": 2,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 0,
+      "quality_score": 0.944,
+      "warnings": []
+    },
+    {
+      "case_id": "rotated-crop",
+      "category": "cropbox",
+      "expected_route": "layout_native",
+      "page_count_match": true,
+      "span_recall": 1.0,
+      "span_results": [
+        {
+          "text": "CROPBOX_PAGE_TOKEN",
+          "page_number": 1,
+          "matched": true
+        }
+      ],
+      "block_count": 2,
+      "valid_bbox_rate": 1.0,
+      "section_count": 1,
+      "visual_artifact_count": 0,
+      "quality_score": 0.944,
+      "warnings": []
+    },
+    {
+      "case_id": "image-dense-01",
+      "category": "image_dense",
+      "expected_route": "document_vlm",
+      "page_count_match": true,
+      "span_recall": 0.5,
+      "span_results": [
+        {
+          "text": "IMAGE_REGION_TOKEN_1",
+          "page_number": 1,
+          "matched": false
+        },
+        {
+          "text": "image dense sample 1",
+          "page_number": 1,
+          "matched": true
+        }
+      ],
+      "block_count": 1,
+      "valid_bbox_rate": 1.0,
+      "section_count": 0,
+      "visual_artifact_count": 1,
+      "quality_score": 0.51,
+      "warnings": [
+        "low_text_extraction_quality"
+      ]
+    },
+    {
+      "case_id": "image-dense-02",
+      "category": "image_dense",
+      "expected_route": "document_vlm",
+      "page_count_match": true,
+      "span_recall": 0.5,
+      "span_results": [
+        {
+          "text": "IMAGE_REGION_TOKEN_2",
+          "page_number": 1,
+          "matched": false
+        },
+        {
+          "text": "image dense sample 2",
+          "page_number": 1,
+          "matched": true
+        }
+      ],
+      "block_count": 1,
+      "valid_bbox_rate": 1.0,
+      "section_count": 0,
+      "visual_artifact_count": 1,
+      "quality_score": 0.51,
+      "warnings": [
+        "low_text_extraction_quality"
+      ]
+    }
+  ]
+}

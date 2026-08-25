@@ -523,6 +523,8 @@ class ProductionRoleRunner:
                         "field": item.field,
                         "quote": item.quote,
                         "page": item.page,
+                        "locator_type": _hit_locator_type(source_hit),
+                        "locator_label": _hit_locator_label(source_hit, item.page),
                         "section": list(source_hit.get("section_path", [])),
                         "bbox": list(source_hit.get("bbox", [])),
                     }
@@ -1321,6 +1323,24 @@ def _raw_reader_evidence(
         if len(evidence) == 4:
             break
     return evidence
+
+
+def _hit_locator_type(hit: dict[str, Any]) -> str:
+    spans = hit.get("evidence_spans", [])
+    if isinstance(spans, list) and spans and isinstance(spans[0], dict):
+        return str(spans[0].get("locator_type", "pdf_page"))
+    return "pdf_page"
+
+
+def _hit_locator_label(hit: dict[str, Any], position: int) -> str:
+    locator_type = _hit_locator_type(hit)
+    if locator_type == "pptx_slide":
+        return f"幻灯片 {position}"
+    if locator_type == "docx_position":
+        return f"DOCX 结构位置 {position}"
+    if locator_type == "rendered_page":
+        return f"渲染页 {position}"
+    return f"第 {position} 页"
 
 
 def _grounding_text(value: str) -> str:

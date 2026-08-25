@@ -184,6 +184,7 @@ class MinioObjectStore(ObjectStore):
             "application/pdf": b"%PDF",
             "image/png": b"\x89PNG\r\n\x1a\n",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document": b"PK",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation": b"PK",
         }
         required = signatures.get(content_type)
         if required is not None and not data.startswith(required):

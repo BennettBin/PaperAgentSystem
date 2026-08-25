@@ -36,6 +36,18 @@ from backend.apps.api.product_service import (
     PaperAgentProcessor,
 )
 from backend.core.errors import ErrorCode, ProjectError
+from backend.document_processing.adaptive_pipeline import (
+    AdaptiveDocumentPipeline,
+    ProductionDocumentPipeline,
+)
+from backend.document_processing.config import DocumentProcessingConfig
+from backend.document_processing.docling_adapter import DoclingLayoutAdapter
+from backend.document_processing.office_adapter import DoclingOfficeAdapter
+from backend.document_processing.paddleocr_vl_adapter import (
+    InternalHTTPDocumentVLMProvider,
+    PaddleOCRVLAdapter,
+)
+from backend.document_processing.pymupdf_adapter import PyMuPDFV2Adapter
 from backend.infrastructure.config import InfrastructureSettings
 from backend.infrastructure.minio.object_store import MinioObjectStore
 from backend.infrastructure.postgres.blackboard import (
@@ -350,6 +362,33 @@ def main() -> None:
         short_term_memory,
         long_term_memory,
     )
+    document_config = DocumentProcessingConfig(
+        docling_artifacts_path=settings.docling_artifacts_path
+    )
+    vlm_provider = InternalHTTPDocumentVLMProvider(
+        settings.document_vlm_endpoint,
+        allowed_hosts=tuple(
+            host.strip()
+            for host in settings.document_vlm_allowed_hosts.split(",")
+            if host.strip()
+        ),
+        bearer_token=settings.document_vlm_bearer_token or None,
+        max_response_bytes=document_config.vlm_max_response_bytes,
+    )
+    adaptive_document_pipeline = AdaptiveDocumentPipeline(
+        PyMuPDFV2Adapter(document_config),
+        DoclingLayoutAdapter(document_config),
+        PaddleOCRVLAdapter(document_config, provider=vlm_provider),
+        config=document_config,
+        docling_enabled=settings.docling_enabled,
+        document_vlm_enabled=settings.document_vlm_enabled,
+    )
+    document_pipeline = ProductionDocumentPipeline(
+        adaptive_document_pipeline,
+        office=DoclingOfficeAdapter(
+            vlm_provider=vlm_provider if settings.document_vlm_enabled else None
+        ),
+    )
     processor = PaperAgentProcessor(
         database.session_factory,
         object_store,
@@ -366,6 +405,7 @@ def main() -> None:
         long_term_memory=long_term_memory,
         memory_task_queue=queue,
         tool_runtime=tool_runtime,
+        document_pipeline=document_pipeline,
     )
     register_worker_handlers(
         queue,

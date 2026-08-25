@@ -6,10 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from backend.document_processing.schema import ParsedDocument
+from backend.document_processing.adaptive_pipeline import ProductionParseOutcome
 from backend.infrastructure.postgres.models import DocumentChunkModel
-from backend.rag.indexing import DocumentIndexer
 from backend.rag.retrieval import HybridRetriever
+from backend.rag.semantic_indexing_v2 import DocumentIndexerV2
 from backend.tool_runtime.runtime import ToolContext, ToolDefinition, ToolPolicy, ToolRegistry
 from backend.workspace.service import WorkspaceService
 
@@ -21,7 +21,7 @@ class ParsingPipeline(Protocol):
         filename: str,
         *,
         trace_id: str,
-    ) -> ParsedDocument: ...
+    ) -> ProductionParseOutcome: ...
 
 
 class ParseDocumentInput(BaseModel):
@@ -83,7 +83,7 @@ class ParseDocumentTool(ToolDefinition[ParseDocumentInput, ParseDocumentOutput])
         self,
         workspace: WorkspaceService,
         parser: ParsingPipeline,
-        indexer: DocumentIndexer,
+        indexer: DocumentIndexerV2,
     ) -> None:
         self._workspace = workspace
         self._parser = parser
@@ -106,11 +106,12 @@ class ParseDocumentTool(ToolDefinition[ParseDocumentInput, ParseDocumentOutput])
             context.conversation_id,
             entry.task_id,
         )
-        parsed = await self._parser.parse(
+        outcome = await self._parser.parse(
             data,
             entry.relative_path,
             trace_id=context.trace_id,
         )
+        parsed = outcome.document
         chunks = await self._indexer.index(
             context.workspace_id,
             entry.entry_id,
@@ -122,8 +123,8 @@ class ParseDocumentTool(ToolDefinition[ParseDocumentInput, ParseDocumentOutput])
             file_id=entry.entry_id,
             page_count=parsed.page_count,
             section_titles=[section.title for section in parsed.sections],
-            quality_score=parsed.quality.score,
-            warnings=parsed.quality.warnings,
+            quality_score=parsed.quality.overall,
+            warnings=list(parsed.quality.warnings),
         )
 
 
@@ -224,7 +225,7 @@ def register_document_tools(
     registry: ToolRegistry,
     workspace: WorkspaceService,
     parser: ParsingPipeline,
-    indexer: DocumentIndexer,
+    indexer: DocumentIndexerV2,
     retriever: HybridRetriever,
     session_factory: sessionmaker[Session],
 ) -> None:

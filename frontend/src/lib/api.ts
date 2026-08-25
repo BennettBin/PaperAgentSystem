@@ -48,6 +48,8 @@ export interface EvidenceCitation {
   id: string;
   file_id: string;
   page: number;
+  locator_type?: "pdf_page" | "docx_position" | "rendered_page" | "pptx_slide";
+  locator_label?: string;
   section: string[];
   quote: string;
   bbox: number[];
@@ -123,11 +125,34 @@ export interface ParseChunk {
   chunk_index: number;
   chunk_index_in_section: number;
   text: string;
+  evidence_spans?: Array<Record<string, unknown>>;
+  element_types?: string[];
+  content_kind?: string;
+  contains_inferred_content?: boolean;
+}
+
+export interface ParsePageDiagnostic {
+  page_number: number;
+  locator_type?: "pdf_page" | "docx_position" | "rendered_page" | "pptx_slide";
+  route: string;
+  reasons: string[];
+  quality: { status?: string; overall?: number; warnings?: string[] };
+  elements: Array<{
+    element_id: string;
+    type: string;
+    bbox: { x0: number; y0: number; x1: number; y1: number };
+    selected_source?: string;
+    warnings?: string[];
+  }>;
+}
+
+export interface ParsedDocumentDebug extends Record<string, unknown> {
+  page_diagnostics?: ParsePageDiagnostic[];
 }
 
 export interface ParseResult {
   file: PaperFile;
-  parsed_document: Record<string, unknown> | null;
+  parsed_document: ParsedDocumentDebug | null;
   sections: ParseSection[];
   chunks: ParseChunk[];
 }

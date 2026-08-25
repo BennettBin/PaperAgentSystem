@@ -147,6 +147,7 @@ class DocumentFormat(str, Enum):
 
     PDF = "pdf"
     DOCX = "docx"
+    PPTX = "pptx"
     MARKDOWN = "markdown"
     LATEX = "latex"
     PLAIN_TEXT = "plain_text"

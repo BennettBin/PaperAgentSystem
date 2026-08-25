@@ -30,5 +30,12 @@ class InfrastructureSettings(BaseSettings):
     semantic_scholar_api_key: str = ""
     openalex_api_key: str = ""
     openalex_mailto: str = ""
+    docling_enabled: bool = True
+    document_vlm_enabled: bool = True
+    document_parse_intake_enabled: bool = True
+    document_vlm_endpoint: str = "http://host.docker.internal:8091/v1/document/parse"
+    document_vlm_bearer_token: str = ""
+    document_vlm_allowed_hosts: str = "host.docker.internal,localhost,127.0.0.1"
+    docling_artifacts_path: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")

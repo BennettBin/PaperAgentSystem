@@ -291,6 +291,18 @@ export const TaskStatusMonitor = ({
   );
 };
 
+const locatorLabel = (
+  locatorType: string | undefined,
+  position: number,
+  explicitLabel?: string,
+) => {
+  if (explicitLabel) return explicitLabel;
+  if (locatorType === "pptx_slide") return `幻灯片 ${position}`;
+  if (locatorType === "docx_position") return `DOCX 结构位置 ${position}`;
+  if (locatorType === "rendered_page") return `渲染页 ${position}`;
+  return `第 ${position} 页`;
+};
+
 export const AssistantMessage = ({ message }: { message: ChatMessage }) => {
   const evidence = Array.isArray(message.metadata?.evidence)
     ? (message.metadata?.evidence as EvidenceCitation[])
@@ -349,7 +361,7 @@ export const AssistantMessage = ({ message }: { message: ChatMessage }) => {
               <span className="reference-popover citation-popover" role="tooltip">
                 <span>
                   <strong>{citation.id}</strong>
-                  <small>第 {citation.page} 页</small>
+                  <small>{locatorLabel(citation.locator_type, citation.page, citation.locator_label)}</small>
                 </span>
                 <span>{citation.quote}</span>
               </span>
@@ -519,6 +531,21 @@ const RetrievalStage = ({
     )}
   </section>
 );
+
+const parseStatusLabel = (status: string): string => {
+  const labels: Record<string, string> = {
+    queued: "等待解析",
+    uploading: "上传中",
+    profiling: "页面画像中",
+    parsing: "内容解析中",
+    enriching: "结构融合中",
+    indexing: "建立索引中",
+    parsed: "解析完成",
+    degraded: "已降级完成",
+    failed: "解析失败",
+  };
+  return labels[status] ?? status;
+};
 
 export const AppLayout: React.FC<AppLayoutProps> = () => {
   const [conversations, setConversations] = React.useState<ConversationSummary[]>([]);
@@ -937,7 +964,7 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
                 <article className="library-file" key={file.id}>
                   <strong>{file.name}</strong>
                   <span>{Math.ceil(file.size_bytes / 1024)} KB</span>
-                  <small>{file.parse_status}</small>
+                  <small>{parseStatusLabel(file.parse_status)}</small>
                 </article>
               ))}
               {libraryFiles.length === 0 ? <p>还没有上传文件。</p> : null}
@@ -970,7 +997,7 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
                 {files.map((file) => (
                   <span key={file.id}>
                     <span className="attached-file-name">{file.name}</span>
-                    <small>{file.parse_status}</small>
+                    <small>{parseStatusLabel(file.parse_status)}</small>
                     <button
                       className="file-debug-button"
                       disabled={diagnosticLoading || file.parse_status === "uploading"}
@@ -1014,6 +1041,29 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
                 {diagnosticLoading ? <p className="diagnostic-empty">正在读取诊断结果...</p> : null}
                 {parseResult ? (
                   <div className="parse-debug-view">
+                    {(parseResult.parsed_document?.page_diagnostics ?? []).length > 0 ? (
+                      <div className="diagnostic-chunk-list">
+                        <h4>逐页解析路由</h4>
+                        {(parseResult.parsed_document?.page_diagnostics ?? []).map((page) => (
+                          <article className="diagnostic-hit" key={page.page_number}>
+                            <header>
+                              <strong>{locatorLabel(page.locator_type, page.page_number)} · {page.route}</strong>
+                              <span>{page.quality.status ?? "unknown"} · {page.elements.length} elements</span>
+                            </header>
+                            <p>路由原因：{page.reasons.join("、") || "原生文本质量达标"}</p>
+                            {(page.quality.warnings ?? []).length > 0 ? (
+                              <p>告警：{(page.quality.warnings ?? []).join("、")}</p>
+                            ) : null}
+                            {page.elements.slice(0, 12).map((element) => (
+                              <small key={element.element_id}>
+                                {element.type} · {element.selected_source ?? "unknown"} · bbox
+                                [{element.bbox.x0.toFixed(1)}, {element.bbox.y0.toFixed(1)}, {element.bbox.x1.toFixed(1)}, {element.bbox.y1.toFixed(1)}]
+                              </small>
+                            ))}
+                          </article>
+                        ))}
+                      </div>
+                    ) : null}
                     <div className="diagnostic-section-list">
                       <h4>章节树</h4>
                       {parseResult.sections.map((section) => (
@@ -1074,7 +1124,7 @@ export const AppLayout: React.FC<AppLayoutProps> = () => {
               ref={fileInputRef}
               className="visually-hidden"
               type="file"
-              accept=".pdf,application/pdf"
+              accept=".pdf,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation"
               aria-label="上传论文或文档"
               onChange={(event) => void upload(event)}
             />

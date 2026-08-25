@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from backend.core.ports.llm_client import EmbeddingClient, RerankerClient
+from backend.document_processing.schema_v2 import ElementType, EvidenceSpan
 from backend.infrastructure.postgres.models import DocumentChunkModel, DocumentSectionModel
 from backend.rag.local_models import retrieval_terms
 from backend.rag.section_resolver import (
@@ -33,6 +34,10 @@ class RetrievalHit:
     bbox: tuple[float, float, float, float]
     source_block_ids: tuple[str, ...]
     score: float
+    evidence_spans: tuple[EvidenceSpan, ...] = ()
+    element_types: tuple[str, ...] = ()
+    content_kind: str = "body"
+    contains_inferred_content: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,13 +196,19 @@ class HybridRetriever:
         limit: int | None = None,
         section_hint: str | None = None,
         expand_section: bool = False,
+        element_types: set[ElementType] | None = None,
     ) -> list[RetrievalHit]:
         rewrites = await self._rewriter.rewrite(query)
         query_text = " ".join([*rewrites, section_hint or ""]).strip()
         query_vector = _pad(await self._embeddings.embed(query_text))
         embedding_fingerprint = _embedding_fingerprint(self._embeddings)
         with self._sessions() as session:
-            models = self._load_filtered(session, workspace_id, file_ids)
+            models = self._load_filtered(
+                session,
+                workspace_id,
+                file_ids,
+                element_types=element_types,
+            )
             models = self._sections.scope(models, section_hint)
         return await self._rank_models(
             query,
@@ -361,6 +372,7 @@ class HybridRetriever:
         file_ids: set[str] | None,
         *,
         section_ids: set[str] | None = None,
+        element_types: set[ElementType] | None = None,
     ) -> list[DocumentChunkModel]:
         statement = select(DocumentChunkModel).where(
             DocumentChunkModel.workspace_id == workspace_id,
@@ -374,7 +386,15 @@ class HybridRetriever:
             if not section_ids:
                 return []
             statement = statement.where(DocumentChunkModel.section_id.in_(section_ids))
-        return list(session.scalars(statement))
+        models = list(session.scalars(statement))
+        if element_types is None:
+            return models
+        wanted = {element_type.value for element_type in element_types}
+        return [
+            model
+            for model in models
+            if wanted & set(model.element_types or [])
+        ]
 
     @staticmethod
     def _load_sections(
@@ -584,6 +604,12 @@ def _hit(model: DocumentChunkModel, score: float) -> RetrievalHit:
         ),
         source_block_ids=tuple(model.source_block_ids),
         score=score,
+        evidence_spans=tuple(
+            EvidenceSpan.model_validate(span) for span in (model.evidence_spans or [])
+        ),
+        element_types=tuple(model.element_types or []),
+        content_kind=model.content_kind or "body",
+        contains_inferred_content=bool(model.contains_inferred_content),
     )
 
 

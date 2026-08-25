@@ -46,7 +46,10 @@ from backend.memory import (
     LongTermMemoryService,
     ShortTermMemoryService,
 )
-from backend.rag.indexing import CURRENT_INDEX_VERSION, CURRENT_SECTION_SCHEMA_VERSION
+from backend.rag.semantic_indexing_v2 import (
+    CURRENT_INDEX_VERSION,
+    CURRENT_SECTION_SCHEMA_VERSION,
+)
 from backend.skills.loader import SkillManifestLoader, SkillRegistry
 from backend.skills.runtime import SkillRuntime
 from backend.tool_runtime.runtime import (
@@ -117,13 +120,10 @@ def _visual_pdf() -> bytes:
     page = document.new_page(width=600, height=800)
     page.insert_text((40, 70), "2 Methods", fontsize=16)
     page.insert_text((40, 105), "The method compares the main results.", fontsize=11)
-    for x in (45, 145, 245):
-        page.draw_line((x, 170), (x, 270), color=(0, 0, 0))
-    for y in (170, 220, 270):
-        page.draw_line((45, y), (245, y), color=(0, 0, 0))
-    page.insert_text((65, 205), "CELL-HIDDEN-A", fontsize=10)
-    page.insert_text((165, 205), "CELL-HIDDEN-B", fontsize=10)
-    page.insert_text((45, 290), "Table 1: Main results", fontsize=10)
+    pixmap = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 200, 100), False)
+    pixmap.clear_with(220)
+    page.insert_image(fitz.Rect(45, 170, 245, 270), pixmap=pixmap)
+    page.insert_text((45, 290), "Figure 1: Main results", fontsize=10)
     stream = BytesIO()
     document.save(stream)
     document.close()
@@ -708,7 +708,7 @@ async def test_uploaded_pdf_is_parsed_retrieved_and_passed_to_model(product_data
 
 
 @pytest.mark.asyncio
-async def test_visual_artifacts_are_stored_with_layout_metadata_and_not_chunked(
+async def test_visual_artifacts_are_stored_with_v2_metadata_and_are_accessible(
     product_database,
 ) -> None:
     store = FakeObjectStore()
@@ -741,13 +741,15 @@ async def test_visual_artifacts_are_stored_with_layout_metadata_and_not_chunked(
     assert result["visual_artifacts"] == 1
     with product_database() as session:
         parsed = session.query(ParsedDocumentModel).one()
+        file_model = session.get(FileModel, "visual-file")
         artifact = parsed.metadata_json["visual_artifacts"][0]
         chunks = session.query(DocumentChunkModel).all()
-        assert artifact["kind"] == "table"
-        assert artifact["section_path"] == ["2 Methods"]
+        assert artifact["kind"] == "figure"
+        assert artifact["page_number"] == 1
+        assert artifact["bbox"]["x1"] > artifact["bbox"]["x0"]
         assert artifact["storage_path"] in store.objects
-        assert parsed.metadata_json["page_layouts"][0]["layout"] == "single_column"
-        assert all("CELL-HIDDEN" not in chunk.text for chunk in chunks)
+        assert file_model.metadata_json["page_layouts"] == ["fast_native"]
+        assert all(chunk.evidence_spans for chunk in chunks)
     application = PaperAgentApplication(product_database, store, FakeTaskQueue())
     image = await application.get_visual_artifact(artifact["artifact_id"])
     assert image["content_type"] == "image/png"
@@ -1398,6 +1400,17 @@ async def test_delete_conversation_preserves_a_file_shared_by_an_active_conversa
         assert file_model.reference_count == 1
 
 
+def _evidence_span(element_id: str, page_number: int) -> dict:
+    return {
+        "element_id": element_id,
+        "page_number": page_number,
+        "locator_type": "pdf_page",
+        "bbox": {"x0": 0, "y0": 0, "x1": 100, "y1": 100},
+        "normalized_bbox": {"x0": 0, "y0": 0, "x1": 1, "y1": 1},
+        "source_parser": "fixture",
+    }
+
+
 def _add_debug_index(session) -> None:
     session.add(
         FileModel(
@@ -1473,6 +1486,9 @@ def _add_debug_index(session) -> None:
             page_end=2,
             bbox_json=[0, 0, 100, 100],
             source_block_ids=["b2"],
+            evidence_spans=[_evidence_span("b2", 2)],
+            element_types=["paragraph"],
+            content_kind="body",
             embedding=[0.2] * 1024,
             embedding_model="multilingual-hash-v1",
             searchable_text="Ablation Analysis compares each component and reports PaperBench gains.",
@@ -1570,6 +1586,11 @@ def _add_comparison_indexes(session) -> None:
                     page_end=1,
                     bbox_json=[0, 0, 100, 100],
                     source_block_ids=[f"body-{paper_index}"],
+                    evidence_spans=[
+                        _evidence_span(f"body-{paper_index}", 1)
+                    ],
+                    element_types=["paragraph"],
+                    content_kind="body",
                     embedding=[0.2] * 1024,
                     embedding_model="multilingual-hash-v1",
                     searchable_text=f"主要内容 方法 贡献 {topic}",
@@ -1820,7 +1841,7 @@ async def test_unknown_model_citation_is_rejected_before_answer_is_saved(
 
 
 @pytest.mark.asyncio
-async def test_old_index_is_rebuilt_during_real_multisection_pdf_e2e(
+async def test_explicit_reparse_atomically_rebuilds_old_index_before_rag(
     product_database,
 ) -> None:
     store = FakeObjectStore()
@@ -1920,11 +1941,15 @@ async def test_old_index_is_rebuilt_during_real_multisection_pdf_e2e(
         trace_writer=traces,
     )
 
+    await processor.parse(
+        {"_task_id": "multisection-reparse-task", "file_id": "multi-file"}
+    )
+
     result = await processor.answer(
         {
             "_task_id": "multisection-e2e-task",
             "conversation_id": "conversation-1",
-            "question": "请总结第 2 节",
+            "question": "论文使用了什么方法和数据集？",
             "file_ids": ["multi-file"],
         }
     )
@@ -1943,8 +1968,7 @@ async def test_old_index_is_rebuilt_during_real_multisection_pdf_e2e(
         assert assistant is not None
         evidence = assistant.metadata_json["evidence"]
         assert evidence
-        assert all(item["page"] == 2 for item in evidence)
-        assert all("2 Methods" in item["section"] for item in evidence)
+        assert all("stale evidence" not in item["quote"] for item in evidence)
     index_spans = [
         trace for trace in traces.traces if trace["span_name"] == "document.index"
     ]

@@ -10,9 +10,10 @@ import math
 import re
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol, cast
 from uuid import uuid4
 
+import fitz  # type: ignore[import-untyped]
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -39,7 +40,20 @@ from backend.core.errors import ErrorCode, ProjectError
 from backend.core.ports.llm_client import EmbeddingClient, LLMClient, RerankerClient
 from backend.core.ports.observability import TaskAuditLogWriter, TraceWriter
 from backend.core.ports.storage import ObjectStore, TaskQueue
-from backend.document_processing.pipeline import BasicPDFPipeline
+from backend.document_processing.adaptive_pipeline import (
+    ProductionDocumentPipeline,
+)
+from backend.document_processing.office_preflight import (
+    DOCX_MIME,
+    PPTX_MIME,
+    OfficePreflight,
+)
+from backend.document_processing.schema import BoundingBox, VisualArtifact
+from backend.document_processing.schema_v2 import (
+    CanonicalDocumentV2,
+    LocatorType,
+    QualityStatus,
+)
 from backend.infrastructure.postgres.blackboard import (
     ManagedSqlAlchemyBlackboardRepository,
 )
@@ -62,13 +76,13 @@ from backend.infrastructure.postgres.models import (
 )
 from backend.infrastructure.sse.service import TaskEventStore
 from backend.memory import LongTermMemoryService, ShortTermMemoryService
-from backend.rag.indexing import DocumentIndexer
 from backend.rag.local_models import (
     MultilingualHashEmbeddingClient,
     MultilingualLexicalReranker,
     retrieval_terms,
 )
 from backend.rag.retrieval import HybridRetriever, RetrievalHit
+from backend.rag.semantic_indexing_v2 import DocumentIndexerV2
 from backend.skills.loader import SkillToolBinding
 from backend.skills.runtime import SkillActivation, SkillRuntime
 from backend.tool_runtime.runtime import ToolContext, ToolRuntime
@@ -78,6 +92,24 @@ LOCAL_WORKSPACE_ID = "local-workspace"
 DIAGNOSTIC_EXPORT_DIR = Path("runtime/diagnostics/rag")
 TASK_AUDIT_PUBLIC_DIR = Path("runtime/logs/agent")
 LOGGER = logging.getLogger(__name__)
+
+
+def _default_v2_pipeline_for_local_fixtures() -> ProductionDocumentPipeline:
+    """Build the same V2-only graph used by local tests; Worker injects production IO."""
+
+    from backend.document_processing.adaptive_pipeline import AdaptiveDocumentPipeline
+    from backend.document_processing.docling_adapter import DoclingLayoutAdapter
+    from backend.document_processing.paddleocr_vl_adapter import PaddleOCRVLAdapter
+    from backend.document_processing.pymupdf_adapter import PyMuPDFV2Adapter
+
+    return ProductionDocumentPipeline(
+        AdaptiveDocumentPipeline(
+            PyMuPDFV2Adapter(),
+            DoclingLayoutAdapter(),
+            PaddleOCRVLAdapter(),
+            document_vlm_enabled=False,
+        )
+    )
 
 
 class PaperAgentApplicationPort(Protocol):
@@ -126,10 +158,12 @@ class PaperAgentApplication:
         sessions: sessionmaker[Session],
         object_store: ObjectStore,
         task_queue: TaskQueue,
+        document_parse_intake_enabled: bool = True,
     ) -> None:
         self._sessions = sessions
         self._objects = object_store
         self._queue = task_queue
+        self._document_parse_intake_enabled = document_parse_intake_enabled
 
     async def create_conversation(self, title: str = "新对话") -> dict[str, Any]:
         model = ConversationModel(
@@ -402,13 +436,31 @@ class PaperAgentApplication:
         content_type: str,
         data: bytes,
     ) -> dict[str, Any]:
+        if not self._document_parse_intake_enabled:
+            raise ProjectError(
+                ErrorCode.FAILED_PRECONDITION,
+                "Document parse intake is frozen for pipeline rollout or rollback",
+            )
         if not data:
             raise ProjectError(ErrorCode.INVALID_ARGUMENT, "上传文件不能为空")
-        if content_type != "application/pdf" and not filename.casefold().endswith(".pdf"):
+        suffix = Path(filename.casefold()).suffix
+        approved = {
+            ".pdf": "application/pdf",
+            ".docx": DOCX_MIME,
+            ".pptx": PPTX_MIME,
+        }
+        normalized_content_type = approved.get(suffix)
+        if normalized_content_type is None or content_type != normalized_content_type:
             raise ProjectError(
                 ErrorCode.UNSAFE_FILE_TYPE,
-                "当前产品问答链路仅支持 PDF 论文",
+                "当前产品问答链路仅支持 PDF、DOCX 和 PPTX",
             )
+        locator_type = LocatorType.PDF_PAGE
+        if suffix in {".docx", ".pptx"}:
+            office_preflight = OfficePreflight().inspect(data, filename, content_type)
+            locator_type = office_preflight.locator_type
+        elif not data.startswith(b"%PDF"):
+            raise ProjectError(ErrorCode.UNSAFE_FILE_TYPE, "PDF signature does not match MIME")
         with self._sessions() as session:
             _conversation(session, conversation_id)
         checksum = hashlib.sha256(data).hexdigest()
@@ -423,17 +475,20 @@ class PaperAgentApplication:
                 object_key = await self._objects.upload(
                     f"uploads/{uuid4().hex}-{filename}",
                     data,
-                    "application/pdf",
+                    normalized_content_type,
                 )
                 file_model = FileModel(
                     id=uuid4().hex,
                     workspace_id=LOCAL_WORKSPACE_ID,
                     filename=filename,
-                    content_type="application/pdf",
+                    content_type=normalized_content_type,
                     size_bytes=len(data),
                     storage_path=object_key,
                     checksum=checksum,
-                    metadata_json={"parse_status": "queued"},
+                    metadata_json={
+                        "parse_status": "queued",
+                        "document_locator_type": locator_type.value,
+                    },
                 )
                 session.add(file_model)
             else:
@@ -442,10 +497,10 @@ class PaperAgentApplication:
                     object_key = await self._objects.upload(
                         f"uploads/{uuid4().hex}-{filename}",
                         data,
-                        "application/pdf",
+                        normalized_content_type,
                     )
                     file_model.filename = filename
-                    file_model.content_type = "application/pdf"
+                    file_model.content_type = normalized_content_type
                     file_model.size_bytes = len(data)
                     file_model.storage_path = object_key
                     file_model.is_deleted = False
@@ -454,6 +509,7 @@ class PaperAgentApplication:
                     file_model.metadata_json = {
                         **(file_model.metadata_json or {}),
                         "parse_status": "queued",
+                        "document_locator_type": locator_type.value,
                     }
             link = session.scalar(
                 select(ConversationFileModel).where(
@@ -875,11 +931,13 @@ class PaperAgentProcessor:
         long_term_memory: LongTermMemoryService | None = None,
         memory_task_queue: TaskQueue | None = None,
         tool_runtime: ToolRuntime | None = None,
+        document_pipeline: ProductionDocumentPipeline | None = None,
     ) -> None:
         self._sessions = sessions
         self._objects = object_store
-        self._parser = BasicPDFPipeline()
-        self._indexer = DocumentIndexer(
+        # Worker injects provider-backed adapters; local fixtures still exercise V2 only.
+        self._parser = document_pipeline or _default_v2_pipeline_for_local_fixtures()
+        self._indexer_v2 = DocumentIndexerV2(
             sessions,
             embeddings,
             embedding_model=(
@@ -907,9 +965,16 @@ class PaperAgentProcessor:
     async def parse(self, payload: dict[str, Any]) -> dict[str, Any]:
         file_id = str(payload["file_id"])
         task_id = str(payload.get("_task_id", ""))
-        self._event(task_id, "step_started", "开始解析 PDF", {"file_id": file_id})
+        if "document_pipeline_snapshot" in payload:
+            raise ProjectError(
+                ErrorCode.FAILED_PRECONDITION,
+                "Legacy document pipeline snapshot tasks must be drained or cancelled",
+                details={"reason": "legacy_document_pipeline_snapshot_not_supported"},
+            )
+        parser = self._parser
+        self._event(task_id, "step_started", "开始解析文档", {"file_id": file_id})
         skill_activation = await self._activate_skill(
-            "解析上传的 PDF 文档",
+            "解析上传的文档",
             [file_id],
             None,
             task_id,
@@ -936,9 +1001,10 @@ class PaperAgentProcessor:
                         ParsedDocumentModel.file_id == file_id,
                     )
                 )
+                previous_document_list = previous_documents.all()
                 previous_artifacts = {
                     str(item.get("artifact_id")): str(item.get("storage_path"))
-                    for previous in previous_documents
+                    for previous in previous_document_list
                     for item in (previous.metadata_json or {}).get(
                         "visual_artifacts", []
                     )
@@ -955,11 +1021,6 @@ class PaperAgentProcessor:
                     "storage_path": storage_path,
                 },
             )
-            reindex_required = not self._indexer.is_current(
-                LOCAL_WORKSPACE_ID,
-                file_id,
-                expected_checksum=checksum,
-            )
             data = await self._objects.download(storage_path)
             self._audit(
                 task_id,
@@ -968,9 +1029,40 @@ class PaperAgentProcessor:
                 status="completed",
                 details={"file_id": file_id, "storage_path": storage_path},
             )
-            document = await self._parser.parse(data, filename, trace_id=task_id)
+            def update_status(status: str) -> None:
+                with self._sessions() as progress_session:
+                    progress_file = _file(progress_session, file_id)
+                    progress_file.metadata_json = {
+                        **(progress_file.metadata_json or {}),
+                        "parse_status": status,
+                    }
+                    progress_session.commit()
+                self._event(
+                    task_id,
+                    "step_started",
+                    f"文档处理阶段：{status}",
+                    {"file_id": file_id, "parse_status": status},
+                )
+
+            parse_outcome = await parser.parse(
+                data,
+                filename,
+                trace_id=task_id,
+                progress=update_status,
+                workspace_id=LOCAL_WORKSPACE_ID,
+            )
+            document = parse_outcome.document
+            diagnostics = parse_outcome.diagnostics
+            reindex_required = not self._indexer_v2.is_current(
+                LOCAL_WORKSPACE_ID,
+                file_id,
+                expected_checksum=checksum,
+                expected_pipeline_fingerprint=document.pipeline_fingerprint,
+            )
+            update_status("enriching")
+            visual_artifacts = _render_v2_visual_artifacts(data, document)
             stored_artifacts = []
-            for artifact in document.visual_artifacts:
+            for artifact in visual_artifacts:
                 artifact_id = f"{file_id}-{artifact.artifact_id}"
                 stored_path = previous_artifacts.get(artifact_id, "")
                 if stored_path and await self._objects.exists(stored_path):
@@ -1001,30 +1093,52 @@ class PaperAgentProcessor:
                         }
                     )
                 )
-            document = document.model_copy(
-                update={"visual_artifacts": stored_artifacts}
-            )
-            chunks = await self._indexer.index(
-                LOCAL_WORKSPACE_ID, file_id, data, document
+            update_status("indexing")
+            if not document.quality.ready_for_index:
+                raise ProjectError(
+                    ErrorCode.PARSING_FAILED,
+                    "Document quality gate rejected indexing",
+                    details={"quality_status": document.quality.status.value},
+                )
+            chunks = await self._indexer_v2.index(
+                LOCAL_WORKSPACE_ID,
+                file_id,
+                data,
+                document,
+                visual_artifacts=[
+                    artifact.model_dump(mode="json", exclude={"image_png"})
+                    for artifact in stored_artifacts
+                ],
             )
             for old_path in set(previous_artifacts.values()) - reused_artifact_paths:
                 await self._objects.delete(old_path)
             with self._sessions() as session:
                 file_model = _file(session, file_id)
+                final_status = (
+                    "degraded"
+                    if document.quality.status is QualityStatus.PASS_WITH_WARNINGS
+                    else "parsed"
+                )
+                quality_score = document.quality.overall * 100
                 file_model.metadata_json = {
                     **(file_model.metadata_json or {}),
-                    "parse_status": "parsed",
+                    "parse_status": final_status,
                     "page_count": document.page_count,
-                    "quality_score": document.quality.score,
+                    "quality_score": quality_score,
                     "chunk_count": len(chunks),
-                    "visual_artifact_count": len(document.visual_artifacts),
-                    "page_layouts": [page.layout for page in document.pages],
+                    "visual_artifact_count": len(stored_artifacts),
+                    "page_layouts": [page.selected_route.value for page in document.pages],
+                    "pipeline_version": "v2",
+                    "document_migration": {
+                        "write_generation": "v2",
+                        "legacy_read_policy": "read_only_until_reparse",
+                    },
                 }
                 session.commit()
             self._event(
                 task_id,
                 "tool_completed",
-                "PDF 解析和索引完成",
+                "文档解析和索引完成",
                 {"file_id": file_id, "chunk_count": len(chunks)},
             )
             await self._trace(
@@ -1036,11 +1150,17 @@ class PaperAgentProcessor:
                     "reindexed": reindex_required,
                 },
             )
+            if diagnostics is not None:
+                await self._trace(
+                    task_id,
+                    "document.parse.v2",
+                    {"file_id": file_id, **diagnostics.model_dump(mode="json")},
+                )
             result = {
-                "status": "parsed",
+                "status": final_status,
                 "file_id": file_id,
                 "chunks": len(chunks),
-                "visual_artifacts": len(document.visual_artifacts),
+                "visual_artifacts": len(stored_artifacts),
             }
             await self._complete_skill_tool(
                 parse_tool,
@@ -1049,7 +1169,7 @@ class PaperAgentProcessor:
                     "file_id": file_id,
                     "page_count": document.page_count,
                     "section_titles": [section.title for section in document.sections],
-                    "quality_score": document.quality.score,
+                    "quality_score": quality_score,
                     "warnings": document.quality.warnings,
                 },
                 task_id,
@@ -1078,6 +1198,51 @@ class PaperAgentProcessor:
                     }
                     session.commit()
             raise
+
+    async def _ensure_readable_index(self, file_id: str, task_id: str) -> None:
+        """Use legacy chunks read-only; build V2 only when no readable index exists."""
+
+        with self._sessions() as session:
+            checksum = _file(session, file_id).checksum
+            stored_documents = session.scalars(
+                select(ParsedDocumentModel).where(
+                    ParsedDocumentModel.workspace_id == LOCAL_WORKSPACE_ID,
+                    ParsedDocumentModel.file_id == file_id,
+                    ParsedDocumentModel.checksum == checksum,
+                )
+            ).all()
+            stored_ids = [document.id for document in stored_documents]
+            has_chunks = bool(
+                stored_ids
+                and session.scalar(
+                    select(func.count(DocumentChunkModel.id)).where(
+                        DocumentChunkModel.workspace_id == LOCAL_WORKSPACE_ID,
+                        DocumentChunkModel.file_id == file_id,
+                        DocumentChunkModel.document_id.in_(stored_ids),
+                    )
+                )
+            )
+            readable_legacy = has_chunks and any(
+                document.parser_name != "hybrid-document-v2"
+                for document in stored_documents
+            )
+            v2_fingerprints = [
+                str((document.metadata_json or {}).get("pipeline_fingerprint", ""))
+                for document in stored_documents
+                if document.parser_name == "hybrid-document-v2"
+            ]
+        current_v2 = any(
+            fingerprint
+            and self._indexer_v2.is_current(
+                LOCAL_WORKSPACE_ID,
+                file_id,
+                expected_checksum=checksum,
+                expected_pipeline_fingerprint=fingerprint,
+            )
+            for fingerprint in v2_fingerprints
+        )
+        if not readable_legacy and not current_v2:
+            await self.parse({"_task_id": task_id, "file_id": file_id})
 
     async def answer(self, payload: dict[str, Any]) -> dict[str, Any]:
         task_id = str(payload.get("_task_id", ""))
@@ -1268,14 +1433,7 @@ class PaperAgentProcessor:
             )
         if _is_multi_agent_candidate(question, file_ids):
             for file_id in file_ids:
-                with self._sessions() as session:
-                    checksum = _file(session, file_id).checksum
-                if not self._indexer.is_current(
-                    LOCAL_WORKSPACE_ID,
-                    file_id,
-                    expected_checksum=checksum,
-                ):
-                    await self.parse({"_task_id": task_id, "file_id": file_id})
+                await self._ensure_readable_index(file_id, task_id)
         runtime_mode = "legacy_safe"
         if self._unified_runtime is not None:
             runtime_execution = await self._unified_runtime.execute(
@@ -1321,12 +1479,13 @@ class PaperAgentProcessor:
         self._event(task_id, "step_started", "小模型进行问题判断", {"stage": "intent_routing", "model_role": "small"})
         if routed_selection is not None:
             requirement = routed_selection.requirement
-            action = (
+            action = cast(
+                Literal["clarify", "answer", "retrieve"],
                 "clarify"
                 if requirement.needs_clarification
                 else "answer"
                 if requirement.task_type is TaskType.GENERAL_ANSWER
-                else "retrieve"
+                else "retrieve",
             )
             decision = ReActDecision(
                 action=action,
@@ -1483,14 +1642,7 @@ class PaperAgentProcessor:
         )
         file_labels = _active_file_labels(self._sessions, file_ids)
         for file_id in file_ids:
-            with self._sessions() as session:
-                checksum = _file(session, file_id).checksum
-            if not self._indexer.is_current(
-                LOCAL_WORKSPACE_ID,
-                file_id,
-                expected_checksum=checksum,
-            ):
-                await self.parse({"_task_id": task_id, "file_id": file_id})
+            await self._ensure_readable_index(file_id, task_id)
         self._event(
             task_id,
             "step_started",
@@ -1895,7 +2047,7 @@ class PaperAgentProcessor:
     ) -> SkillActivation | None:
         if self._skill_runtime is None:
             return None
-        input_data = {
+        input_data: dict[str, Any] = {
             "request": request,
             "file_ids": file_ids,
             "conversation_id": conversation_id,
@@ -2826,7 +2978,7 @@ def _answer_prompt(
     labels = file_labels or {}
     evidence = "\n\n".join(
         f"[E{index}] 论文 {labels.get(hit.file_id, hit.file_id)}"
-        f"（file_id: {hit.file_id}），第 {hit.page_start} 页，"
+        f"（file_id: {hit.file_id}），{_retrieval_locator_label(hit)}，"
         f"章节 {' / '.join(hit.section_path)}：\n{hit.text}"
         for index, hit in enumerate(hits, 1)
     )
@@ -2903,7 +3055,7 @@ def _extract_inline_material(request: str) -> str:
         for match in re.findall(r"[“\"]{1,2}(.{60,}?)[”\"]{1,2}", request, re.DOTALL)
     ]
     if quoted:
-        return max(quoted, key=len)
+        return str(max(quoted, key=len))
     paragraphs = [part.strip() for part in re.split(r"\n\s*\n", request) if part.strip()]
     material_paragraphs = [
         part
@@ -3402,14 +3554,40 @@ def _render_scholarly_results(
 
 
 def _hit_dict(index: int, hit: RetrievalHit) -> dict[str, Any]:
+    locator_type = (
+        hit.evidence_spans[0].locator_type
+        if hit.evidence_spans
+        else LocatorType.PDF_PAGE
+    )
     return {
         "id": f"E{index}",
         "file_id": hit.file_id,
         "page": hit.page_start,
+        "locator_type": locator_type.value,
+        "locator_label": _locator_label(locator_type, hit.page_start),
         "section": list(hit.section_path),
         "quote": hit.text[:800],
         "bbox": list(hit.bbox),
     }
+
+
+def _retrieval_locator_label(hit: RetrievalHit) -> str:
+    locator_type = (
+        hit.evidence_spans[0].locator_type
+        if hit.evidence_spans
+        else LocatorType.PDF_PAGE
+    )
+    return _locator_label(locator_type, hit.page_start)
+
+
+def _locator_label(locator_type: LocatorType, position: int) -> str:
+    if locator_type is LocatorType.PPTX_SLIDE:
+        return f"幻灯片 {position}"
+    if locator_type is LocatorType.DOCX_POSITION:
+        return f"DOCX 结构位置 {position}"
+    if locator_type is LocatorType.RENDERED_PAGE:
+        return f"渲染页 {position}"
+    return f"第 {position} 页"
 
 
 def _advanced_evidence_hit(item: AdvancedEvidence) -> RetrievalHit:
@@ -3430,6 +3608,9 @@ def _advanced_evidence_hit(item: AdvancedEvidence) -> RetrievalHit:
 
 
 def _parsed_document_debug_dict(model: ParsedDocumentModel) -> dict[str, Any]:
+    metadata = model.metadata_json or {}
+    canonical = metadata.get("canonical_document") or {}
+    pages = canonical.get("pages") if isinstance(canonical, dict) else []
     return {
         "id": model.id,
         "file_id": model.file_id,
@@ -3437,7 +3618,31 @@ def _parsed_document_debug_dict(model: ParsedDocumentModel) -> dict[str, Any]:
         "parser_version": model.parser_version,
         "page_count": model.page_count,
         "quality_score": model.quality_score,
-        "metadata": model.metadata_json or {},
+        "metadata": metadata,
+        "page_diagnostics": [
+            {
+                "page_number": page.get("page_number"),
+                "locator_type": canonical.get("document_locator_type", "pdf_page"),
+                "route": page.get("selected_route"),
+                "reasons": page.get("route_reasons", []),
+                "quality": page.get("quality", {}),
+                "elements": [
+                    {
+                        "element_id": element.get("element_id"),
+                        "type": element.get("element_type"),
+                        "bbox": element.get("bbox"),
+                        "selected_source": (element.get("provenance") or {}).get(
+                            "parser_name"
+                        ),
+                        "warnings": (element.get("provenance") or {}).get(
+                            "warnings", []
+                        ),
+                    }
+                    for element in page.get("elements", [])
+                ],
+            }
+            for page in (pages or [])
+        ],
     }
 
 
@@ -3470,8 +3675,96 @@ def _chunk_debug_dict(model: DocumentChunkModel) -> dict[str, Any]:
         "chunk_index": model.chunk_index_in_section,
         "chunk_index_in_section": model.chunk_index_in_section,
         "source_block_ids": list(model.source_block_ids or []),
+        "evidence_spans": list(model.evidence_spans or []),
+        "element_types": list(model.element_types or []),
+        "content_kind": model.content_kind,
+        "contains_inferred_content": model.contains_inferred_content,
         "text": model.text,
     }
+
+
+def _render_v2_visual_artifacts(
+    file_data: bytes, document: CanonicalDocumentV2
+) -> list[VisualArtifact]:
+    if document.document_locator_type is not LocatorType.PDF_PAGE:
+        return []
+    """Crop canonical tables/figures/algorithms without invoking another model."""
+
+    section_by_element = {
+        element_id: section
+        for section in document.sections
+        for element_id in section.element_ids
+    }
+    candidates = [
+        (table.table_id, "table", table.caption, table.page_number, table.bbox, table.source_element_ids)
+        for table in document.tables
+    ]
+    candidates.extend(
+        (
+            figure.figure_id,
+            "figure",
+            figure.caption,
+            figure.page_number,
+            figure.bbox,
+            figure.source_element_ids,
+        )
+        for figure in document.figures
+    )
+    candidates.extend(
+        (
+            element.element_id,
+            "algorithm",
+            element.text[:160],
+            page.page_number,
+            element.bbox,
+            (element.element_id,),
+        )
+        for page in document.pages
+        for element in page.elements
+        if element.element_type.value == "algorithm"
+    )
+    pdf = fitz.open(stream=file_data, filetype="pdf")
+    artifacts: list[VisualArtifact] = []
+    try:
+        for artifact_id, kind, caption, page_number, bbox, source_ids in candidates:
+            clip = fitz.Rect(bbox.x0, bbox.y0, bbox.x1, bbox.y1)
+            if clip.is_empty:
+                continue
+            pixmap = pdf[page_number - 1].get_pixmap(
+                matrix=fitz.Matrix(2, 2), clip=clip, alpha=False
+            )
+            section = next(
+                (section_by_element[item] for item in source_ids if item in section_by_element),
+                None,
+            )
+            if section is None:
+                section = next(
+                    (
+                        candidate
+                        for candidate in document.sections
+                        if candidate.page_start <= page_number <= candidate.page_end
+                    ),
+                    None,
+                )
+            artifacts.append(
+                VisualArtifact(
+                    artifact_id=artifact_id,
+                    kind=cast(Literal["figure", "table", "algorithm"], kind),
+                    label=caption or f"{kind} on page {page_number}",
+                    caption=caption,
+                    page_number=page_number,
+                    bbox=BoundingBox(
+                        x0=bbox.x0, y0=bbox.y0, x1=bbox.x1, y1=bbox.y1
+                    ),
+                    section_id=section.section_id if section else None,
+                    section_path=list(section.section_path) if section else [],
+                    source_block_ids=list(source_ids),
+                    image_png=pixmap.tobytes("png"),
+                )
+            )
+    finally:
+        pdf.close()
+    return artifacts
 
 
 def _debug_hits(

@@ -440,6 +440,8 @@ class MultiAgentRuntimeAdapter:
                         id=str(item["citation_id"]),
                         file_id=str(item["paper_id"]),
                         page=int(item["page"]),
+                        locator_type=str(item.get("locator_type", "pdf_page")),  # type: ignore[arg-type]
+                        locator_label=str(item.get("locator_label", "")),
                         section=[
                             str(value) for value in item.get("section", [])
                         ],

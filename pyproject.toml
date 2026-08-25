@@ -69,6 +69,13 @@ test = [
     "pytest-cov>=4.1.0",
 ]
 
+document-layout = [
+    "docling-slim[format-office,format-pdf,models-local]==2.115.0",
+    "docling-core==2.90.0",
+    "docling-parse==7.10.0",
+    "docling-ibm-models==3.13.0",
+]
+
 [tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["tests"]

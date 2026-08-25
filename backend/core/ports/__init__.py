@@ -4,6 +4,13 @@ Ports 模块初始化
 导出所有 Port 定义。
 """
 
+from .document_processing import (
+    DocumentLayoutAdapter,
+    DocumentParsingPipeline,
+    DocumentVLMAdapter,
+    OfficeDocumentAdapter,
+    PageParserAdapter,
+)
 from .llm_client import (
     EmbeddingClient,
     EmbeddingProfile,
@@ -64,6 +71,11 @@ __all__ = [
     "ModelProfile",
     "ModelRegistry",
     # Processing
+    "DocumentParsingPipeline",
+    "PageParserAdapter",
+    "DocumentLayoutAdapter",
+    "DocumentVLMAdapter",
+    "OfficeDocumentAdapter",
     "DocumentParser",
     "Retriever",
     "ClaimVerifier",

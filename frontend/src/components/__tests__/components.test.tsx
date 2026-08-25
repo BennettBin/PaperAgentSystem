@@ -445,6 +445,36 @@ describe("Frontend Components", () => {
     ).toHaveLength(1);
   });
 
+  it("labels PPTX evidence as a slide instead of a PDF page", () => {
+    render(
+      <AssistantMessage
+        message={{
+          id: "assistant-pptx",
+          role: "assistant",
+          content: "演示文稿结论 [E1]。",
+          created_at: "2026-08-05T00:00:00Z",
+          metadata: {
+            evidence: [
+              {
+                id: "E1",
+                file_id: "slides-1",
+                page: 2,
+                locator_type: "pptx_slide",
+                locator_label: "幻灯片 2",
+                section: ["Results"],
+                quote: "Slide evidence",
+                bbox: [0, 0, 10, 10],
+              },
+            ],
+          },
+        }}
+      />,
+    );
+    fireEvent.mouseEnter(screen.getByRole("button", { name: "[E1]" }));
+    expect(screen.getByText("幻灯片 2")).toBeDefined();
+    expect(screen.queryByText("第 2 页")).toBeNull();
+  });
+
   it("renders a Markdown paper comparison as a semantic table", () => {
     render(
       <AssistantMessage
